@@ -1,0 +1,96 @@
+{
+  "title": "WBD Converged Ad Campaign Engine",
+  "subtitle": "Orchestrate converged linear + streaming ad operations in one prompt.",
+  "narrative": "This demo simulates Warner Bros. Discovery's converged ad workflow: Olli audience planning, NEO + DemoDirect media planning, Global Compliance Policy Engine checks, and StreamX in-flight optimization with SCTE-35 resilience.",
+  "supabase": {
+    "url": "https://cjjvgiczswsiqhcvapjp.supabase.co",
+    "key": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqanZnaWN6c3dzaXFoY3ZhcGpwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUzODA3MTIsImV4cCI6MjA4MDk1NjcxMn0.CRQMGRp0QzMQ4uq2ZduWItYVZqjcvIv4AWPTiBfaY-k"
+  },
+  "defaults": {
+    "model": "gpt-4o",
+    "architectPrompt": "",
+    "agentStyle": "Use WBD terminology and concise, data-driven bullets. Surface risks and compliance flags.",
+    "maxAgents": 4,
+    "flowOrientation": "horizontal",
+    "flowColumns": 4
+  },
+  "demos": [
+    {
+      "id": "wbd-converged-engine",
+      "icon": "bi bi-broadcast-pin",
+      "title": "WBD Converged Ad Campaign Engine",
+      "body": "Single-prompt demo for converged planning, compliance, and in-flight optimization.",
+      "cta": "Load Pipeline",
+      "problem": "Launch $50k auto campaign, 60% Linear / 40% Digital, target Auto Intenders in the US",
+      "plan": {
+        "plan": [
+          {
+            "agentName": "The Planner",
+            "nodeId": "planner",
+            "systemInstruction": "You are the Audience Planning Agent for WBD's Olli platform. Given a campaign brief, query the Olli Audience Graph data to identify matching households. Report total matched households, device breakdown, platform overlap, and data quality flags (duplicates or missing DMA). Output a structured audience ID list using WBD terminology (Olli, household graph, device IDs, de-duplicated reach).",
+            "initialTask": "Resolve Auto Intender households, flag data quality issues, and produce a deduplicated audience ID list with reach summary.",
+            "stage": 1,
+            "next": ["The Sales Rep"]
+          },
+          {
+            "agentName": "The Sales Rep",
+            "nodeId": "sales-rep",
+            "systemInstruction": "You are the Converged Media Planning Agent using NEO and DemoDirect. Given an audience list and budget split, create a 12-line converged media plan across linear (TNT Sports, CNN, Food Network) and digital (Max ad-lite, Discovery+). Optimize for reach and CPM efficiency. Include at least one CNN Saudi Arabia placement for reach testing. Flag any SCTE-35 signal risks from StreamX inventory.",
+            "initialTask": "Build the converged media plan with line-item details (network, platform, daypart, country, impressions, spend, CPM) and identify SCTE-35 risks.",
+            "stage": 2,
+            "next": ["The Compliance Bot"]
+          },
+          {
+            "agentName": "The Compliance Bot",
+            "nodeId": "compliance-bot",
+            "systemInstruction": "You are the Global Ad Compliance Agent. Scan the media plan against the Global Compliance Policy Engine. For each line item, check country/region against regulations. Flag violations in RED with the specific law violated. Auto-approve compliant placements in GREEN. For violations, suggest an alternative placement. Output the approved & trafficked plan with reasons.",
+            "initialTask": "Validate the media plan against global restrictions and replace non-compliant placements with approved alternatives.",
+            "stage": 3,
+            "next": ["The Ops Director"]
+          },
+          {
+            "agentName": "The Ops Director",
+            "nodeId": "ops-director",
+            "systemInstruction": "You are the In-Flight Operations Agent monitoring StreamX delivery. Analyze the Live Delivery Log for pacing issues. If linear delivery is below 85% of target at any point, trigger a make-good by reallocating $3,200 to Max ad-lite streaming. Calculate de-duplicated reach, effective CPM, frequency distribution, and projected ROI. If SCTE-35 signals are failing, quantify revenue at risk. Output a final deterministic ROI report with before/after the make-good.",
+            "initialTask": "Detect pacing failures, execute make-good reallocation, and produce the final ROI report with before/after metrics.",
+            "stage": 4,
+            "next": []
+          }
+        ]
+      },
+      "flowchart": {
+        "nodes": [
+          { "id": "ui", "label": "User Interface", "kind": "system" },
+          { "id": "orchestration", "label": "Orchestration Layer", "kind": "system" },
+          { "id": "planner", "label": "Agent 1: The Planner", "kind": "agent" },
+          { "id": "sales-rep", "label": "Agent 2: The Sales Rep", "kind": "agent" },
+          { "id": "compliance-bot", "label": "Agent 3: Compliance Bot", "kind": "agent" },
+          { "id": "ops-director", "label": "Agent 4: Ops Director", "kind": "agent" },
+          { "id": "data-olli", "label": "Olli Audience Graph", "kind": "data", "bindTo": "planner" },
+          { "id": "data-neo", "label": "NEO / StreamX Inventory", "kind": "data", "bindTo": "sales-rep" },
+          { "id": "data-policy", "label": "Global Compliance Policy Engine", "kind": "data", "bindTo": "compliance-bot" },
+          { "id": "data-streamx", "label": "StreamX Delivery Log", "kind": "data", "bindTo": "ops-director" },
+          { "id": "output", "label": "Output & Visualization", "kind": "output" }
+        ],
+        "edges": [
+          { "source": "ui", "target": "orchestration" },
+          { "source": "orchestration", "target": "planner" },
+          { "source": "planner", "target": "sales-rep" },
+          { "source": "sales-rep", "target": "compliance-bot" },
+          { "source": "compliance-bot", "target": "ops-director" },
+          { "source": "ops-director", "target": "output" },
+          { "source": "data-olli", "target": "planner", "kind": "data" },
+          { "source": "data-neo", "target": "sales-rep", "kind": "data" },
+          { "source": "data-policy", "target": "compliance-bot", "kind": "data" },
+          { "source": "data-streamx", "target": "ops-director", "kind": "data" }
+        ]
+      },
+      "handoffs": [
+        { "from": "planner", "to": "sales-rep", "label": "Passing 487k Audience IDs -> Agent 2" },
+        { "from": "sales-rep", "to": "compliance-bot", "label": "Passing Converged Media Plan (12 items) -> Agent 3" },
+        { "from": "compliance-bot", "to": "ops-director", "label": "Passing Approved Plan -> Agent 4" }
+      ],
+      "inputs": []
+    }
+  ]
+}
