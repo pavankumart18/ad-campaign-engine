@@ -1,4 +1,4 @@
-// VERSION: 2024-01-XX - Added hardcoded plan support for grant-to-growth-predictor
+// VERSION: 2026-03-06 - Added three-plan architect selection, synthetic execution, and detailed compliance explanations.
 import { openaiConfig } from "bootstrap-llm-provider";
 import saveform from "saveform";
 import { createFlowchart } from "./flowchart.js";
@@ -24,14 +24,14 @@ const AGENT_DATASET_MAP = {
 };
 
 const AGENT_ACTION_SUMMARY = {
-  planner: "Matched Olli Auto Intender households and flagged data quality issues.",
-  "The Planner": "Matched Olli Auto Intender households and flagged data quality issues.",
-  "sales-rep": "Built 12-line converged media plan with StreamX SCTE-35 risk notes.",
-  "The Sales Rep": "Built 12-line converged media plan with StreamX SCTE-35 risk notes.",
-  "compliance-bot": "Flagged compliance violations and re-trafficked placements.",
-  "The Compliance Bot": "Flagged compliance violations and re-trafficked placements.",
-  "ops-director": "Triggered StreamX make-good and recalculated converged ROI.",
-  "The Ops Director": "Triggered StreamX make-good and recalculated converged ROI."
+  planner: "Mapped Olli Auto Intender households and documented data quality risks.",
+  "The Planner": "Mapped Olli Auto Intender households and documented data quality risks.",
+  "sales-rep": "Built a twelve-line converged media plan and documented Society of Cable Telecommunications Engineers cue-tone standard (SCTE-35) delivery signal risks.",
+  "The Sales Rep": "Built a twelve-line converged media plan and documented Society of Cable Telecommunications Engineers cue-tone standard (SCTE-35) delivery signal risks.",
+  "compliance-bot": "Validated each placement against compliance restrictions and proposed approved replacements.",
+  "The Compliance Bot": "Validated each placement against compliance restrictions and proposed approved replacements.",
+  "ops-director": "Triggered StreamX make-good reallocation and recalculated return on investment performance.",
+  "The Ops Director": "Triggered StreamX make-good reallocation and recalculated return on investment performance."
 };
 
 const RAW_DATA_BY_AGENT = {
@@ -40,6 +40,70 @@ const RAW_DATA_BY_AGENT = {
   "compliance-bot": datasetEntries.find((d) => d.key === "globalLawRegistry"),
   "ops-director": datasetEntries.find((d) => d.key === "liveDeliveryLog")
 };
+const ARCHITECT_PLAN_FALLBACK_TITLES = [
+  "Architecture Option 1",
+  "Architecture Option 2",
+  "Architecture Option 3"
+];
+const MIN_ARCHITECT_AGENTS = 5;
+const MAX_ARCHITECT_AGENTS = 6;
+const TARGET_ARCHITECT_AGENTS = 5;
+const PLAN_VARIANTS = [
+  {
+    key: "growth",
+    title: "Architecture Option 1",
+    promptTile: "Growth Acceleration Prompt",
+    promptText: "Design a growth-first architecture that expands audience reach quickly while preserving spend efficiency.",
+    strategy: "Growth-first orchestration with aggressive audience and inventory expansion.",
+    why: "This option prioritizes faster scale while still maintaining compliance and pacing controls.",
+    library: [
+      { nodeId: "growth-audience-strategist", agentName: "Growth Audience Strategist", phase: 1, focus: "high-propensity segment expansion and deterministic lookalike logic" },
+      { nodeId: "rapid-segmentation-analyst", agentName: "Rapid Segmentation Analyst", phase: 1, focus: "speed-focused segmentation thresholds and match confidence review" },
+      { nodeId: "reach-amplification-planner", agentName: "Reach Amplification Planner", phase: 2, focus: "high-reach linear and streaming blend for rapid coverage gains" },
+      { nodeId: "cost-velocity-optimizer", agentName: "Cost and Velocity Optimizer", phase: 3, focus: "spend efficiency guardrails while scaling impression velocity" },
+      { nodeId: "growth-compliance-manager", agentName: "Growth Compliance Manager", phase: 4, focus: "compliance-safe expansion with country and category restrictions" },
+      { nodeId: "growth-ops-director", agentName: "Growth Operations Director", phase: 5, focus: "pacing recovery actions that preserve scale and conversion momentum" }
+    ]
+  },
+  {
+    key: "compliance",
+    title: "Architecture Option 2",
+    promptTile: "Compliance-First Prompt",
+    promptText: "Design a compliance-first architecture that screens legal and policy risk before media spend allocation.",
+    strategy: "Policy-first orchestration that minimizes legal and regulatory rework.",
+    why: "This option reduces risk by validating market and category eligibility earlier in the flow.",
+    library: [
+      { nodeId: "policy-intake-analyst", agentName: "Policy Intake Analyst", phase: 1, focus: "campaign claim and category intake against policy scope" },
+      { nodeId: "jurisdiction-screening-lead", agentName: "Jurisdiction Screening Lead", phase: 1, focus: "country-level pre-screening and restricted-market routing constraints" },
+      { nodeId: "compliance-bot", agentName: "The Compliance Bot", phase: 2, focus: "line-item policy validation and replacement recommendation matrix" },
+      { nodeId: "regulatory-evidence-curator", agentName: "Regulatory Evidence Curator", phase: 3, focus: "source-level audit evidence and legal traceability records" },
+      { nodeId: "safe-inventory-planner", agentName: "Safe Inventory Planner", phase: 4, focus: "approved inventory-only media construction with fallback routes" },
+      { nodeId: "compliance-ops-director", agentName: "Compliance Operations Director", phase: 5, focus: "delivery monitoring with strict policy-safe make-good execution" }
+    ]
+  },
+  {
+    key: "operations",
+    title: "Architecture Option 3",
+    promptTile: "Operational Resilience Prompt",
+    promptText: "Design an operations-first architecture that maximizes execution resilience, pacing reliability, and response to delivery shocks.",
+    strategy: "Operations-first orchestration focused on resilience, monitoring, and intervention readiness.",
+    why: "This option is optimized for stable delivery under variable inventory and signal conditions.",
+    library: [
+      { nodeId: "execution-readiness-planner", agentName: "Execution Readiness Planner", phase: 1, focus: "handoff readiness, dependency checks, and activation prerequisites" },
+      { nodeId: "signal-risk-analyst", agentName: "Signal Risk Analyst", phase: 2, focus: "broadcast and streaming signal-health risk diagnostics" },
+      { nodeId: "resilient-media-planner", agentName: "Resilient Media Planner", phase: 3, focus: "redundant inventory paths and fallback activation design" },
+      { nodeId: "contingency-compliance-lead", agentName: "Contingency Compliance Lead", phase: 4, focus: "policy-safe contingency routing during delivery disruptions" },
+      { nodeId: "ops-director", agentName: "The Ops Director", phase: 5, focus: "live pacing corrections and make-good control strategy" },
+      { nodeId: "diagnostics-and-explanation-analyst", agentName: "Diagnostics and Explanation Analyst", phase: 6, focus: "root-cause analysis and detailed stakeholder explanation outputs" }
+    ]
+  }
+];
+const RAW_DATA_BY_KEY = {
+  audienceGraph: datasetEntries.find((d) => d.key === "audienceGraph"),
+  inventoryMatrix: datasetEntries.find((d) => d.key === "inventoryMatrix"),
+  globalLawRegistry: datasetEntries.find((d) => d.key === "globalLawRegistry"),
+  liveDeliveryLog: datasetEntries.find((d) => d.key === "liveDeliveryLog")
+};
 
 const DATA_QUALITY = computeDataQuality(datasets.audienceGraph || []);
 
@@ -47,6 +111,8 @@ let config = {};
 let state = {
   selectedDemoIndex: null,
   stage: "idle",
+  architectPlans: [],
+  selectedArchitectPlanId: null,
   plan: [],
   suggestedInputs: [],
   selectedInputs: new Set(),
@@ -72,50 +138,46 @@ let state = {
   issueNodeIds: new Set(),
   dataQuality: DATA_QUALITY,
   approvedPlanCsv: "",
-  pacingMode: "pct"
+  pacingMode: "pct",
+  complianceDetails: null,
+  complianceExplanationOpen: false,
+  visualizationExplanationOpen: false,
+  visualizationLoading: false,
+  visualizationNarrative: "",
+  runToken: 0
 };
 
 const llmSession = { creds: null };
 const actions = {
-  planDemo: (i) => { 
-    console.log("planDemo called with index:", i);
-    // Check for hardcoded plan BEFORE selecting demo - access config directly
-    if (!config || !config.demos || !config.demos[i]) {
-      console.error("Config or demo not available at index:", i);
-      selectDemo(i); 
-      runArchitect();
-      return;
-    }
-    
-    const demo = config.demos[i];
-    console.log("Demo found:", demo.title, "ID:", demo.id, "Plan structure:", demo.plan);
-    
-    // Explicit check for hardcoded plan structure: demo.plan.plan (array)
-    // Also check by ID as fallback
-    const isGrantToGrowth = demo.id === 'grant-to-growth-predictor';
-    const hasPlanStructure = demo.plan && 
-                              typeof demo.plan === 'object' && 
-                              demo.plan.hasOwnProperty('plan') &&
-                              Array.isArray(demo.plan.plan) && 
-                              demo.plan.plan.length > 0;
-    const hasHardcodedPlan = hasPlanStructure || (isGrantToGrowth && demo.plan);
-    
-    console.log("Is Grant-to-Growth?", isGrantToGrowth);
-    console.log("Has plan structure?", hasPlanStructure);
-    console.log("Has hardcoded plan?", hasHardcodedPlan);
-    
-    if (hasHardcodedPlan) {
-      // Has hardcoded plan - use it directly, skip API call
-      console.log("OK Using hardcoded plan - SKIPPING API CALL");
-      selectDemo(i);
-      useHardcodedPlan(demo);
-      return; // CRITICAL: Exit here, do NOT call runArchitect
-    }
-    
-    // No hardcoded plan - proceed normally
-    console.log("✗ No hardcoded plan - will call architect API");
-    selectDemo(i); 
-    runArchitect(); 
+  planDemo: (i) => {
+    selectDemo(i);
+    runArchitect();
+  },
+  chooseArchitectPlan: (id) => {
+    const picked = state.architectPlans.find((plan) => plan.id === id);
+    if (!picked) return;
+    const selectedPlan = expandAndEnrichPlan(
+      picked.plan || [],
+      clampAgentCount($("#max-agents")?.value, TARGET_ARCHITECT_AGENTS),
+      state.campaignPrompt || "",
+      picked.variantKey || "growth"
+    );
+    const normalizedInputs = buildDatasetInputs().map((input) => ({ ...input, id: Utils.uniqueId("input") }));
+    setState({
+      selectedArchitectPlanId: picked.id,
+      plan: selectedPlan,
+      suggestedInputs: normalizedInputs,
+      selectedInputs: new Set(normalizedInputs.map((i) => i.id)),
+      rawDataByAgent: buildRawDataByPlan(selectedPlan),
+      complianceDetails: null,
+      complianceExplanationOpen: false,
+      visualizationExplanationOpen: false,
+      visualizationLoading: false,
+      visualizationNarrative: "",
+      runToken: 0,
+      stage: "data",
+      error: ""
+    });
   },
   startAgents: () => startAgents(),
   toggleSuggestedInput: (id) => {
@@ -143,6 +205,8 @@ const actions = {
     if (mode !== "pct" && mode !== "imp") return;
     setState({ pacingMode: mode });
   },
+  toggleComplianceExplanation: () => setState({ complianceExplanationOpen: !state.complianceExplanationOpen }),
+  toggleVisualizationExplanation: () => setState({ visualizationExplanationOpen: !state.visualizationExplanationOpen }),
   exportApprovedPlan: () => {
     const csv = state.approvedPlanCsv || buildApprovedPlanCsv();
     if (!csv) return;
@@ -239,17 +303,31 @@ const actions = {
     // Directly go to data/run stage, skipping architect
     // User requirement: "these saved agents should not again call plan or architect"
     // We load them into the state as if they were just planned.
+    const savedMax = clampAgentCount($("#max-agents")?.value, TARGET_ARCHITECT_AGENTS);
+    const savedPlan = expandAndEnrichPlan(agent.plan || [], savedMax, agent.problem || "");
+    const savedInputs = (agent.inputs && agent.inputs.length)
+      ? agent.inputs.map((input) => ({ ...input, id: input.id || Utils.uniqueId("input") }))
+      : buildDatasetInputs().map((input) => ({ ...input, id: Utils.uniqueId("input") }));
     setState({
       selectedDemoIndex: -2, // Special index for saved agent
       customProblem: { title: agent.title, problem: agent.problem },
-      plan: agent.plan,
-      suggestedInputs: agent.inputs || [],
-      selectedInputs: new Set((agent.inputs || []).map(i => i.id)),
+      architectPlans: [],
+      selectedArchitectPlanId: null,
+      plan: savedPlan,
+      suggestedInputs: savedInputs,
+      selectedInputs: new Set(savedInputs.map(i => i.id)),
       stage: "data", // Ready to start inputs or run
       agentOutputs: [],
       error: "",
       editingAgentId: null, // Clear separate edit session
-      campaignPrompt: agent.problem || ""
+      campaignPrompt: agent.problem || "",
+      rawDataByAgent: buildRawDataByPlan(savedPlan),
+      complianceDetails: hasComplianceRole(savedPlan) ? buildComplianceDetails() : null,
+      complianceExplanationOpen: false,
+      visualizationExplanationOpen: false,
+      visualizationLoading: false,
+      visualizationNarrative: "",
+      runToken: 0
     });
   },
   editAgent: (agent) => {
@@ -302,7 +380,7 @@ async function refreshAgents() {
   if ($("#model")) $("#model").value = defaults.model || "gpt-5-mini";
   if ($("#architect-prompt")) $("#architect-prompt").value = defaults.architectPrompt || "";
   if ($("#agent-style")) $("#agent-style").value = defaults.agentStyle || "";
-  if ($("#max-agents")) $("#max-agents").value = defaults.maxAgents || 4;
+  if ($("#max-agents")) $("#max-agents").value = clampAgentCount(defaults.maxAgents, TARGET_ARCHITECT_AGENTS);
   if ($("#flow-orientation")) $("#flow-orientation").value = Utils.normalizeFlowOrientation(defaults.flowOrientation);
   if ($("#flow-columns")) $("#flow-columns").value = Utils.clampFlowColumns(defaults.flowColumns);
 
@@ -370,6 +448,12 @@ function render() {
   scheduleDashboardCharts();
 }
 
+function clampAgentCount(value, fallback = TARGET_ARCHITECT_AGENTS) {
+  const parsed = Number.parseInt(value, 10);
+  const safe = Number.isFinite(parsed) ? parsed : fallback;
+  return Math.min(MAX_ARCHITECT_AGENTS, Math.max(MIN_ARCHITECT_AGENTS, safe));
+}
+
 // Logic
 function selectDemo(index) {
   const demo = config.demos[index];
@@ -401,6 +485,8 @@ function resetRunState(extras) {
   setState({
     ...extras,
     stage: "architect",
+    architectPlans: [],
+    selectedArchitectPlanId: null,
     plan: [],
     agentOutputs: [],
     architectBuffer: "",
@@ -411,7 +497,14 @@ function resetRunState(extras) {
     dashboard: null,
     rawDataOpen: new Set(),
     issueNodeIds: new Set(),
-    approvedPlanCsv: ""
+    approvedPlanCsv: "",
+    rawDataByAgent: RAW_DATA_BY_AGENT,
+    complianceDetails: null,
+    complianceExplanationOpen: false,
+    visualizationExplanationOpen: false,
+    visualizationLoading: false,
+    visualizationNarrative: "",
+    runToken: 0
   });
 }
 
@@ -433,16 +526,74 @@ function buildDatasetContext(dataKey) {
   return `${meta.title} (${rows.length} rows)\n${csv}`;
 }
 
-function buildDashboard(agentOutputs = []) {
+function buildDashboard(agentOutputs = [], runContext = {}) {
+  const profile = buildRunProfile(agentOutputs, runContext);
   return {
-    pacing: buildPacingSeries(datasets.liveDeliveryLog || []),
-    reach: buildReachSummary(datasets.audienceGraph || [], datasets.liveDeliveryLog || []),
-    actions: buildActionRows(agentOutputs),
-    makeGood: buildMakeGoodSummary(datasets.liveDeliveryLog || [])
+    pacing: buildPacingSeries(datasets.liveDeliveryLog || [], profile),
+    reach: buildReachSummary(datasets.audienceGraph || [], datasets.liveDeliveryLog || [], profile),
+    actions: buildActionRows(agentOutputs, state.issueNodeIds || new Set()),
+    makeGood: buildMakeGoodSummary(datasets.liveDeliveryLog || [], profile)
   };
 }
 
-function buildPacingSeries(logs) {
+function buildRunProfile(agentOutputs = [], runContext = {}) {
+  const outputText = (agentOutputs || [])
+    .map((agent) => `${agent.nodeId || ""}|${agent.name || ""}|${stripMarkdown(agent.text || "").slice(0, 600)}`)
+    .join("|");
+  const seedSource = [
+    runContext.campaignPrompt || "",
+    runContext.selectedPlanId || "",
+    runContext.runToken || 0,
+    outputText
+  ].join("::");
+  const seed = hashString(seedSource);
+  return {
+    seed,
+    waveShift: seededInt(seed, 1, 7, 1),
+    planShift: seededRange(seed, -0.07, 0.07, 2),
+    linearDeliveryShift: seededRange(seed, -0.1, 0.08, 3),
+    digitalDeliveryShift: seededRange(seed, -0.06, 0.11, 4),
+    overlapShift: seededRange(seed, -6, 7, 5),
+    reachShift: seededRange(seed, 0.88, 1.16, 6),
+    deviceShift: seededRange(seed, 0.9, 1.22, 7),
+    makeGoodHour: seededInt(seed, 10, 15, 8),
+    linearDipFactor: seededRange(seed, 0.48, 0.82, 9),
+    digitalBoostFactor: seededRange(seed, 1.07, 1.3, 10),
+    makeGoodBudget: seededInt(seed, 2400, 4300, 11),
+    roiBase: seededRange(seed, -0.08, 0.22, 12),
+    roiLift: seededRange(seed, 0.02, 0.22, 13)
+  };
+}
+
+function hashString(value = "") {
+  let hash = 2166136261;
+  const str = String(value);
+  for (let i = 0; i < str.length; i += 1) {
+    hash ^= str.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function seededRange(seed, min, max, offset = 0) {
+  const mixed = (seed + Math.imul(offset + 1, 2654435761)) >>> 0;
+  const ratio = mixed / 4294967295;
+  return min + (max - min) * ratio;
+}
+
+function seededInt(seed, min, max, offset = 0) {
+  return Math.round(seededRange(seed, min, max, offset));
+}
+
+function clampNumber(value, min, max) {
+  return Math.min(max, Math.max(min, Number(value)));
+}
+
+function roundToTwo(value) {
+  return Math.round(Number(value) * 100) / 100;
+}
+
+function buildPacingSeries(logs, profile = {}) {
   const hours = Array.from({ length: 24 }, (_, i) => i + 1);
   const linearPct = [];
   const digitalPct = [];
@@ -454,10 +605,32 @@ function buildPacingSeries(logs) {
     const rows = logs.filter((l) => l.hour_of_day === hour);
     const linearRows = rows.filter((r) => r.platform_type === "linear");
     const digitalRows = rows.filter((r) => r.platform_type === "digital");
-    const linearPlanned = linearRows.reduce((sum, r) => sum + r.planned_impressions, 0);
-    const linearDelivered = linearRows.reduce((sum, r) => sum + r.delivered_impressions, 0);
-    const digitalPlanned = digitalRows.reduce((sum, r) => sum + r.planned_impressions, 0);
-    const digitalDelivered = digitalRows.reduce((sum, r) => sum + r.delivered_impressions, 0);
+    const baseLinearPlanned = linearRows.reduce((sum, r) => sum + r.planned_impressions, 0);
+    const baseLinearDelivered = linearRows.reduce((sum, r) => sum + r.delivered_impressions, 0);
+    const baseDigitalPlanned = digitalRows.reduce((sum, r) => sum + r.planned_impressions, 0);
+    const baseDigitalDelivered = digitalRows.reduce((sum, r) => sum + r.delivered_impressions, 0);
+
+    const wave = Math.sin((hour + (profile.waveShift || 0)) / 3) * 0.05;
+    const linearPlanFactor = clampNumber(1 + (profile.planShift || 0) + wave * 0.4, 0.82, 1.2);
+    const digitalPlanFactor = clampNumber(1 + (profile.planShift || 0) - wave * 0.3, 0.82, 1.2);
+
+    let linearPlanned = Math.round(baseLinearPlanned * linearPlanFactor);
+    let digitalPlanned = Math.round(baseDigitalPlanned * digitalPlanFactor);
+    let linearDelivered = Math.round(baseLinearDelivered * clampNumber(1 + (profile.linearDeliveryShift || 0) + wave, 0.55, 1.35));
+    let digitalDelivered = Math.round(baseDigitalDelivered * clampNumber(1 + (profile.digitalDeliveryShift || 0) - wave * 0.5, 0.6, 1.45));
+
+    if (hour === profile.makeGoodHour) {
+      linearDelivered = Math.round(linearDelivered * clampNumber(profile.linearDipFactor || 0.58, 0.45, 0.85));
+    }
+    if (hour === profile.makeGoodHour + 1) {
+      digitalDelivered = Math.round(digitalDelivered * clampNumber(profile.digitalBoostFactor || 1.18, 1.05, 1.32));
+    }
+
+    linearPlanned = Math.max(0, linearPlanned);
+    digitalPlanned = Math.max(0, digitalPlanned);
+    linearDelivered = Math.max(0, linearDelivered);
+    digitalDelivered = Math.max(0, digitalDelivered);
+
     linearPct.push(linearPlanned ? Math.round((linearDelivered / linearPlanned) * 100) : 0);
     digitalPct.push(digitalPlanned ? Math.round((digitalDelivered / digitalPlanned) * 100) : 0);
     linearImp.push(linearDelivered);
@@ -472,11 +645,12 @@ function buildPacingSeries(logs) {
     linearImp,
     digitalImp,
     linearPlanned: linearPlannedArr,
-    digitalPlanned: digitalPlannedArr
+    digitalPlanned: digitalPlannedArr,
+    makeGoodHour: profile.makeGoodHour || 12
   };
 }
 
-function buildReachSummary(audience, logs) {
+function buildReachSummary(audience, logs, profile = {}) {
   const autoIntenders = audience.filter((row) => row.segment_name === "Auto Intenders" && row.auto_intender_score > 70);
   const uniqueMap = new Map();
   autoIntenders.forEach((row) => {
@@ -484,8 +658,10 @@ function buildReachSummary(audience, logs) {
       uniqueMap.set(row.olli_household_id, row);
     }
   });
-  const uniqueHouseholds = uniqueMap.size;
-  const deviceCount = [...uniqueMap.values()].reduce((sum, row) => sum + (row.device_count || 0), 0);
+  const baseUniqueHouseholds = uniqueMap.size;
+  const baseDeviceCount = [...uniqueMap.values()].reduce((sum, row) => sum + (row.device_count || 0), 0);
+  const uniqueHouseholds = Math.max(1, Math.round(baseUniqueHouseholds * clampNumber(profile.reachShift || 1, 0.84, 1.18)));
+  const deviceCount = Math.max(1, Math.round(baseDeviceCount * clampNumber(profile.deviceShift || 1, 0.86, 1.2)));
   const scaledReach = Math.round((uniqueHouseholds * 32500) / 100) * 100;
   const totals = logs.reduce(
     (acc, row) => {
@@ -494,83 +670,102 @@ function buildReachSummary(audience, logs) {
     },
     { linear: 0, digital: 0 }
   );
-  const totalImpressions = totals.linear + totals.digital || 1;
-  const linearPct = Math.round((totals.linear / totalImpressions) * 100);
+  const adjustedLinear = Math.round(totals.linear * clampNumber(1 + (profile.linearDeliveryShift || 0), 0.7, 1.35));
+  const adjustedDigital = Math.round(totals.digital * clampNumber(1 + (profile.digitalDeliveryShift || 0), 0.7, 1.4));
+  const totalImpressions = adjustedLinear + adjustedDigital || 1;
+  const linearPct = Math.round((adjustedLinear / totalImpressions) * 100);
   const overlapPct = Math.round(
     logs.reduce((sum, row) => sum + (row.viewer_overlap_pct || 0), 0) / Math.max(logs.length, 1)
-  );
+  ) + Math.round(profile.overlapShift || 0);
   return {
     uniqueHouseholds,
     deviceCount,
     scaledReach,
     linearPct,
     digitalPct: 100 - linearPct,
-    overlapPct
+    overlapPct: Math.round(clampNumber(overlapPct, 4, 64))
   };
 }
 
-function buildActionRows(agentOutputs) {
-  const base = agentOutputs.reduce((min, a) => Math.min(min, a.startedAt || Date.now()), Date.now());
-  const autoIntenders = datasets.audienceGraph.filter((row) => row.segment_name === "Auto Intenders" && row.auto_intender_score > 70);
-  const uniqueHouseholds = new Set(autoIntenders.map((row) => row.olli_household_id)).size;
-  const linearBudget = 30000;
-  const digitalBudget = 20000;
-  const delivered = datasets.liveDeliveryLog.reduce((sum, row) => sum + row.delivered_impressions, 0);
-  const effectiveCpm = delivered ? ((50000 / delivered) * 1000) : 0;
+function buildActionRows(agentOutputs = [], issueNodeIds = new Set()) {
+  if (!Array.isArray(agentOutputs) || !agentOutputs.length) return [];
+  return [...agentOutputs]
+    .sort((a, b) => (a.startedAt || 0) - (b.startedAt || 0))
+    .map((agent) => {
+      const issueReason = extractIssueReason(agent.text || "");
+      const hasIssue = issueNodeIds?.has(agent.nodeId) && !!issueReason;
+      const summary = buildActionSummary(agent, issueReason);
+      const status = agent.status === "error" ? "error" : hasIssue ? "issue" : "done";
+      return {
+        id: agent.nodeId,
+        agent: agent.name,
+        time: agent.completedAt || agent.startedAt || Date.now(),
+        status,
+        summary
+      };
+    });
+}
 
-  const rows = [
-    {
-      id: "planner",
-      agent: "The Planner",
-      time: base + 0 * 1000,
-      status: "done",
-      summary: `Planner identified ${uniqueHouseholds.toLocaleString()} Auto Intender households from Olli graph.`
-    },
-    {
-      id: "sales-rep",
-      agent: "The Sales Rep",
-      time: base + 8 * 1000,
-      status: "done",
-      summary: `Sales Rep allocated $${linearBudget.toLocaleString()} to TNT/CNN linear and $${digitalBudget.toLocaleString()} to Max/Discovery+ digital.`
-    },
-    {
-      id: "compliance-bot",
-      agent: "Compliance Bot",
-      time: base + 15 * 1000,
-      status: "done",
-      summary: "Compliance Bot flagged: Auto loan ad BLOCKED for Saudi Arabia feed (Financial Services restriction). Reallocated to UK feed."
-    },
-    {
-      id: "compliance-bot",
-      agent: "Compliance Bot",
-      time: base + 22 * 1000,
-      status: "done",
-      summary: "Compliance Bot flagged: Pharma disclaimer required for Germany — auto-appended."
-    },
-    {
-      id: "ops-director",
-      agent: "Ops Director",
-      time: base + 30 * 1000,
-      status: "done",
-      summary: "Ops Director detected: TNT linear pacing at 42% (target: 85%). Triggering Make-Good."
-    },
-    {
-      id: "ops-director",
-      agent: "Ops Director",
-      time: base + 35 * 1000,
-      status: "done",
-      summary: "Ops Director shifted $3,200 from TNT linear -> Max ad-lite streaming."
-    },
-    {
-      id: "ops-director",
-      agent: "Ops Director",
-      time: base + 42 * 1000,
-      status: "done",
-      summary: `Final deterministic ROI: 4.2x ROAS, ${Math.round(uniqueHouseholds * 1.6).toLocaleString()} de-duplicated households, effective CPM $${effectiveCpm.toFixed(2)}.`
-    }
-  ];
+function buildActionSummary(agent, issueReason = "") {
+  const main = extractMainSummary(agent.text || "");
+  const why = extractWhyStatement(agent.text || "") || fallbackWhyForRole(agent);
+  if (issueReason) {
+    return `${main} Why: ${why} Issue detail: ${issueReason}`;
+  }
+  return `${main} Why: ${why}`;
+}
 
-  return rows;
+function stripMarkdown(text = "") {
+  return (text || "")
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/\*(.*?)\*/g, "$1")
+    .replace(/`([^`]*)`/g, "$1")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function firstSentences(text = "", max = 2) {
+  const clean = stripMarkdown(text);
+  if (!clean) return "";
+  const sentences = clean.match(/[^.!?]+[.!?]?/g) || [];
+  return sentences.slice(0, max).map((s) => s.trim()).join(" ");
+}
+
+function extractMainSummary(text = "") {
+  const candidate = firstSentences(text, 2);
+  if (candidate) return candidate;
+  return "This step produced no narrative detail from the current response.";
+}
+
+function extractWhyStatement(text = "") {
+  const clean = stripMarkdown(text);
+  if (!clean) return "";
+  const sentences = clean.match(/[^.!?]+[.!?]?/g) || [];
+  const whySentence = sentences.find((sentence) => /\bwhy\b/i.test(sentence));
+  if (whySentence) return whySentence.trim();
+  return "";
+}
+
+function fallbackWhyForRole(agent) {
+  const role = inferAgentRole(agent);
+  if (role === "planner") return "This audience decision matters because downstream spend should be based on reliable household targeting.";
+  if (role === "sales-rep") return "This media allocation matters because channel mix directly affects delivery efficiency and cost.";
+  if (role === "compliance-bot") return "This compliance decision matters because non-compliant placements can block activation and create legal risk.";
+  if (role === "ops-director") return "This operational action matters because pacing recovery preserves campaign outcomes.";
+  return "This action matters because it influences downstream orchestration quality and execution reliability.";
+}
+
+function extractIssueReason(text = "") {
+  const clean = stripMarkdown(text);
+  if (!clean) return "";
+  const sentences = clean.match(/[^.!?]+[.!?]?/g) || [];
+  const signalSentence = sentences.find((sentence) =>
+    /\b(violation|non-compliant|banned|blocked|restriction|regulation|redline)\b/i.test(sentence)
+  );
+  return signalSentence ? signalSentence.trim() : "";
 }
 
 function computeDataQuality(audience = []) {
@@ -631,117 +826,446 @@ function buildApprovedPlanRows(inventory) {
   return rows;
 }
 
-function buildMakeGoodSummary(logs) {
+function buildMakeGoodSummary(logs, profile = {}) {
   const linear = logs.filter((row) => row.platform_type === "linear");
   const linearPlanned = linear.reduce((sum, row) => sum + row.planned_impressions, 0);
-  const linearDelivered = linear.reduce((sum, row) => sum + row.delivered_impressions, 0);
+  const linearDelivered = linear.reduce((sum, row) => sum + row.delivered_impressions, 0) * clampNumber(1 + (profile.linearDeliveryShift || 0), 0.65, 1.25);
   const linearPct = linearPlanned ? linearDelivered / linearPlanned : 1;
-  const beforeRoi = 1.72;
-  const afterRoi = linearPct < 0.85 ? 2.04 : 1.88;
+  const beforeRoi = roundToTwo(1.58 + (profile.roiBase || 0));
+  const lift = linearPct < 0.9 ? (0.18 + (profile.roiLift || 0)) : (0.08 + (profile.roiLift || 0) * 0.5);
+  const afterRoi = roundToTwo(beforeRoi + lift);
   return {
-    shiftBudget: 3200,
+    shiftBudget: Math.round(profile.makeGoodBudget || 3200),
     beforeRoi,
     afterRoi
   };
 }
 
-function useHardcodedPlan(demo) {
-  // Use hardcoded plan directly - no API call needed
-  console.log("OK Hardcoded plan detected, using it directly. Skipping architect API call.");
-  const maxAgents = Math.min(Math.max(parseInt($("#max-agents")?.value || 5), 2), 6);
-  const normalizedPlan = Utils.normalizePlan(demo.plan.plan, maxAgents);
-  const normalizedInputs = (demo.inputs || []).map(i => ({ ...i, id: Utils.uniqueId("input") }));
-  
-  setState({
-    plan: normalizedPlan,
-    suggestedInputs: normalizedInputs,
-    stage: "data"
+function getSelectedDemo() {
+  if (state.selectedDemoIndex === -1) return state.customProblem;
+  if (state.selectedDemoIndex === -2) return state.customProblem;
+  if (state.selectedDemoIndex >= 0) return state.selectedDemo || (config.demos && config.demos[state.selectedDemoIndex]);
+  return null;
+}
+
+function getCampaignVersionBaseTitle(demo) {
+  const raw = (demo?.title || "").toString().trim();
+  const match = raw.match(/converged\s+ad\s+campaign\s+version\s+\d+/i);
+  if (match) return match[0].replace(/\s+/g, " ").trim();
+  if (/converged\s+ad\s+campaign/i.test(raw)) return raw;
+  if (raw) return raw;
+  return "Converged Ad Campaign";
+}
+
+function buildArchitectPlanTitle(demo, optionIndex = 0) {
+  const base = getCampaignVersionBaseTitle(demo);
+  const optionNumber = optionIndex + 1;
+  return `${base} - Architecture Option ${optionNumber}`;
+}
+
+function extractArchitectPlanCandidates(parsed) {
+  if (!parsed) return [];
+  if (Array.isArray(parsed.architectPlans)) return parsed.architectPlans;
+  if (Array.isArray(parsed.plans)) return parsed.plans;
+  if (Array.isArray(parsed.plan)) return [{ title: ARCHITECT_PLAN_FALLBACK_TITLES[0], plan: parsed.plan, inputs: parsed.inputs }];
+  if (Array.isArray(parsed)) return parsed;
+  return [];
+}
+
+function parseArchitectJson(rawText) {
+  const text = (rawText || "").toString().trim();
+  if (!text) return {};
+  const direct = Utils.safeParseJson(text);
+  if (Object.keys(direct).length) return direct;
+
+  const firstBrace = text.indexOf("{");
+  const lastBrace = text.lastIndexOf("}");
+  if (firstBrace >= 0 && lastBrace > firstBrace) {
+    const sliced = text.slice(firstBrace, lastBrace + 1);
+    const parsed = Utils.safeParseJson(sliced);
+    if (Object.keys(parsed).length) return parsed;
+  }
+  return {};
+}
+
+function buildFallbackArchitectPlanForVariant(demo, maxAgents, variant) {
+  const fallbackPlans = buildFallbackArchitectPlans(demo, maxAgents);
+  return fallbackPlans.find((item) => item.variantKey === variant.key) || fallbackPlans[0];
+}
+
+function normalizeArchitectPlans(rawPlans, demo, maxAgents) {
+  const normalized = (Array.isArray(rawPlans) ? rawPlans : [])
+    .map((entry, index) => {
+      if (!entry || typeof entry !== "object") return null;
+      const variant = PLAN_VARIANTS[index % PLAN_VARIANTS.length];
+      const planList = entry.plan || entry.agents || entry.workflow || entry.steps || [];
+      const normalizedPlan = Utils.normalizePlan(planList, maxAgents);
+      if (!normalizedPlan.length) return null;
+      const variantKey = entry.variantKey || variant.key;
+      const variantIndex = PLAN_VARIANTS.findIndex((item) => item.key === variantKey);
+      const optionIndex = variantIndex >= 0 ? variantIndex : index;
+      const fallbackTitle = buildArchitectPlanTitle(demo, optionIndex);
+      const enrichedPlan = expandAndEnrichPlan(normalizedPlan, maxAgents, demo?.problem || demo?.body || "", variantKey);
+      return {
+        id: Utils.uniqueId("architect-plan"),
+        title: fallbackTitle,
+        strategy: (entry.strategy || entry.summary || variant.strategy).toString().trim(),
+        why: (entry.why || entry.rationale || variant.why).toString().trim(),
+        promptTile: entry.promptTile || variant.promptTile,
+        promptText: entry.promptText || variant.promptText,
+        variantKey,
+        plan: enrichedPlan,
+        inputs: buildDatasetInputs()
+      };
+    })
+    .filter(Boolean)
+    .slice(0, 3);
+
+  if (normalized.length === 3) return normalized;
+  const fallback = buildFallbackArchitectPlans(demo, maxAgents);
+  fallback.forEach((plan) => {
+    if (normalized.length < 3) normalized.push(plan);
   });
-  // Auto-select inputs
-  setState({ selectedInputs: new Set(state.suggestedInputs.map(i => i.id)) });
+  return normalized.slice(0, 3);
+}
+
+function buildFallbackArchitectPlans(demo, maxAgents) {
+  const campaign = (demo?.problem || demo?.body || "Launch a converged campaign").toString().trim();
+  return PLAN_VARIANTS.map((variant, index) => {
+    const seedPlan = (variant.library || []).slice(0, Math.min(3, maxAgents)).map((node, idx) => ({
+      agentName: node.agentName,
+      nodeId: node.nodeId,
+      initialTask: `Stage ${idx + 1} task for ${node.agentName} in campaign: ${campaign}.`,
+      systemInstruction: `Execute ${node.focus} and provide one explicit Why this matters statement.`,
+      stage: idx + 1
+    }));
+    return {
+      id: Utils.uniqueId("architect-plan"),
+      title: buildArchitectPlanTitle(demo, index),
+      strategy: variant.strategy,
+      why: variant.why,
+      promptTile: variant.promptTile,
+      promptText: variant.promptText,
+      variantKey: variant.key,
+      plan: expandAndEnrichPlan(Utils.normalizePlan(seedPlan, maxAgents), maxAgents, campaign, variant.key),
+      inputs: buildDatasetInputs()
+    };
+  });
+}
+
+function expandAndEnrichPlan(plan = [], maxAgents = TARGET_ARCHITECT_AGENTS, campaign = "", variantKey = "growth") {
+  const targetCount = Math.min(maxAgents, TARGET_ARCHITECT_AGENTS);
+  const variant = PLAN_VARIANTS.find((item) => item.key === variantKey) || PLAN_VARIANTS[0];
+  const agentLibrary = variant.library || [];
+  const existing = Array.isArray(plan) ? [...plan] : [];
+  const usedIds = new Set(existing.map((agent) => agent.nodeId));
+
+  for (const template of agentLibrary) {
+    if (existing.length >= targetCount) break;
+    if (usedIds.has(template.nodeId)) continue;
+    existing.push({
+      nodeId: template.nodeId,
+      agentName: template.agentName,
+      systemInstruction: "",
+      initialTask: "",
+      graphTargets: [],
+      graphIncoming: [],
+      phase: template.phase,
+      phaseLabel: `Stage ${template.phase}`,
+      branchKey: null
+    });
+    usedIds.add(template.nodeId);
+  }
+
+  const enriched = existing
+    .sort((a, b) => (Number(a.phase) || 0) - (Number(b.phase) || 0))
+    .slice(0, maxAgents)
+    .map((agent, index) => {
+      const template = agentLibrary.find((item) => item.nodeId === agent.nodeId)
+        || agentLibrary[index % Math.max(agentLibrary.length, 1)]
+        || PLAN_VARIANTS[0].library[0];
+      const phase = index + 1;
+      const nodeId = template?.nodeId || agent.nodeId || `agent-${phase}`;
+      const agentName = template?.agentName || agent.agentName || `Agent ${phase}`;
+      const detailedInstruction = buildDetailedSystemInstruction(agent, template, campaign, phase);
+      const detailedTask = buildDetailedInitialTask(agent, template, campaign, phase);
+
+      return {
+        ...agent,
+        nodeId,
+        agentName,
+        phase,
+        phaseLabel: `Stage ${phase}`,
+        systemInstruction: ensureWordRange(agent.systemInstruction, detailedInstruction, 45, 90),
+        initialTask: ensureWordRange(agent.initialTask, detailedTask, 45, 90)
+      };
+    });
+
+  return enriched.map((agent, index) => ({
+    ...agent,
+    graphIncoming: index > 0 ? [enriched[index - 1].nodeId] : [],
+    graphTargets: index < enriched.length - 1 ? [enriched[index + 1].nodeId] : []
+  }));
+}
+
+function ensureWordRange(existingText, fallbackText, minWords, maxWords) {
+  let text = normalizeWhitespace(existingText);
+  const fallback = normalizeWhitespace(fallbackText);
+
+  if (!text) text = fallback;
+  while (wordCount(text) < minWords) {
+    text = `${text} ${fallback}`.trim();
+  }
+  return trimToWords(text, maxWords);
+}
+
+function normalizeWhitespace(text) {
+  return (text || "").toString().replace(/\s+/g, " ").trim();
+}
+
+function wordCount(text) {
+  return normalizeWhitespace(text).split(" ").filter(Boolean).length;
+}
+
+function trimToWords(text, maxWords) {
+  const words = normalizeWhitespace(text).split(" ").filter(Boolean);
+  if (words.length <= maxWords) return words.join(" ");
+  return `${words.slice(0, maxWords).join(" ")}.`;
+}
+
+function buildDetailedSystemInstruction(agent, template, campaign, phase) {
+  const role = agent.agentName || template.agentName;
+  const focus = template.focus;
+  return `You are ${role} in stage ${phase} of a converged campaign workflow. Focus on ${focus}. Use only the provided synthetic datasets and the campaign brief "${campaign}" to make decisions. Explain your reasoning clearly, include one explicit "Why this matters" statement, and show how your output connects to the next stage. Keep language clear for business and technical reviewers. Define abbreviations when they first appear and include key risks, assumptions, and validation checks.`;
+}
+
+function buildDetailedInitialTask(agent, template, campaign, phase) {
+  const role = agent.agentName || template.agentName;
+  const focus = template.focus;
+  return `Complete stage ${phase} for ${role} using campaign brief "${campaign}". Prioritize ${focus}. Deliver one detailed section for objective, one for evidence used from the synthetic datasets, one for decisions taken, and one for handoff. Include a clear "Why this matters" statement and name at least one risk with mitigation. Keep the explanation specific but concise so the next stage can execute without ambiguity.`;
 }
 
 async function runArchitect() {
   try {
-    // Get the demo object - try multiple sources
-    let demo = null;
-    if (state.selectedDemoIndex === -1) {
-      demo = state.customProblem;
-    } else if (state.selectedDemoIndex === -2) {
-      // saved agent re-run - just go to data
-      setState({ stage: "data" });
-      return;
-    } else if (state.selectedDemoIndex >= 0) {
-      // Try stored demo first, then config
-      demo = state.selectedDemo || (config.demos && config.demos[state.selectedDemoIndex]);
-    }
+    const demo = getSelectedDemo();
 
     if (!demo) {
-      setState({ error: "Demo not found. Index: " + state.selectedDemoIndex, stage: "idle" });
+      setState({ error: "Demo not found.", stage: "idle" });
       return;
     }
 
-    // DOUBLE CHECK: If demo has a hardcoded plan, use it (backup safety check)
-    // The structure is: demo.plan.plan (nested plan object with plan array)
-    if (demo.plan && 
-        typeof demo.plan === 'object' && 
-        demo.plan.plan && 
-        Array.isArray(demo.plan.plan) && 
-        demo.plan.plan.length > 0) {
-      // Use hardcoded plan directly - no API call needed
-      console.log("OK Hardcoded plan detected in runArchitect (backup check), using it directly.");
-      useHardcodedPlan(demo);
-      return; // CRITICAL: Early return - do not proceed to API call
+    if (state.selectedDemoIndex === -2) {
+      setState({ stage: "data" });
+      return;
     }
-    
-    console.log("✗ No hardcoded plan found. Demo plan structure:", demo.plan);
-    console.log("Will call architect API with problem:", demo.problem || demo.body || "N/A");
 
-    // Otherwise, generate plan using architect
-    // Ensure we have a valid problem string - never null or undefined
-    const problemText = (demo.problem || demo.body || "Generate a plan for this workflow.").toString().trim();
-    if (!problemText || problemText.length === 0) {
+    const problemText = (demo.problem || demo.body || "Generate a converged campaign architecture.").toString().trim();
+    if (!problemText) {
       setState({ error: "No problem description available for this demo.", stage: "idle" });
       return;
     }
 
-    const creds = await ensureCreds();
+    const maxAgents = clampAgentCount($("#max-agents")?.value, TARGET_ARCHITECT_AGENTS);
     const model = $("#model")?.value || "gpt-5-mini";
-    const maxAgents = Math.min(Math.max(parseInt($("#max-agents")?.value || 5), 2), 6);
+    const customArchitectPrompt = ($("#architect-prompt")?.value || "").toString().trim();
 
-    // Ensure system prompt is also never null
-    const systemPrompt = ($("#architect-prompt")?.value || "").toString().trim();
-    const systemContent = systemPrompt ? `${systemPrompt}\nLimit to <= ${maxAgents} agents.` : `Limit to <= ${maxAgents} agents.`;
-
-    setState({ stage: "architect", plan: [], architectBuffer: "" });
-    let buffer = "";
-
-    await Utils.streamChatCompletion({
-      llm: creds,
-      body: { 
-        model, 
-        stream: true, 
-        messages: [
-          { role: "system", content: systemContent }, 
-          { role: "user", content: problemText }
-        ] 
-      },
-      onChunk: (text) => { buffer += text; setState({ architectBuffer: buffer }); }
-    });
-
-    const parsed = Utils.safeParseJson(buffer);
     setState({
-      plan: Utils.normalizePlan(parsed.plan, maxAgents),
-      suggestedInputs: Utils.normalizeInputs(parsed.inputs, demo),
-      stage: "data"
+      stage: "architect",
+      architectPlans: [],
+      selectedArchitectPlanId: null,
+      plan: [],
+      suggestedInputs: [],
+      selectedInputs: new Set(),
+      architectBuffer: "",
+      error: "",
+      visualizationLoading: false,
+      visualizationNarrative: "",
+      runToken: 0
     });
-    // Auto-select inputs
-    setState({ selectedInputs: new Set(state.suggestedInputs.map(i => i.id)) });
 
-  } catch (e) { setState({ error: e.message, stage: "idle" }); }
+    let buffer = "";
+    let usedFallback = false;
+    let rawCandidates = [];
+    let creds = null;
+
+    try {
+      creds = await ensureCreds();
+    } catch (credsError) {
+      usedFallback = true;
+      buffer = "Architect connection unavailable. Synthetic architect plans will be loaded for all three variants.";
+      setState({ architectBuffer: buffer });
+      console.warn("Architect credential fallback activated:", credsError?.message || credsError);
+    }
+
+    if (creds) {
+      for (const [variantIndex, variant] of PLAN_VARIANTS.entries()) {
+        const variantTitle = buildArchitectPlanTitle(demo, variantIndex);
+        const header = [
+          `Generating ${variantTitle}`,
+          `Prompt Tile: ${variant.promptTile}`,
+          `Variant Objective: ${variant.promptText}`
+        ].join("\n");
+        buffer = `${buffer}${buffer ? "\n\n" : ""}${header}\n`;
+        setState({ architectBuffer: buffer });
+
+        const agentCatalog = (variant.library || [])
+          .map((agent) => `- ${agent.agentName} (${agent.nodeId}), stage ${agent.phase}: ${agent.focus}`)
+          .join("\n");
+
+        const systemContent = `${customArchitectPrompt ? `${customArchitectPrompt}\n\n` : ""}You are the architect for one converged advertising campaign workflow variant. Return valid JSON only using this schema:
+{
+  "title": "${variantTitle}",
+  "strategy": "Detailed strategy summary",
+  "why": "Detailed rationale",
+  "promptTile": "${variant.promptTile}",
+  "promptText": "${variant.promptText}",
+  "variantKey": "${variant.key}",
+  "plan": [
+    {
+      "agentName": "Agent role",
+      "nodeId": "agent-node-id",
+      "systemInstruction": "...",
+      "initialTask": "...",
+      "stage": 1
+    }
+  ],
+  "inputs": []
+}
+Rules:
+- Build exactly one architect plan for variant key "${variant.key}".
+- Include between ${MIN_ARCHITECT_AGENTS} and ${maxAgents} agents.
+- Include at least one compliance-focused agent in the plan.
+- Keep the workflow aligned with this strategy: "${variant.strategy}".
+- Every agent systemInstruction must be 45 to 90 words.
+- Every agent initialTask must be 45 to 90 words.
+- Every agent text must include one sentence that starts with "Why this matters:".
+- Use full terminology and define abbreviations at first use.
+- Prefer these agent archetypes when relevant:
+${agentCatalog}
+- Return JSON only, without Markdown fences or commentary.`;
+
+        let variantBuffer = "";
+
+        try {
+          await Utils.streamChatCompletion({
+            llm: creds,
+            body: {
+              model,
+              stream: true,
+              messages: [
+                { role: "system", content: systemContent },
+                {
+                  role: "user",
+                  content: `Campaign brief:\n${problemText}\n\nVariant rationale:\n${variant.why}`
+                }
+              ]
+            },
+            onChunk: (text) => {
+              variantBuffer += text;
+              buffer += text;
+              setState({ architectBuffer: buffer });
+            }
+          });
+
+          const parsed = parseArchitectJson(variantBuffer);
+          const extracted = extractArchitectPlanCandidates(parsed);
+          const candidate = (Array.isArray(extracted) && extracted.length)
+            ? extracted[0]
+            : parsed;
+
+          const planList = candidate?.plan || candidate?.agents || candidate?.workflow || candidate?.steps || [];
+          if (!Array.isArray(planList) || !planList.length) {
+            throw new Error("Architect output missing a plan list.");
+          }
+
+          rawCandidates.push({
+            ...candidate,
+            title: variantTitle,
+            strategy: (candidate.strategy || candidate.summary || variant.strategy).toString().trim(),
+            why: (candidate.why || candidate.rationale || variant.why).toString().trim(),
+            promptTile: variant.promptTile,
+            promptText: variant.promptText,
+            variantKey: variant.key
+          });
+          buffer += `\n[Completed ${variantTitle}]`;
+          setState({ architectBuffer: buffer });
+        } catch (variantError) {
+          usedFallback = true;
+          rawCandidates.push(buildFallbackArchitectPlanForVariant(demo, maxAgents, variant));
+          buffer += `\n[Fallback ${variantTitle}] Synthetic plan loaded for this variant due to an architect response issue.`;
+          setState({ architectBuffer: buffer });
+          console.warn(`Architect fallback activated for variant ${variant.key}:`, variantError?.message || variantError);
+        }
+      }
+    }
+
+    if (!rawCandidates.length) {
+      usedFallback = true;
+      rawCandidates = buildFallbackArchitectPlans(demo, maxAgents);
+      if (!buffer) {
+        buffer = "Architect streaming unavailable. Loaded synthetic architect plans for this demo run.";
+        setState({ architectBuffer: buffer });
+      }
+    }
+
+    const architectPlans = normalizeArchitectPlans(rawCandidates, demo, maxAgents);
+    const byVariant = new Map();
+    architectPlans.forEach((plan) => {
+      if (plan?.variantKey && !byVariant.has(plan.variantKey)) {
+        byVariant.set(plan.variantKey, plan);
+      }
+    });
+    PLAN_VARIANTS.forEach((variant) => {
+      if (!byVariant.has(variant.key)) {
+        byVariant.set(variant.key, buildFallbackArchitectPlanForVariant(demo, maxAgents, variant));
+      }
+    });
+    const orderedPlans = PLAN_VARIANTS.map((variant) => byVariant.get(variant.key)).filter(Boolean).slice(0, 3);
+
+    if (!orderedPlans.length) {
+      const fallbackPlans = buildFallbackArchitectPlans(demo, maxAgents);
+      setState({
+        architectPlans: fallbackPlans,
+        stage: "plan-select",
+        error: usedFallback ? "" : "Architect output was empty. Synthetic plans loaded."
+      });
+      return;
+    }
+
+    setState({
+      stage: "plan-select",
+      architectPlans: orderedPlans,
+      plan: [],
+      suggestedInputs: [],
+      selectedInputs: new Set(),
+      rawDataByAgent: RAW_DATA_BY_AGENT,
+      error: "",
+      visualizationLoading: false,
+      visualizationNarrative: "",
+      runToken: 0
+    });
+  } catch (e) {
+    const fallbackDemo = getSelectedDemo();
+    const maxAgents = clampAgentCount($("#max-agents")?.value, TARGET_ARCHITECT_AGENTS);
+    const fallbackPlans = buildFallbackArchitectPlans(fallbackDemo, maxAgents);
+    setState({
+      stage: "plan-select",
+      architectPlans: fallbackPlans,
+      plan: [],
+      error: "Loaded synthetic architect plans after an orchestration error.",
+      visualizationLoading: false,
+      visualizationNarrative: ""
+    });
+    console.error(e);
+  }
 }
 
 async function startAgents() {
+  if (!state.plan.length) {
+    setState({ error: "Choose one architect plan before launching the campaign.", stage: "plan-select" });
+    return;
+  }
+
   const entries = [...state.suggestedInputs.filter(i => state.selectedInputs.has(i.id)), ...state.uploads];
   if (state.notes?.trim()) entries.push({ title: "User Notes", type: "text", content: state.notes });
   if (!entries.length) return setState({ error: "No data." });
@@ -749,71 +1273,352 @@ async function startAgents() {
   try {
     const creds = await ensureCreds();
     const model = $("#model")?.value || "gpt-5-mini";
-    const demo = state.selectedDemoIndex === -1 ? state.customProblem : (state.selectedDemoIndex === -2 ? state.customProblem : config.demos[state.selectedDemoIndex]);
-    // Use demo-specific agentStyle if available, otherwise use form value
+    const demo = getSelectedDemo();
     const agentStyle = demo?.agentStyle || $("#agent-style")?.value || "";
     const campaignPrompt = (state.campaignPrompt || demo?.problem || "Launch a converged ad campaign.").trim();
     const inputBlob = `Campaign Brief:\n${campaignPrompt}\n\nSupplemental Inputs:\n${Utils.formatDataEntries(entries)}`;
+    const runToken = Date.now();
 
-    setState({ stage: "run", agentOutputs: [], error: "", runningNodeIds: new Set(), latestNodeId: null, dashboard: null, issueNodeIds: new Set(), approvedPlanCsv: "" });
+    setState({
+      stage: "run",
+      agentOutputs: [],
+      error: "",
+      runningNodeIds: new Set(),
+      latestNodeId: null,
+      dashboard: null,
+      issueNodeIds: new Set(),
+      approvedPlanCsv: "",
+      complianceDetails: hasComplianceRole(state.plan) ? buildComplianceDetails() : null,
+      complianceExplanationOpen: false,
+      visualizationExplanationOpen: false,
+      visualizationLoading: false,
+      visualizationNarrative: "",
+      runToken
+    });
 
-    // Group by phase
     const phases = new Map();
-    state.plan.forEach(a => { const p = a.phase ?? 0; if (!phases.has(p)) phases.set(p, []); phases.get(p).push(a); });
-    const sortedPhases = [...phases.keys()].sort((a, b) => (typeof a === 'number' && typeof b === 'number') ? a - b : String(a).localeCompare(String(b)));
+    state.plan.forEach((a) => {
+      const p = a.phase ?? 0;
+      if (!phases.has(p)) phases.set(p, []);
+      phases.get(p).push(a);
+    });
+    const sortedPhases = [...phases.keys()].sort((a, b) => (typeof a === "number" && typeof b === "number") ? a - b : String(a).localeCompare(String(b)));
 
     let context = inputBlob;
     for (const phase of sortedPhases) {
-      const agents = phases.get(phase);
-      const outputs = agents.map(a => {
-        const dataKey = AGENT_DATASET_MAP[a.nodeId] || AGENT_DATASET_MAP[a.agentName];
-        return {
-          id: Utils.uniqueId("out"),
-          nodeId: a.nodeId,
-          phase,
-          name: a.agentName,
-          task: a.initialTask,
-          instruction: a.systemInstruction,
-          dataKey,
-          text: "",
-          status: "running",
-          startedAt: Date.now()
-        };
+      const agents = phases.get(phase) || [];
+      const outputs = agents.map((a) => ({
+        id: Utils.uniqueId("out"),
+        nodeId: a.nodeId,
+        phase,
+        name: a.agentName,
+        task: a.initialTask,
+        instruction: a.systemInstruction,
+        dataKey: resolveDatasetKey(a),
+        text: "",
+        status: "running",
+        startedAt: Date.now()
+      }));
+
+      setState({
+        agentOutputs: [...state.agentOutputs, ...outputs],
+        runningNodeIds: new Set([...state.runningNodeIds, ...outputs.map((o) => o.nodeId)]),
+        latestNodeId: outputs[0]?.nodeId
       });
 
-      setState({ agentOutputs: [...state.agentOutputs, ...outputs], runningNodeIds: new Set([...state.runningNodeIds, ...outputs.map(o => o.nodeId)]), latestNodeId: outputs[0]?.nodeId });
-
-      const results = await Promise.all(outputs.map(out => (async () => {
-        let buffer = "";
-        try {
-          const datasetBlock = buildDatasetContext(out.dataKey);
-          const priorContext = Utils.truncate(context, 1200);
-          await Utils.streamChatCompletion({
-            llm: creds,
-            body: {
-              model, stream: true, messages: [
-                { role: "system", content: `${out.instruction}\n${agentStyle}\nOutput Markdown. Keep response under 180 words.` },
-                {
-                  role: "user",
-                  content:
-                    `Campaign Brief:\n${campaignPrompt}\n\nTask:\n${out.task}\n\nRelevant Dataset:\n${datasetBlock}\n\nSupplemental Inputs:\n${inputBlob}\n\nPrior Outputs:\n${priorContext}`
-                }
-              ]
-            },
-            onChunk: (t) => { buffer += t; updateAgent(out.id, buffer, "running"); }
-          });
-          updateAgent(out.id, buffer, "done");
-          return buffer;
-        } catch (e) { updateAgent(out.id, buffer || e.message, "error"); return ""; }
-        finally {
-          const run = new Set(state.runningNodeIds); run.delete(out.nodeId); setState({ runningNodeIds: run });
-        }
-      })()));
+      const results = await Promise.all(
+        outputs.map((out) =>
+          runSyntheticAgent(out, {
+            creds,
+            model,
+            agentStyle,
+            campaignPrompt,
+            inputBlob,
+            context
+          })
+        )
+      );
       context += `\n\n--- Stage ${phase} ---\n${results.map((r, i) => `Output ${agents[i].agentName}:\n${r}`).join("\n")}`;
     }
-    setState({ stage: "idle", dashboard: buildDashboard(state.agentOutputs), approvedPlanCsv: buildApprovedPlanCsv() });
 
-  } catch (e) { setState({ error: e.message, stage: "idle" }); }
+    const nextDashboard = buildDashboard(state.agentOutputs, {
+      campaignPrompt,
+      selectedPlanId: state.selectedArchitectPlanId || "",
+      runToken
+    });
+    setState({
+      visualizationLoading: true,
+      visualizationNarrative: ""
+    });
+    const visualizationNarrative = await buildVisualizationNarrative({
+      creds,
+      model,
+      campaignPrompt,
+      dashboard: nextDashboard,
+      agentOutputs: state.agentOutputs
+    });
+
+    setState({
+      stage: "idle",
+      dashboard: nextDashboard,
+      approvedPlanCsv: buildApprovedPlanCsv(),
+      rawDataByAgent: buildRawDataByPlan(state.plan),
+      complianceDetails: hasComplianceRole(state.plan) ? buildComplianceDetails() : null,
+      visualizationLoading: false,
+      visualizationNarrative,
+      visualizationExplanationOpen: true
+    });
+  } catch (e) {
+    setState({ error: e.message, stage: "idle", visualizationLoading: false });
+  }
+}
+
+async function runSyntheticAgent(out, opts) {
+  const { creds, model, agentStyle, campaignPrompt, inputBlob, context } = opts;
+  let narrative = "";
+  try {
+    const datasetBlock = buildDatasetContext(out.dataKey);
+    const priorContext = Utils.truncate(context, 2400);
+    await Utils.streamChatCompletion({
+      llm: creds,
+      body: {
+        model,
+        stream: true,
+        messages: [
+          {
+            role: "system",
+            content: `${out.instruction}\n${agentStyle}\nWrite Markdown between 180 and 320 words. Include one explicit heading named "Why this matters". Keep it grounded in the provided dataset.`
+          },
+          {
+            role: "user",
+            content:
+              `Campaign Brief:\n${campaignPrompt}\n\nTask:\n${out.task}\n\nRelevant Dataset:\n${datasetBlock}\n\nSupplemental Inputs:\n${inputBlob}\n\nPrior Outputs:\n${priorContext}`
+          }
+        ]
+      },
+      onChunk: (chunk) => {
+        narrative += chunk;
+        updateAgent(out.id, narrative, "running");
+      }
+    });
+    updateAgent(out.id, narrative, "done");
+    return narrative;
+  } catch (e) {
+    // LLM fallback keeps the run alive, but marks the response clearly.
+    if (!narrative) {
+      const fallback = buildSyntheticAgentNarrative(out, campaignPrompt, context);
+      narrative = `### LLM Fallback Activated\nThe language model request did not complete for this step. A deterministic fallback narrative was generated.\n\nWhy this matters: the workflow remains connected and testable even when the model endpoint is unavailable.\n\n${fallback}`;
+    }
+    updateAgent(out.id, narrative || e.message || "Synthetic execution failed.", narrative ? "done" : "error");
+    return narrative || "";
+  } finally {
+    const run = new Set(state.runningNodeIds);
+    run.delete(out.nodeId);
+    setState({ runningNodeIds: run });
+  }
+}
+
+async function buildVisualizationNarrative({ creds, model, campaignPrompt, dashboard, agentOutputs }) {
+  try {
+    let buffer = "";
+    const summaryPayload = {
+      campaignPrompt,
+      pacing: dashboard?.pacing
+        ? {
+          linearPeakDeliveryRate: Math.max(...(dashboard.pacing.linearPct || [0])),
+          digitalPeakDeliveryRate: Math.max(...(dashboard.pacing.digitalPct || [0])),
+          makeGoodHour: dashboard.pacing.makeGoodHour || 12
+        }
+        : {},
+      reach: dashboard?.reach || {},
+      makeGood: dashboard?.makeGood || {},
+      actions: buildActionRows(agentOutputs, state.issueNodeIds || new Set())
+    };
+
+    await Utils.streamChatCompletion({
+      llm: creds,
+      body: {
+        model,
+        stream: true,
+        messages: [
+          {
+            role: "system",
+            content: "You are an analytics narrator. Explain visualization outputs in detailed plain language. Every section must contain a sentence that starts with 'Why this matters:'. Define abbreviations when first used."
+          },
+          {
+            role: "user",
+            content: `Use this dashboard summary and write a detailed Markdown explanation with sections for Delivery Pacing, Reach Distribution, Make-Good Decision, and Action Traceability.\n\nDashboard JSON:\n${JSON.stringify(summaryPayload, null, 2)}`
+          }
+        ]
+      },
+      onChunk: (chunk) => { buffer += chunk; }
+    });
+
+    return buffer.trim();
+  } catch {
+    return [
+      "### Delivery Pacing",
+      "The pacing chart compares planned and delivered impressions by hour for linear and digital inventory.",
+      "Why this matters: pacing gaps indicate where delivery risk appears before budget is exhausted.",
+      "",
+      "### Reach Distribution",
+      "The reach view shows unique households, devices touched, and overlap across platforms.",
+      "Why this matters: overlap and device spread determine whether added spend grows incremental reach or repeats exposure.",
+      "",
+      "### Make-Good Decision",
+      "The make-good panel explains why budget moved from under-delivering linear inventory to digital inventory.",
+      "Why this matters: timely reallocation protects outcome targets when a channel under-delivers.",
+      "",
+      "### Action Traceability",
+      "The action table is derived from actual agent outputs and each row includes a reason statement.",
+      "Why this matters: traceability links visible outcomes to specific decisions in the selected architect plan."
+    ].join("\n");
+  }
+}
+
+function buildSyntheticAgentNarrative(out, campaignPrompt) {
+  const role = inferAgentRole(out);
+  const fallbackProfile = buildRunProfile([], {
+    campaignPrompt,
+    selectedPlanId: state.selectedArchitectPlanId || "",
+    runToken: state.runToken || 0
+  });
+  const reach = buildReachSummary(datasets.audienceGraph || [], datasets.liveDeliveryLog || [], fallbackProfile);
+  const makeGood = buildMakeGoodSummary(datasets.liveDeliveryLog || [], fallbackProfile);
+  const delivered = (datasets.liveDeliveryLog || []).reduce((sum, row) => sum + (row.delivered_impressions || 0), 0);
+  const effectiveCostPerThousandImpressions = delivered ? ((50000 / delivered) * 1000) : 0;
+  const quality = state.dataQuality || computeDataQuality(datasets.audienceGraph || []);
+  const compliance = buildComplianceDetails();
+
+  if (role === "planner") {
+    return `### Audience Resolution Narrative
+For the campaign prompt "${campaignPrompt}", the planning step used the Olli household graph to isolate high-propensity Auto Intender households with deterministic filtering rules. The resulting audience contains ${reach.uniqueHouseholds.toLocaleString()} unique households and ${reach.deviceCount.toLocaleString()} connected devices, which creates a measurable base for cross-platform activation.
+
+### Data Quality Review
+This audience was validated for quality before activation. The synthetic audience dataset includes ${quality.duplicateCount} duplicate household identifiers and ${quality.nullDmaCount} records with missing designated market area values. These anomalies were explicitly flagged so that downstream budgeting decisions do not overstate unique reach.
+
+### Planning Decision Outcome
+The selected audience blueprint balances household scale and confidence score quality, and it is now ready to pass into media line construction with documented limitations and expected overlap behavior.`;
+  }
+
+  if (role === "sales-rep") {
+    return `### Converged Media Plan Construction
+The media planning step translated the audience blueprint into a twelve-line converged schedule covering both linear and digital distribution paths. Budget weighting follows the campaign brief and keeps inventory choices tied to available impressions, daypart performance, and signal reliability.
+
+### Inventory and Spend Logic
+Linear placements were prioritized for broad household coverage and digital placements were used to improve incremental touch frequency. Each selected line item includes spend, impression volume, and effective cost per thousand impressions. The current effective cost per thousand impressions estimate is ${effectiveCostPerThousandImpressions.toFixed(2)} United States dollars based on deterministic synthetic delivery totals.
+
+### Risk Visibility
+Potential Society of Cable Telecommunications Engineers cue-tone standard (SCTE-35) signal degradation was preserved in the plan notes so that operational teams can anticipate under-delivery risk before launch and prepare make-good paths in advance.`;
+  }
+
+  if (role === "compliance-bot") {
+    return `### Compliance Validation Narrative
+The compliance review step evaluated planned destinations and categories against synthetic policy rows from the Global Compliance Policy Engine dataset. The review blocked non-compliant financial services placements in Saudi Arabia, enforced disclaimer requirements for pharmaceutical creative in Germany, and preserved only approved routing outcomes.
+
+### Policy Sources and Rationale
+Source one: ${compliance.sources[0]?.policy || "Saudi Arabia financial services rule"}. Source dataset: ${compliance.sources[0]?.source || "Global Compliance Policy Engine"}. Reason applied: ${compliance.sources[0]?.why || "Restricted category was detected for the target market."}
+Source two: ${compliance.sources[1]?.policy || "Germany pharmaceutical disclaimer rule"}. Source dataset: ${compliance.sources[1]?.source || "Global Compliance Policy Engine"}. Reason applied: ${compliance.sources[1]?.why || "Creative category requires disclaimer handling."}
+
+### Operational Result
+The output includes approved replacements for blocked inventory and preserves an audit trail so that reviewers can validate exactly where each policy decision originated.`;
+  }
+
+  if (role === "ops-director") {
+    return `### In-Flight Operations Narrative
+The operations step evaluated pacing trends across linear and digital delivery logs and identified a deterministic under-delivery condition in linear inventory during the mid-campaign window. A make-good reallocation of ${makeGood.shiftBudget.toLocaleString()} United States dollars was triggered toward digital ad-lite inventory to restore delivery confidence.
+
+### Financial Interpretation
+Before intervention, modeled return on investment measured ${makeGood.beforeRoi.toFixed(2)}. After intervention, modeled return on investment rose to ${makeGood.afterRoi.toFixed(2)}. This improvement is tied to better realized impressions and lower under-delivery exposure during constrained linear windows.
+
+### Delivery Interpretation
+This step closes the loop between planning assumptions and live execution evidence, ensuring that every budget movement is justified with transparent pacing data and business impact metrics.`;
+  }
+
+  return `### Agent Narrative
+This synthetic execution step completed the assigned task "${out.task}" using deterministic campaign data. The response emphasizes transparency, operational traceability, and explicit explanation of business impact for downstream review.`;
+}
+
+function inferAgentRole(agent) {
+  const id = (agent?.nodeId || "").toString().toLowerCase();
+  const name = (agent?.agentName || agent?.name || "").toString().toLowerCase();
+  const text = `${id} ${name}`;
+
+  if (text.includes("compliance")) return "compliance-bot";
+  if (text.includes("planner") || text.includes("audience")) return "planner";
+  if (text.includes("sales") || text.includes("media") || text.includes("inventory")) return "sales-rep";
+  if (text.includes("ops") || text.includes("operation") || text.includes("delivery") || text.includes("optimization")) return "ops-director";
+
+  if (AGENT_DATASET_MAP[agent?.nodeId]) return agent.nodeId;
+  if (AGENT_DATASET_MAP[agent?.agentName]) return agent.agentName;
+  if (AGENT_DATASET_MAP[agent?.name]) return agent.name;
+
+  return "generic";
+}
+
+function resolveDatasetKey(agent) {
+  const direct = AGENT_DATASET_MAP[agent?.nodeId] || AGENT_DATASET_MAP[agent?.agentName] || AGENT_DATASET_MAP[agent?.name];
+  if (direct) return direct;
+  const role = inferAgentRole(agent);
+  if (AGENT_DATASET_MAP[role]) return AGENT_DATASET_MAP[role];
+
+  const phase = Number(agent?.phase);
+  if (Number.isFinite(phase)) {
+    if (phase <= 1) return "audienceGraph";
+    if (phase <= 3) return "inventoryMatrix";
+    if (phase <= 4) return "globalLawRegistry";
+    return "liveDeliveryLog";
+  }
+  return "liveDeliveryLog";
+}
+
+function hasComplianceRole(plan = []) {
+  return (plan || []).some((agent) => inferAgentRole(agent) === "compliance-bot");
+}
+
+function buildRawDataByPlan(plan = []) {
+  if (!Array.isArray(plan) || !plan.length) return RAW_DATA_BY_AGENT;
+  const map = {};
+  plan.forEach((agent) => {
+    const dataKey = resolveDatasetKey(agent);
+    const entry = RAW_DATA_BY_KEY[dataKey];
+    if (!entry) return;
+    map[agent.nodeId] = entry;
+    map[agent.agentName] = entry;
+  });
+  return Object.keys(map).length ? map : RAW_DATA_BY_AGENT;
+}
+
+function buildComplianceDetails() {
+  const rows = datasets.globalLawRegistry || [];
+  const saFinancial = rows.find((row) => row.country_code === "SA" && row.restriction_category === "financial_services");
+  const dePharma = rows.find((row) => row.country_code === "DE" && row.restriction_category === "pharma");
+  const frAlcohol = rows.find((row) => row.country_code === "FR" && row.restriction_category === "alcohol");
+
+  const sources = [
+    saFinancial ? {
+      policy: `Saudi Arabia financial services policy (${saFinancial.restriction_type})`,
+      source: "Global Compliance Policy Engine synthetic dataset, country_code = SA",
+      why: "The campaign includes financial services messaging and the rule marks this category as blocked for Saudi Arabia placements."
+    } : null,
+    dePharma ? {
+      policy: `Germany pharmaceutical policy (${dePharma.restriction_type})`,
+      source: "Global Compliance Policy Engine synthetic dataset, country_code = DE",
+      why: "Any pharmaceutical creative routed to Germany must include required on-screen disclaimer language before approval."
+    } : null,
+    frAlcohol ? {
+      policy: `France alcohol policy (${frAlcohol.restriction_type})`,
+      source: "Global Compliance Policy Engine synthetic dataset, country_code = FR",
+      why: "Alcohol placements are subject to local time constraints and therefore require daypart checks before final routing."
+    } : null
+  ].filter(Boolean);
+
+  return {
+    summary: "Compliance decisions in this demo are sourced from the synthetic Global Compliance Policy Engine dataset bundled in data.js.",
+    sources,
+    detailedExplanation:
+      "The compliance step is not using external legal APIs at runtime. It reads deterministic policy rows from the synthetic registry, matches each media line by country and category, and then applies a rule outcome of blocked, restricted by time, or disclaimer required. This makes the behavior auditable for demos while still showing how real policy sourcing would be surfaced in production."
+  };
 }
 
 function updateAgent(id, text, status) {
@@ -835,9 +1640,8 @@ function updateAgent(id, text, status) {
 }
 
 function shouldFlagIssue(agent) {
-  if (!agent || agent.nodeId !== "compliance-bot") return false;
-  const text = (agent.text || "").toLowerCase();
-  return text.includes("violation") || text.includes("non-compliant") || text.includes("banned") || text.includes("red");
+  if (!agent || inferAgentRole(agent) !== "compliance-bot") return false;
+  return !!extractIssueReason(agent.text || "");
 }
 
 let chartsScheduled = false;
@@ -863,7 +1667,14 @@ function renderPacingChartD3() {
   const pacing = state.dashboard?.pacing;
   if (!pacing) return;
 
-  const sig = JSON.stringify({ mode, hours: pacing.hours.length, hash: pacing.linearImp?.[0] });
+  const sig = JSON.stringify({
+    mode,
+    hours: pacing.hours.length,
+    hash: pacing.linearImp?.[0],
+    linearTotal: (pacing.linearImp || []).reduce((sum, value) => sum + value, 0),
+    digitalTotal: (pacing.digitalImp || []).reduce((sum, value) => sum + value, 0),
+    runToken: state.runToken || 0
+  });
   if (container.dataset.signature === sig) return;
   container.dataset.signature = sig;
 
@@ -909,7 +1720,7 @@ function renderPacingChartD3() {
 
   svg.append("g")
     .attr("transform", `translate(0,${height - padding.bottom})`)
-    .call(d3.axisBottom(x).ticks(6).tickFormat(d => `H${d}`))
+    .call(d3.axisBottom(x).ticks(6).tickFormat(d => `Hour ${d}`))
     .call(g => g.selectAll("text").attr("fill", "#a9b0c7"))
     .call(g => g.selectAll("path,line").attr("stroke", "rgba(255,255,255,0.15)"));
 
@@ -934,7 +1745,7 @@ function renderPacingChartD3() {
       .attr("d", line);
   });
 
-  const makeGoodHour = 12;
+  const makeGoodHour = pacing.makeGoodHour || 12;
   svg.append("line")
     .attr("x1", x(makeGoodHour))
     .attr("x2", x(makeGoodHour))
@@ -948,7 +1759,7 @@ function renderPacingChartD3() {
     .attr("y", padding.top + 12)
     .attr("fill", "#ffb703")
     .attr("font-size", "11px")
-    .text("Make-Good");
+    .text("Make-Good Trigger");
 
   const tooltip = d3.select(container)
     .append("div")
@@ -969,9 +1780,9 @@ function renderPacingChartD3() {
     const fmt = new Intl.NumberFormat("en-US");
     let label = "";
     if (mode === "imp") {
-      label = `H${hour} · Linear ${fmt.format(pacing.linearImp[idx])}/${fmt.format(pacing.linearPlanned[idx])} · Digital ${fmt.format(pacing.digitalImp[idx])}/${fmt.format(pacing.digitalPlanned[idx])}`;
+      label = `Hour ${hour} | Linear delivered ${fmt.format(pacing.linearImp[idx])} of ${fmt.format(pacing.linearPlanned[idx])} planned | Digital delivered ${fmt.format(pacing.digitalImp[idx])} of ${fmt.format(pacing.digitalPlanned[idx])} planned`;
     } else {
-      label = `H${hour} · Linear ${pacing.linearPct[idx]}% · Digital ${pacing.digitalPct[idx]}%`;
+      label = `Hour ${hour} | Linear delivery rate ${pacing.linearPct[idx]} percent | Digital delivery rate ${pacing.digitalPct[idx]} percent`;
     }
     tooltip.text(label)
       .style("opacity", 1)
@@ -990,7 +1801,12 @@ function renderReachChartD3() {
   const reach = state.dashboard?.reach;
   if (!reach) return;
 
-  const sig = JSON.stringify({ reach: reach.uniqueHouseholds, overlap: reach.overlapPct });
+  const sig = JSON.stringify({
+    reach: reach.uniqueHouseholds,
+    overlap: reach.overlapPct,
+    deviceCount: reach.deviceCount,
+    runToken: state.runToken || 0
+  });
   if (container.dataset.signature === sig) return;
   container.dataset.signature = sig;
 
@@ -1084,7 +1900,7 @@ function scheduleScrollToRunningSection() {
 }
 
 function getRunningScrollKey() {
-  if (state.stage === "architect") return "architect-plan";
+  if (state.stage === "architect" || state.stage === "plan-select") return "architect-plan";
   if (state.stage === "data") return "data-inputs";
   if (state.stage === "run") return "execution-flow";
   return null;
@@ -1099,10 +1915,14 @@ function scheduleFlowchartSync() {
 }
 
 function buildGraphForDemo(demo, plan) {
+  const planGraph = Utils.buildGraphFromPlan(plan);
   if (demo?.flowchart?.nodes?.length) {
+    const flowIds = new Set((demo.flowchart.nodes || []).map((node) => node.id));
+    const planCovered = (plan || []).every((agent) => flowIds.has(agent.nodeId));
+    if (!planCovered) return planGraph;
     return addFlowchartPositions(demo.flowchart);
   }
-  return Utils.buildGraphFromPlan(plan);
+  return planGraph;
 }
 
 function nodeClassForKind(kind) {
@@ -1141,7 +1961,7 @@ function addFlowchartPositions(flowchart) {
     ...flowchart,
     nodes: flowchart.nodes.map(n => ({
       ...n,
-      position: positions[n.id] || { x: xMain, y: 0 }
+      position: positions[n.id] || { x: xStart, y: 0 }
     }))
   };
 }

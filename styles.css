@@ -403,6 +403,85 @@ h6,
   color: #d6dbe8;
 }
 
+.architect-option-card {
+  border: 1px solid var(--brand-border);
+  border-radius: 0.85rem;
+  background: rgba(23, 27, 45, 0.88);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.architect-option-card.is-selected {
+  border-color: rgba(45, 106, 79, 0.7);
+  box-shadow: 0 0 0 1px rgba(45, 106, 79, 0.35) inset;
+}
+
+.architect-option-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.architect-plan-list {
+  margin: 0;
+  padding-left: 1.25rem;
+  display: grid;
+  gap: 0.4rem;
+  color: var(--brand-text);
+  font-size: 0.86rem;
+  flex-grow: 1;
+}
+
+.prompt-tile-card {
+  border: 1px solid rgba(255, 102, 0, 0.28);
+  background: rgba(255, 102, 0, 0.08);
+  border-radius: 0.75rem;
+  padding: 0.65rem 0.75rem;
+}
+
+.prompt-tile-label {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.68rem;
+  color: var(--brand-muted);
+  margin-bottom: 0.25rem;
+}
+
+.prompt-tile-title {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--brand-text);
+}
+
+.prompt-tile-text {
+  color: var(--brand-muted);
+  font-size: 0.8rem;
+}
+
+.explanation-panel {
+  border: 1px solid rgba(255, 102, 0, 0.35);
+  background: rgba(20, 24, 42, 0.7);
+  border-radius: 0.85rem;
+  padding: 0.9rem 1rem;
+}
+
+.visualization-loading {
+  border: 1px dashed rgba(255, 179, 3, 0.45);
+  background: rgba(255, 179, 3, 0.08);
+  border-radius: 0.85rem;
+  padding: 0.85rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.visualization-loading .spinner-border {
+  flex-shrink: 0;
+}
+
 .dashboard-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
