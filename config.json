@@ -10,7 +10,7 @@
     "model": "gpt-4o",
     "architectPrompt": "",
     "agentStyle": "Use WBD terminology and concise, data-driven bullets. Surface risks and compliance flags.",
-    "maxAgents": 5,
+    "maxAgents": 6,
     "flowOrientation": "horizontal",
     "flowColumns": 4
   },
@@ -21,7 +21,7 @@
       "title": "Converged Ad Campaign Version 1",
       "body": "Single-prompt demo for converged planning, compliance, and in-flight optimization.",
       "cta": "Load Pipeline",
-      "problem": "Launch $50k auto campaign, 60% Linear / 40% Digital, target Auto Intenders in the US",
+      "problem": "Launch a 50000 United States dollar auto campaign targeting Auto Intenders in the United States, and let the agents determine channel allocation according to state-level demand and compliance conditions.",
       "plan": {
         "plan": [
           {
@@ -35,7 +35,7 @@
           {
             "agentName": "The Sales Rep",
             "nodeId": "sales-rep",
-            "systemInstruction": "You are the Converged Media Planning Agent using NEO and DemoDirect. Given an audience list and budget split, create a 12-line converged media plan across linear (TNT Sports, CNN, Food Network) and digital (Max ad-lite, Discovery+). Optimize for reach and CPM efficiency. Include at least one CNN Saudi Arabia placement for reach testing. Flag any SCTE-35 signal risks from StreamX inventory.",
+            "systemInstruction": "You are the Converged Media Planning Agent using NEO and DemoDirect. Given an audience list and total budget objective, create a 12-line converged media plan across linear (TNT Sports, CNN, Food Network) and digital (Max ad-lite, Discovery+). Determine the channel allocation based on state-level demand and inventory quality. Optimize for reach and cost per thousand impressions efficiency. Include at least one CNN Saudi Arabia placement for reach testing. Flag any SCTE-35 signal risks from StreamX inventory.",
             "initialTask": "Build the converged media plan with line-item details (network, platform, daypart, country, impressions, spend, CPM) and identify SCTE-35 risks.",
             "stage": 2,
             "next": ["The Compliance Bot"]
@@ -51,8 +51,8 @@
           {
             "agentName": "The Ops Director",
             "nodeId": "ops-director",
-            "systemInstruction": "You are the In-Flight Operations Agent monitoring StreamX delivery. Analyze the Live Delivery Log for pacing issues. If linear delivery is below 85% of target at any point, trigger a make-good by reallocating $3,200 to Max ad-lite streaming. Calculate de-duplicated reach, effective CPM, frequency distribution, and projected ROI. If SCTE-35 signals are failing, quantify revenue at risk. Output a final deterministic ROI report with before/after the make-good.",
-            "initialTask": "Detect pacing failures, execute make-good reallocation, and produce the final ROI report with before/after metrics.",
+            "systemInstruction": "You are the In-Flight Operations Agent monitoring StreamX delivery. Analyze the Live Delivery Log for pacing issues. If linear delivery is below 85% of target at any point, trigger a make-good by reallocating 3,200 United States dollars to Max ad-lite streaming. Calculate de-duplicated reach, effective cost per thousand impressions, frequency distribution, and projected return on investment. If SCTE-35 signals are failing, quantify revenue at risk. Output a final deterministic return on investment report with before-and-after the make-good.",
+            "initialTask": "Detect pacing failures, execute make-good reallocation, and produce the final return on investment report with before-and-after metrics.",
             "stage": 4,
             "next": []
           }
@@ -98,7 +98,7 @@
       "title": "Converged Ad Campaign Version 2",
       "body": "Three-week retail push with aggressive audience expansion and pacing controls across linear and streaming.",
       "cta": "Generate Architect Plans",
-      "problem": "Launch a 21-day retail promotion with 55% linear and 45% digital spend, prioritize in-market shoppers, and keep cost per thousand impressions below 24 United States dollars.",
+      "problem": "Launch a 21-day retail promotion with a total budget of 75000 United States dollars, prioritize in-market shoppers, and let the agents determine allocation by state-level demand while keeping cost efficiency strong.",
       "inputs": []
     },
     {
@@ -107,7 +107,7 @@
       "title": "Converged Ad Campaign Version 3",
       "body": "Premiere-week campaign for a new streaming series with daily delivery tracking and make-good readiness.",
       "cta": "Generate Architect Plans",
-      "problem": "Promote a new streaming drama premiere over 14 days, balance broad reach and frequency control, and include compliance-safe placements for the United States and Germany.",
+      "problem": "Promote a new streaming drama premiere over 14 days with a total budget of 90000 United States dollars, and let the agents determine state-level allocation while balancing broad reach and frequency control in the United States and Germany.",
       "inputs": []
     },
     {
@@ -116,7 +116,7 @@
       "title": "Converged Ad Campaign Version 4",
       "body": "High-regulation campaign scenario focused on early legal screening, policy evidence, and audit traceability.",
       "cta": "Generate Architect Plans",
-      "problem": "Plan a cross-border financial services campaign across the United States, Germany, and Saudi Arabia, enforce region-specific restrictions before media allocation, and document rule-level rationale for every approved line item.",
+      "problem": "Plan a cross-border financial services campaign with a total budget of 120000 United States dollars across the United States, Germany, and Saudi Arabia, and let the agents determine allocation by state and region while enforcing compliance restrictions.",
       "inputs": []
     },
     {
@@ -125,7 +125,7 @@
       "title": "Converged Ad Campaign Version 5",
       "body": "Short-window sports event burst with hour-level pacing sensitivity and contingency routing.",
       "cta": "Generate Architect Plans",
-      "problem": "Run a seven-day sports finals campaign with heavy evening concentration, maximize unique household reach, and include a resilient fallback strategy for signal degradation during peak windows.",
+      "problem": "Run a seven-day sports finals campaign with a total budget of 65000 United States dollars, maximize unique household reach, and let the agents determine state-aware allocation and timing with resilient fallback planning for signal degradation during peak windows.",
       "inputs": []
     }
   ]

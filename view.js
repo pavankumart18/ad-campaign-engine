@@ -122,7 +122,7 @@ function renderCampaignPrompt(state, demo, actions) {
       <div class="card-body">
         <textarea class="form-control campaign-input" rows="2" .value=${state.campaignPrompt || demo.problem || ""} @input=${(e) => actions.setCampaignPrompt(e.target.value)}></textarea>
         <div class="d-flex justify-content-between align-items-center mt-2 flex-wrap gap-2">
-          <small class="text-body-secondary">Use WBD vocabulary and desired budget splits.</small>
+          <small class="text-body-secondary">Provide total budget and objective. Agents will determine channel allocation by state-level conditions.</small>
           <button class="btn btn-sm btn-outline-warning" @click=${() => actions.setCampaignPrompt(demo.problem || "")}>Reset to Default</button>
         </div>
       </div>
@@ -169,6 +169,14 @@ function renderPlan(state, actions) {
                     </div>
                     <p class="small text-body-secondary mb-2"><strong>Strategy:</strong> ${option.strategy}</p>
                     <p class="small text-body-secondary mb-3"><strong>Why this option:</strong> ${option.why}</p>
+                    <div class="small mb-2"><strong>Channel Allocation:</strong> ${option.allocationStrategy || "Allocation strategy not provided."}</div>
+                    <div class="small mb-2"><strong>Delivery Timing:</strong> ${option.deliveryTiming || "Delivery timing not provided."}</div>
+                    <div class="small mb-3"><strong>Return on Investment Reasoning:</strong> ${option.roiReasoning || "Return on investment reasoning not provided."}</div>
+                    <div class="small mb-3">
+                      <strong>Compliance Validation:</strong>
+                      <span class="badge ms-2 text-bg-${(option.complianceValidation?.status || "").toLowerCase().includes("adjust") ? "warning" : "success"}">${option.complianceValidation?.status || "Passed"}</span>
+                      <div class="text-body-secondary mt-1">${option.complianceValidation?.summary || "Compliance check summary not provided."}</div>
+                    </div>
                     <div class="small fw-semibold mb-2">Architect Plan</div>
                     <ol class="architect-plan-list mb-3">
                       ${(option.plan || []).map((agent) => html`
@@ -242,15 +250,26 @@ function renderComplianceBanner(state) {
 }
 
 function renderComplianceDetails(state, actions) {
-  if (!state.plan.some((a) => isCompliance(a))) return null;
+  if (!state.complianceDetails) return null;
   const details = state.complianceDetails;
+  const statusValue = (details?.status || "").toLowerCase();
+  const statusTone = statusValue.includes("fail")
+    ? "danger"
+    : statusValue.includes("adjust")
+    ? "warning"
+    : statusValue.includes("running")
+      ? "primary"
+      : "success";
   return html`
     <section class="card mb-4">
       <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2"><span><i class="bi bi-shield-check me-2"></i>Compliance Sources and Rationale</span><button class="btn btn-sm btn-outline-warning" @click=${actions.toggleComplianceExplanation}>${state.complianceExplanationOpen ? "Hide Detailed Explanation" : "Show Detailed Explanation"}</button></div>
       <div class="card-body">
+        <div class="mb-2"><span class="badge text-bg-${statusTone}">${details?.status || "Status Unknown"}</span></div>
         <p class="text-body-secondary small mb-3">${details?.summary || "Compliance sources populate after run completion."}</p>
+        ${details?.findings?.length ? html`<div class="mb-3"><h6 class="mb-2">Findings</h6><ul class="mb-0">${details.findings.map((finding) => html`<li class="small text-body-secondary">${finding}</li>`)}</ul></div>` : null}
+        ${details?.alternatives?.length ? html`<div class="mb-3"><h6 class="mb-2">Compliant Alternatives</h6><ul class="mb-0">${details.alternatives.map((alt) => html`<li class="small text-body-secondary">${alt}</li>`)}</ul></div>` : null}
         ${details?.sources?.length ? html`<div class="table-responsive"><table class="table table-dark table-striped align-middle mb-0"><thead><tr><th scope="col">Policy</th><th scope="col">Source</th><th scope="col">Why Applied</th></tr></thead><tbody>${details.sources.map((item) => html`<tr><td>${item.policy}</td><td>${item.source}</td><td>${item.why}</td></tr>`)}</tbody></table></div>` : null}
-        ${state.complianceExplanationOpen ? html`<div class="explanation-panel mt-3"><p class="mb-2">${details?.detailedExplanation || "The compliance bot records every rule match and why that rule changed routing."}</p><p class="mb-0">This explanation is detailed so operations and legal reviewers can audit each policy decision path.</p></div>` : null}
+        ${state.complianceExplanationOpen ? html`<div class="explanation-panel mt-3"><p class="mb-2">${details?.detailedExplanation || "The compliance agent records every rule match and why that rule changed routing."}</p><p class="mb-0">This explanation is detailed so operations and legal reviewers can audit each policy decision path.</p></div>` : null}
       </div>
     </section>`;
 }
@@ -416,7 +435,7 @@ function isOps(agent) {
 
 function isPlanner(agent) {
   const text = `${agent?.nodeId || ""} ${agent?.agentName || ""} ${agent?.name || ""}`.toLowerCase();
-  return text.includes("planner") || text.includes("audience");
+  return text.includes("planner") || text.includes("audience") || text.includes("planning and identity") || text.includes("planning-identity");
 }
 
 const numberFormatter = new Intl.NumberFormat("en-US");

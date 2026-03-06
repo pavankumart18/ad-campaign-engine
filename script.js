@@ -1,4 +1,4 @@
-// VERSION: 2026-03-06 - Added three-plan architect selection, synthetic execution, and detailed compliance explanations.
+// VERSION: 2026-03-06 - Three-plan converged strategies with fixed six-agent workflow, yield intelligence, and parallel compliance validation.
 import { openaiConfig } from "bootstrap-llm-provider";
 import saveform from "saveform";
 import { createFlowchart } from "./flowchart.js";
@@ -10,95 +10,175 @@ import * as d3 from "d3";
 
 const $ = (s) => document.querySelector(s);
 const DEFAULT_BASE_URLS = ["https://api.openai.com/v1", "https://llmfoundry.straivedemo.com/openai/v1"];
-const WBD_DEMO_ID = "wbd-converged-engine";
+
+const PARALLEL_COMPLIANCE_NODE_ID = "parallel-compliance-agent";
+const WORKFLOW_AGENTS = [
+  {
+    nodeId: "planning-identity-agent",
+    agentName: "Planning and Identity Agent",
+    phase: 1,
+    focus: "audience planning, identity resolution, and seed segment qualification across state-level markets"
+  },
+  {
+    nodeId: "inventory-yield-agent",
+    agentName: "Inventory Yield Agent",
+    phase: 2,
+    focus: "inventory demand and yield optimization using trend-aware timing signals"
+  },
+  {
+    nodeId: "booking-proposals-agent",
+    agentName: "Booking and Proposals Agent",
+    phase: 3,
+    focus: "channel allocation, proposal construction, and return on investment-centered booking logic"
+  },
+  {
+    nodeId: "trafficking-signals-agent",
+    agentName: "Trafficking and Signals Agent",
+    phase: 4,
+    focus: "placement trafficking, signal integrity checks, and delivery readiness assurance"
+  },
+  {
+    nodeId: "inflight-operations-agent",
+    agentName: "In-Flight Operations Agent",
+    phase: 5,
+    focus: "live pacing correction, make-good routing, and budget protection during execution"
+  },
+  {
+    nodeId: "measurement-agent",
+    agentName: "Measurement Agent",
+    phase: 6,
+    focus: "outcome attribution, return on investment interpretation, and optimization recommendations"
+  }
+];
 
 const AGENT_DATASET_MAP = {
-  planner: "audienceGraph",
-  "The Planner": "audienceGraph",
-  "sales-rep": "inventoryMatrix",
-  "The Sales Rep": "inventoryMatrix",
-  "compliance-bot": "globalLawRegistry",
-  "The Compliance Bot": "globalLawRegistry",
-  "ops-director": "liveDeliveryLog",
-  "The Ops Director": "liveDeliveryLog"
+  "planning-identity-agent": "unifiedAudienceDataset",
+  "Planning and Identity Agent": "unifiedAudienceDataset",
+  "inventory-yield-agent": "unifiedAudienceDataset",
+  "Inventory Yield Agent": "unifiedAudienceDataset",
+  "booking-proposals-agent": "unifiedAudienceDataset",
+  "Booking and Proposals Agent": "unifiedAudienceDataset",
+  "trafficking-signals-agent": "unifiedAudienceDataset",
+  "Trafficking and Signals Agent": "unifiedAudienceDataset",
+  "inflight-operations-agent": "unifiedAudienceDataset",
+  "In-Flight Operations Agent": "unifiedAudienceDataset",
+  "measurement-agent": "unifiedAudienceDataset",
+  "Measurement Agent": "unifiedAudienceDataset",
+  "planning-identity": "unifiedAudienceDataset",
+  "inventory-yield": "unifiedAudienceDataset",
+  "booking-proposals": "unifiedAudienceDataset",
+  "trafficking-signals": "unifiedAudienceDataset",
+  "inflight-operations": "unifiedAudienceDataset",
+  "measurement": "unifiedAudienceDataset",
+  "compliance-agent": "complianceRulebook",
+  [PARALLEL_COMPLIANCE_NODE_ID]: "complianceRulebook",
+  "Compliance Agent (Parallel)": "complianceRulebook",
+  // Backward compatibility for older saved plans
+  planner: "unifiedAudienceDataset",
+  "The Planner": "unifiedAudienceDataset",
+  "sales-rep": "unifiedAudienceDataset",
+  "The Sales Rep": "unifiedAudienceDataset",
+  "ops-director": "unifiedAudienceDataset",
+  "The Ops Director": "unifiedAudienceDataset",
+  "compliance-bot": "complianceRulebook",
+  "The Compliance Bot": "complianceRulebook"
 };
 
 const AGENT_ACTION_SUMMARY = {
-  planner: "Mapped Olli Auto Intender households and documented data quality risks.",
-  "The Planner": "Mapped Olli Auto Intender households and documented data quality risks.",
-  "sales-rep": "Built a twelve-line converged media plan and documented Society of Cable Telecommunications Engineers cue-tone standard (SCTE-35) delivery signal risks.",
-  "The Sales Rep": "Built a twelve-line converged media plan and documented Society of Cable Telecommunications Engineers cue-tone standard (SCTE-35) delivery signal risks.",
-  "compliance-bot": "Validated each placement against compliance restrictions and proposed approved replacements.",
-  "The Compliance Bot": "Validated each placement against compliance restrictions and proposed approved replacements.",
-  "ops-director": "Triggered StreamX make-good reallocation and recalculated return on investment performance.",
-  "The Ops Director": "Triggered StreamX make-good reallocation and recalculated return on investment performance."
+  "planning-identity-agent": "Resolved identity graph, validated state-level audience readiness, and documented targetable reach confidence.",
+  "inventory-yield-agent": "Applied Yield Intelligence signals from Twitter trends, news signals, and external feeds to set high-value delivery windows.",
+  "booking-proposals-agent": "Produced channel booking proposals with return on investment-focused allocation and constraint-aware alternatives.",
+  "trafficking-signals-agent": "Validated trafficking package, verified signal health, and prepared compliant activation instructions.",
+  "inflight-operations-agent": "Monitored delivery pacing, triggered in-flight optimizations, and protected campaign return on investment.",
+  "measurement-agent": "Measured outcomes across channels, quantified return on investment impact, and documented next-iteration recommendations.",
+  [PARALLEL_COMPLIANCE_NODE_ID]: "Validated campaign parameters against compliance rules and provided compliant alternatives when restrictions were detected."
 };
 
 const RAW_DATA_BY_AGENT = {
-  planner: datasetEntries.find((d) => d.key === "audienceGraph"),
-  "sales-rep": datasetEntries.find((d) => d.key === "inventoryMatrix"),
-  "compliance-bot": datasetEntries.find((d) => d.key === "globalLawRegistry"),
-  "ops-director": datasetEntries.find((d) => d.key === "liveDeliveryLog")
+  "planning-identity-agent": datasetEntries.find((d) => d.key === "unifiedAudienceDataset"),
+  "inventory-yield-agent": datasetEntries.find((d) => d.key === "yieldIntelligenceFeed"),
+  "booking-proposals-agent": datasetEntries.find((d) => d.key === "unifiedAudienceDataset"),
+  "trafficking-signals-agent": datasetEntries.find((d) => d.key === "unifiedAudienceDataset"),
+  "inflight-operations-agent": datasetEntries.find((d) => d.key === "unifiedAudienceDataset"),
+  "measurement-agent": datasetEntries.find((d) => d.key === "unifiedAudienceDataset"),
+  [PARALLEL_COMPLIANCE_NODE_ID]: datasetEntries.find((d) => d.key === "complianceRulebook")
 };
+
 const ARCHITECT_PLAN_FALLBACK_TITLES = [
-  "Architecture Option 1",
-  "Architecture Option 2",
-  "Architecture Option 3"
+  "Plan A - Streaming Focused",
+  "Plan B - Linear Focused",
+  "Plan C - Balanced Strategy"
 ];
-const MIN_ARCHITECT_AGENTS = 5;
+const MIN_ARCHITECT_AGENTS = 6;
 const MAX_ARCHITECT_AGENTS = 6;
-const TARGET_ARCHITECT_AGENTS = 5;
+const TARGET_ARCHITECT_AGENTS = 6;
 const PLAN_VARIANTS = [
   {
-    key: "growth",
-    title: "Architecture Option 1",
-    promptTile: "Growth Acceleration Prompt",
-    promptText: "Design a growth-first architecture that expands audience reach quickly while preserving spend efficiency.",
-    strategy: "Growth-first orchestration with aggressive audience and inventory expansion.",
-    why: "This option prioritizes faster scale while still maintaining compliance and pacing controls.",
-    library: [
-      { nodeId: "growth-audience-strategist", agentName: "Growth Audience Strategist", phase: 1, focus: "high-propensity segment expansion and deterministic lookalike logic" },
-      { nodeId: "rapid-segmentation-analyst", agentName: "Rapid Segmentation Analyst", phase: 1, focus: "speed-focused segmentation thresholds and match confidence review" },
-      { nodeId: "reach-amplification-planner", agentName: "Reach Amplification Planner", phase: 2, focus: "high-reach linear and streaming blend for rapid coverage gains" },
-      { nodeId: "cost-velocity-optimizer", agentName: "Cost and Velocity Optimizer", phase: 3, focus: "spend efficiency guardrails while scaling impression velocity" },
-      { nodeId: "growth-compliance-manager", agentName: "Growth Compliance Manager", phase: 4, focus: "compliance-safe expansion with country and category restrictions" },
-      { nodeId: "growth-ops-director", agentName: "Growth Operations Director", phase: 5, focus: "pacing recovery actions that preserve scale and conversion momentum" }
-    ]
+    key: "plan-a-streaming",
+    planLabel: "Plan A - Streaming Focused",
+    title: "Plan A - Streaming Focused",
+    promptTile: "Plan A - Streaming Focused",
+    promptText: "Prioritize streaming channels while preserving quality reach in core states and maximizing return on investment through dynamic optimization.",
+    strategy: "Streaming-first strategy with high digital video allocation and rapid optimization loops.",
+    why: "Streaming-heavy allocation can improve return on investment when high-intent audiences show stronger digital consumption patterns.",
+    allocationStrategy: "Channel allocation recommendation: 62 percent streaming video, 23 percent linear television, and 15 percent social extensions.",
+    deliveryTiming: "Prioritize evening and late-prime windows, then dynamically increase delivery during trend spikes detected in state-level demand signals.",
+    roiReasoning: "This plan improves return on investment by concentrating spend on higher engagement inventory and rapidly reallocating when signal-aware yield data indicates better conversion potential.",
+    priorities: {
+      "planning-identity-agent": "Prioritize streaming-leaning households, high-device clusters, and state-level demand pockets where digital completion rates historically outperform baseline.",
+      "inventory-yield-agent": "Use Yield Intelligence from Twitter trends, news signals, and external feeds to identify streaming demand spikes and recommend intra-day timing shifts.",
+      "booking-proposals-agent": "Structure proposals with streaming as the primary spend lane while retaining selective linear anchors for baseline reach continuity.",
+      "trafficking-signals-agent": "Optimize trafficking for digital ad serving reliability, rapid creative refresh, and low-latency signal handling in high-demand windows.",
+      "inflight-operations-agent": "Monitor streaming pacing variance hourly and reallocate underperforming segments toward higher-return digital inventory.",
+      "measurement-agent": "Emphasize engagement depth, incremental conversion lift, and return on investment attribution from streaming-heavy touchpoints."
+    }
   },
   {
-    key: "compliance",
-    title: "Architecture Option 2",
-    promptTile: "Compliance-First Prompt",
-    promptText: "Design a compliance-first architecture that screens legal and policy risk before media spend allocation.",
-    strategy: "Policy-first orchestration that minimizes legal and regulatory rework.",
-    why: "This option reduces risk by validating market and category eligibility earlier in the flow.",
-    library: [
-      { nodeId: "policy-intake-analyst", agentName: "Policy Intake Analyst", phase: 1, focus: "campaign claim and category intake against policy scope" },
-      { nodeId: "jurisdiction-screening-lead", agentName: "Jurisdiction Screening Lead", phase: 1, focus: "country-level pre-screening and restricted-market routing constraints" },
-      { nodeId: "compliance-bot", agentName: "The Compliance Bot", phase: 2, focus: "line-item policy validation and replacement recommendation matrix" },
-      { nodeId: "regulatory-evidence-curator", agentName: "Regulatory Evidence Curator", phase: 3, focus: "source-level audit evidence and legal traceability records" },
-      { nodeId: "safe-inventory-planner", agentName: "Safe Inventory Planner", phase: 4, focus: "approved inventory-only media construction with fallback routes" },
-      { nodeId: "compliance-ops-director", agentName: "Compliance Operations Director", phase: 5, focus: "delivery monitoring with strict policy-safe make-good execution" }
-    ]
+    key: "plan-b-linear",
+    planLabel: "Plan B - Linear Focused",
+    title: "Plan B - Linear Focused",
+    promptTile: "Plan B - Linear Focused",
+    promptText: "Prioritize linear television coverage to maximize broad reach and sustained brand exposure while protecting return on investment.",
+    strategy: "Linear-first strategy with strong gross rating point coverage and selective digital reinforcement.",
+    why: "Linear-heavy allocation supports consistent broad-reach delivery and can raise top-of-funnel impact for brand visibility objectives.",
+    allocationStrategy: "Channel allocation recommendation: 58 percent linear television, 27 percent streaming video, and 15 percent social extensions.",
+    deliveryTiming: "Concentrate delivery in high-index dayparts for broad household reach, with measured streaming reinforcement around event-driven windows.",
+    roiReasoning: "This plan improves return on investment by stabilizing reach efficiency through linear scale while applying selective digital follow-through where incremental lift is strongest.",
+    priorities: {
+      "planning-identity-agent": "Prioritize broad state-level household coverage cohorts and stable identity segments that align with high-reach linear programming.",
+      "inventory-yield-agent": "Use Yield Intelligence from Twitter trends, news signals, and external feeds to decide when linear tentpole inventory should receive higher pacing priority.",
+      "booking-proposals-agent": "Structure proposals around linear gross rating point strength first, with digital support reserved for incremental frequency management.",
+      "trafficking-signals-agent": "Focus trafficking quality controls on linear signal integrity, cue reliability, and placement continuity in large-reach schedules.",
+      "inflight-operations-agent": "Protect linear pacing targets and only shift budget when delivery risk threatens return on investment thresholds.",
+      "measurement-agent": "Emphasize de-duplicated reach, brand exposure continuity, and return on investment from broad-reach linear execution."
+    }
   },
   {
-    key: "operations",
-    title: "Architecture Option 3",
-    promptTile: "Operational Resilience Prompt",
-    promptText: "Design an operations-first architecture that maximizes execution resilience, pacing reliability, and response to delivery shocks.",
-    strategy: "Operations-first orchestration focused on resilience, monitoring, and intervention readiness.",
-    why: "This option is optimized for stable delivery under variable inventory and signal conditions.",
-    library: [
-      { nodeId: "execution-readiness-planner", agentName: "Execution Readiness Planner", phase: 1, focus: "handoff readiness, dependency checks, and activation prerequisites" },
-      { nodeId: "signal-risk-analyst", agentName: "Signal Risk Analyst", phase: 2, focus: "broadcast and streaming signal-health risk diagnostics" },
-      { nodeId: "resilient-media-planner", agentName: "Resilient Media Planner", phase: 3, focus: "redundant inventory paths and fallback activation design" },
-      { nodeId: "contingency-compliance-lead", agentName: "Contingency Compliance Lead", phase: 4, focus: "policy-safe contingency routing during delivery disruptions" },
-      { nodeId: "ops-director", agentName: "The Ops Director", phase: 5, focus: "live pacing corrections and make-good control strategy" },
-      { nodeId: "diagnostics-and-explanation-analyst", agentName: "Diagnostics and Explanation Analyst", phase: 6, focus: "root-cause analysis and detailed stakeholder explanation outputs" }
-    ]
+    key: "plan-c-balanced",
+    planLabel: "Plan C - Balanced Strategy",
+    title: "Plan C - Balanced Strategy",
+    promptTile: "Plan C - Balanced Strategy",
+    promptText: "Balance streaming, linear television, and social extensions to diversify risk and maintain durable return on investment across channels.",
+    strategy: "Balanced strategy with diversified channel mix, controlled risk, and adaptive pacing.",
+    why: "A balanced allocation can reduce over-exposure risk and preserve return on investment stability across uncertain market conditions.",
+    allocationStrategy: "Channel allocation recommendation: 40 percent streaming video, 40 percent linear television, and 20 percent social extensions.",
+    deliveryTiming: "Distribute delivery across core dayparts with adaptive boosts during verified demand spikes and under-delivery recovery windows.",
+    roiReasoning: "This plan improves return on investment by combining broad reach and targeted engagement while reducing concentration risk through diversified channel exposure.",
+    priorities: {
+      "planning-identity-agent": "Balance broad and high-intent identity segments so the campaign can scale reach without sacrificing precision in high-value states.",
+      "inventory-yield-agent": "Use Yield Intelligence from Twitter trends, news signals, and external feeds to rebalance timing between channels during demand inflections.",
+      "booking-proposals-agent": "Build mixed-channel proposals with balanced allocation logic and clear fallback paths for volatility in any one inventory lane.",
+      "trafficking-signals-agent": "Ensure trafficking and signal checks are symmetric across linear and digital paths to maintain continuity under mixed allocation.",
+      "inflight-operations-agent": "Use measured reallocation to sustain balanced pacing and protect return on investment when one channel underperforms.",
+      "measurement-agent": "Evaluate return on investment through blended attribution, de-duplicated reach, and channel interaction effects."
+    }
   }
 ];
+
 const RAW_DATA_BY_KEY = {
+  unifiedAudienceDataset: datasetEntries.find((d) => d.key === "unifiedAudienceDataset"),
+  yieldIntelligenceFeed: datasetEntries.find((d) => d.key === "yieldIntelligenceFeed"),
+  complianceRulebook: datasetEntries.find((d) => d.key === "complianceRulebook"),
   audienceGraph: datasetEntries.find((d) => d.key === "audienceGraph"),
   inventoryMatrix: datasetEntries.find((d) => d.key === "inventoryMatrix"),
   globalLawRegistry: datasetEntries.find((d) => d.key === "globalLawRegistry"),
@@ -140,6 +220,7 @@ let state = {
   approvedPlanCsv: "",
   pacingMode: "pct",
   complianceDetails: null,
+  selectedPlanCompliance: null,
   complianceExplanationOpen: false,
   visualizationExplanationOpen: false,
   visualizationLoading: false,
@@ -160,16 +241,22 @@ const actions = {
       picked.plan || [],
       clampAgentCount($("#max-agents")?.value, TARGET_ARCHITECT_AGENTS),
       state.campaignPrompt || "",
-      picked.variantKey || "growth"
+      picked.variantKey || PLAN_VARIANTS[0].key
     );
     const normalizedInputs = buildDatasetInputs().map((input) => ({ ...input, id: Utils.uniqueId("input") }));
+    const complianceValidation = picked.complianceValidation || evaluatePlanCompliance({
+      campaignPrompt: state.campaignPrompt || "",
+      allocationStrategy: picked.allocationStrategy || "",
+      variantKey: picked.variantKey || ""
+    });
     setState({
       selectedArchitectPlanId: picked.id,
       plan: selectedPlan,
       suggestedInputs: normalizedInputs,
       selectedInputs: new Set(normalizedInputs.map((i) => i.id)),
       rawDataByAgent: buildRawDataByPlan(selectedPlan),
-      complianceDetails: null,
+      selectedPlanCompliance: complianceValidation,
+      complianceDetails: buildComplianceDetails(complianceValidation),
       complianceExplanationOpen: false,
       visualizationExplanationOpen: false,
       visualizationLoading: false,
@@ -308,6 +395,11 @@ const actions = {
     const savedInputs = (agent.inputs && agent.inputs.length)
       ? agent.inputs.map((input) => ({ ...input, id: input.id || Utils.uniqueId("input") }))
       : buildDatasetInputs().map((input) => ({ ...input, id: Utils.uniqueId("input") }));
+    const savedCompliance = evaluatePlanCompliance({
+      campaignPrompt: agent.problem || "",
+      allocationStrategy: "Saved plan allocation derived from prior run.",
+      variantKey: ""
+    });
     setState({
       selectedDemoIndex: -2, // Special index for saved agent
       customProblem: { title: agent.title, problem: agent.problem },
@@ -322,7 +414,8 @@ const actions = {
       editingAgentId: null, // Clear separate edit session
       campaignPrompt: agent.problem || "",
       rawDataByAgent: buildRawDataByPlan(savedPlan),
-      complianceDetails: hasComplianceRole(savedPlan) ? buildComplianceDetails() : null,
+      selectedPlanCompliance: savedCompliance,
+      complianceDetails: buildComplianceDetails(savedCompliance),
       complianceExplanationOpen: false,
       visualizationExplanationOpen: false,
       visualizationLoading: false,
@@ -363,7 +456,7 @@ async function refreshAgents() {
 (async () => {
   config = await fetch("config.json").then(r => r.json());
   config.demos = (config.demos || []).map(d => {
-    const inputs = d.id === WBD_DEMO_ID ? buildDatasetInputs() : (d.inputs || []);
+    const inputs = buildDatasetInputs();
     return { ...d, inputs: inputs.map(i => ({ ...i, id: Utils.uniqueId("input") })) };
   });
 
@@ -500,6 +593,7 @@ function resetRunState(extras) {
     approvedPlanCsv: "",
     rawDataByAgent: RAW_DATA_BY_AGENT,
     complianceDetails: null,
+    selectedPlanCompliance: null,
     complianceExplanationOpen: false,
     visualizationExplanationOpen: false,
     visualizationLoading: false,
@@ -751,10 +845,13 @@ function extractWhyStatement(text = "") {
 
 function fallbackWhyForRole(agent) {
   const role = inferAgentRole(agent);
-  if (role === "planner") return "This audience decision matters because downstream spend should be based on reliable household targeting.";
-  if (role === "sales-rep") return "This media allocation matters because channel mix directly affects delivery efficiency and cost.";
-  if (role === "compliance-bot") return "This compliance decision matters because non-compliant placements can block activation and create legal risk.";
-  if (role === "ops-director") return "This operational action matters because pacing recovery preserves campaign outcomes.";
+  if (role === "planning-identity") return "This planning and identity decision matters because downstream targeting quality depends on accurate audience resolution.";
+  if (role === "inventory-yield") return "This inventory yield decision matters because timing and demand signals directly influence conversion efficiency.";
+  if (role === "booking-proposals") return "This booking decision matters because allocation structure drives reach, cost efficiency, and outcome potential.";
+  if (role === "trafficking-signals") return "This trafficking decision matters because signal integrity and routing quality determine whether delivery can execute as planned.";
+  if (role === "inflight-operations") return "This in-flight operations decision matters because pacing correction protects return on investment during live execution.";
+  if (role === "measurement") return "This measurement decision matters because reliable attribution is required to improve return on investment in the next cycle.";
+  if (role === "compliance-agent") return "This compliance decision matters because non-compliant placements create legal risk and force avoidable rework.";
   return "This action matters because it influences downstream orchestration quality and execution reliability.";
 }
 
@@ -859,8 +956,9 @@ function getCampaignVersionBaseTitle(demo) {
 
 function buildArchitectPlanTitle(demo, optionIndex = 0) {
   const base = getCampaignVersionBaseTitle(demo);
-  const optionNumber = optionIndex + 1;
-  return `${base} - Architecture Option ${optionNumber}`;
+  const variant = PLAN_VARIANTS[optionIndex];
+  const label = variant?.planLabel || ARCHITECT_PLAN_FALLBACK_TITLES[optionIndex] || `Plan ${String.fromCharCode(65 + optionIndex)}`;
+  return `${base} - ${label}`;
 }
 
 function extractArchitectPlanCandidates(parsed) {
@@ -893,19 +991,63 @@ function buildFallbackArchitectPlanForVariant(demo, maxAgents, variant) {
   return fallbackPlans.find((item) => item.variantKey === variant.key) || fallbackPlans[0];
 }
 
+function getVariantByKey(variantKey = "") {
+  return PLAN_VARIANTS.find((item) => item.key === variantKey) || PLAN_VARIANTS[0];
+}
+
+function getVariantAgentLibrary(variantKey = "") {
+  const variant = getVariantByKey(variantKey);
+  return WORKFLOW_AGENTS.map((stageAgent) => ({
+    ...stageAgent,
+    focus: variant.priorities?.[stageAgent.nodeId] || stageAgent.focus
+  }));
+}
+
+function extractBudgetUsd(prompt = "") {
+  const text = (prompt || "").toString();
+  const compact = text.toLowerCase().replace(/,/g, "");
+  const kMatch = compact.match(/\$?\s*(\d+(?:\.\d+)?)\s*k\b/);
+  if (kMatch) return Math.round(Number(kMatch[1]) * 1000);
+  const usdMatch = compact.match(/\$?\s*(\d{4,9}(?:\.\d+)?)/);
+  if (usdMatch) return Math.round(Number(usdMatch[1]));
+  return 50000;
+}
+
+function formatPlanOutputDetails(variant, campaignPrompt, existing = {}) {
+  const budget = extractBudgetUsd(campaignPrompt);
+  const allocationStrategy = (existing.allocationStrategy || variant.allocationStrategy || "")
+    .replace(/\$BUDGET_USD/g, budget.toLocaleString());
+  const deliveryTiming = (existing.deliveryTiming || variant.deliveryTiming || "").trim();
+  const roiReasoning = (existing.roiReasoning || variant.roiReasoning || "").trim();
+  const complianceValidation = evaluatePlanCompliance({
+    campaignPrompt,
+    allocationStrategy,
+    variantKey: variant.key
+  });
+  return {
+    allocationStrategy,
+    deliveryTiming,
+    roiReasoning,
+    complianceValidation
+  };
+}
+
 function normalizeArchitectPlans(rawPlans, demo, maxAgents) {
+  const campaignPrompt = demo?.problem || demo?.body || "";
   const normalized = (Array.isArray(rawPlans) ? rawPlans : [])
     .map((entry, index) => {
       if (!entry || typeof entry !== "object") return null;
-      const variant = PLAN_VARIANTS[index % PLAN_VARIANTS.length];
+      const fallbackVariant = PLAN_VARIANTS[index % PLAN_VARIANTS.length];
       const planList = entry.plan || entry.agents || entry.workflow || entry.steps || [];
       const normalizedPlan = Utils.normalizePlan(planList, maxAgents);
       if (!normalizedPlan.length) return null;
-      const variantKey = entry.variantKey || variant.key;
+      const variantKey = entry.variantKey || fallbackVariant.key;
+      const variant = getVariantByKey(variantKey);
       const variantIndex = PLAN_VARIANTS.findIndex((item) => item.key === variantKey);
       const optionIndex = variantIndex >= 0 ? variantIndex : index;
       const fallbackTitle = buildArchitectPlanTitle(demo, optionIndex);
-      const enrichedPlan = expandAndEnrichPlan(normalizedPlan, maxAgents, demo?.problem || demo?.body || "", variantKey);
+      const enrichedPlan = expandAndEnrichPlan(normalizedPlan, maxAgents, campaignPrompt, variantKey);
+      const details = formatPlanOutputDetails(variant, campaignPrompt, entry);
       return {
         id: Utils.uniqueId("architect-plan"),
         title: fallbackTitle,
@@ -915,6 +1057,10 @@ function normalizeArchitectPlans(rawPlans, demo, maxAgents) {
         promptText: entry.promptText || variant.promptText,
         variantKey,
         plan: enrichedPlan,
+        allocationStrategy: details.allocationStrategy,
+        deliveryTiming: details.deliveryTiming,
+        roiReasoning: details.roiReasoning,
+        complianceValidation: details.complianceValidation,
         inputs: buildDatasetInputs()
       };
     })
@@ -932,13 +1078,15 @@ function normalizeArchitectPlans(rawPlans, demo, maxAgents) {
 function buildFallbackArchitectPlans(demo, maxAgents) {
   const campaign = (demo?.problem || demo?.body || "Launch a converged campaign").toString().trim();
   return PLAN_VARIANTS.map((variant, index) => {
-    const seedPlan = (variant.library || []).slice(0, Math.min(3, maxAgents)).map((node, idx) => ({
+    const variantLibrary = getVariantAgentLibrary(variant.key);
+    const seedPlan = variantLibrary.slice(0, TARGET_ARCHITECT_AGENTS).map((node, idx) => ({
       agentName: node.agentName,
       nodeId: node.nodeId,
       initialTask: `Stage ${idx + 1} task for ${node.agentName} in campaign: ${campaign}.`,
       systemInstruction: `Execute ${node.focus} and provide one explicit Why this matters statement.`,
       stage: idx + 1
     }));
+    const details = formatPlanOutputDetails(variant, campaign, {});
     return {
       id: Utils.uniqueId("architect-plan"),
       title: buildArchitectPlanTitle(demo, index),
@@ -948,15 +1096,18 @@ function buildFallbackArchitectPlans(demo, maxAgents) {
       promptText: variant.promptText,
       variantKey: variant.key,
       plan: expandAndEnrichPlan(Utils.normalizePlan(seedPlan, maxAgents), maxAgents, campaign, variant.key),
+      allocationStrategy: details.allocationStrategy,
+      deliveryTiming: details.deliveryTiming,
+      roiReasoning: details.roiReasoning,
+      complianceValidation: details.complianceValidation,
       inputs: buildDatasetInputs()
     };
   });
 }
 
-function expandAndEnrichPlan(plan = [], maxAgents = TARGET_ARCHITECT_AGENTS, campaign = "", variantKey = "growth") {
-  const targetCount = Math.min(maxAgents, TARGET_ARCHITECT_AGENTS);
-  const variant = PLAN_VARIANTS.find((item) => item.key === variantKey) || PLAN_VARIANTS[0];
-  const agentLibrary = variant.library || [];
+function expandAndEnrichPlan(plan = [], maxAgents = TARGET_ARCHITECT_AGENTS, campaign = "", variantKey = PLAN_VARIANTS[0].key) {
+  const targetCount = TARGET_ARCHITECT_AGENTS;
+  const agentLibrary = getVariantAgentLibrary(variantKey);
   const existing = Array.isArray(plan) ? [...plan] : [];
   const usedIds = new Set(existing.map((agent) => agent.nodeId));
 
@@ -979,11 +1130,11 @@ function expandAndEnrichPlan(plan = [], maxAgents = TARGET_ARCHITECT_AGENTS, cam
 
   const enriched = existing
     .sort((a, b) => (Number(a.phase) || 0) - (Number(b.phase) || 0))
-    .slice(0, maxAgents)
+    .slice(0, targetCount)
     .map((agent, index) => {
       const template = agentLibrary.find((item) => item.nodeId === agent.nodeId)
         || agentLibrary[index % Math.max(agentLibrary.length, 1)]
-        || PLAN_VARIANTS[0].library[0];
+        || WORKFLOW_AGENTS[0];
       const phase = index + 1;
       const nodeId = template?.nodeId || agent.nodeId || `agent-${phase}`;
       const agentName = template?.agentName || agent.agentName || `Agent ${phase}`;
@@ -1036,13 +1187,13 @@ function trimToWords(text, maxWords) {
 function buildDetailedSystemInstruction(agent, template, campaign, phase) {
   const role = agent.agentName || template.agentName;
   const focus = template.focus;
-  return `You are ${role} in stage ${phase} of a converged campaign workflow. Focus on ${focus}. Use only the provided synthetic datasets and the campaign brief "${campaign}" to make decisions. Explain your reasoning clearly, include one explicit "Why this matters" statement, and show how your output connects to the next stage. Keep language clear for business and technical reviewers. Define abbreviations when they first appear and include key risks, assumptions, and validation checks.`;
+  return `You are ${role} in stage ${phase} of a fixed six-stage converged campaign workflow. Focus on ${focus}. Use the unified audience base dataset as the core input and reference additional datasets only when needed for this stage. Treat the campaign brief "${campaign}" as a total budget objective and derive channel allocation based on state-level demand and compliance context rather than fixed pre-specified splits. Explain your reasoning clearly, include one explicit sentence that starts with "Why this matters:", and show how your output supports return on investment optimization for the next stage. Keep language clear for business and technical reviewers. Define abbreviations when they first appear and include key risks, assumptions, and validation checks.`;
 }
 
 function buildDetailedInitialTask(agent, template, campaign, phase) {
   const role = agent.agentName || template.agentName;
   const focus = template.focus;
-  return `Complete stage ${phase} for ${role} using campaign brief "${campaign}". Prioritize ${focus}. Deliver one detailed section for objective, one for evidence used from the synthetic datasets, one for decisions taken, and one for handoff. Include a clear "Why this matters" statement and name at least one risk with mitigation. Keep the explanation specific but concise so the next stage can execute without ambiguity.`;
+  return `Complete stage ${phase} for ${role} using campaign brief "${campaign}". Prioritize ${focus}. Use the full campaign budget objective and determine recommendations according to state-level conditions, demand signals, and compliance constraints instead of assuming fixed channel splits. Deliver one section for objective, one for evidence from the unified audience base dataset, one for decisions taken, and one for handoff. Include a clear sentence that starts with "Why this matters:" and name at least one risk with mitigation. Keep the explanation specific but concise so the next stage can execute without ambiguity.`;
 }
 
 async function runArchitect() {
@@ -1078,6 +1229,8 @@ async function runArchitect() {
       selectedInputs: new Set(),
       architectBuffer: "",
       error: "",
+      complianceDetails: null,
+      selectedPlanCompliance: null,
       visualizationLoading: false,
       visualizationNarrative: "",
       runToken: 0
@@ -1100,6 +1253,7 @@ async function runArchitect() {
     if (creds) {
       for (const [variantIndex, variant] of PLAN_VARIANTS.entries()) {
         const variantTitle = buildArchitectPlanTitle(demo, variantIndex);
+        const variantLibrary = getVariantAgentLibrary(variant.key);
         const header = [
           `Generating ${variantTitle}`,
           `Prompt Tile: ${variant.promptTile}`,
@@ -1108,7 +1262,7 @@ async function runArchitect() {
         buffer = `${buffer}${buffer ? "\n\n" : ""}${header}\n`;
         setState({ architectBuffer: buffer });
 
-        const agentCatalog = (variant.library || [])
+        const agentCatalog = variantLibrary
           .map((agent) => `- ${agent.agentName} (${agent.nodeId}), stage ${agent.phase}: ${agent.focus}`)
           .join("\n");
 
@@ -1120,6 +1274,9 @@ async function runArchitect() {
   "promptTile": "${variant.promptTile}",
   "promptText": "${variant.promptText}",
   "variantKey": "${variant.key}",
+  "allocationStrategy": "Detailed channel allocation recommendation",
+  "deliveryTiming": "Detailed timing recommendation",
+  "roiReasoning": "Detailed explanation of how this strategy improves return on investment",
   "plan": [
     {
       "agentName": "Agent role",
@@ -1133,13 +1290,16 @@ async function runArchitect() {
 }
 Rules:
 - Build exactly one architect plan for variant key "${variant.key}".
-- Include between ${MIN_ARCHITECT_AGENTS} and ${maxAgents} agents.
-- Include at least one compliance-focused agent in the plan.
+- Use exactly ${TARGET_ARCHITECT_AGENTS} agents in this strict fixed order:
+${variantLibrary.map((agent) => `  ${agent.phase}. ${agent.agentName} (${agent.nodeId})`).join("\n")}
+- Do not add, remove, rename, or reorder these six workflow stages.
 - Keep the workflow aligned with this strategy: "${variant.strategy}".
 - Every agent systemInstruction must be 45 to 90 words.
 - Every agent initialTask must be 45 to 90 words.
 - Every agent text must include one sentence that starts with "Why this matters:".
 - Use full terminology and define abbreviations at first use.
+- Include Yield Intelligence guidance in stage 2 using Twitter trends, news signals, and external feeds.
+- Ensure plan-level compliance can pass via a parallel compliance check against the rules dataset.
 - Prefer these agent archetypes when relevant:
 ${agentCatalog}
 - Return JSON only, without Markdown fences or commentary.`;
@@ -1185,6 +1345,9 @@ ${agentCatalog}
             why: (candidate.why || candidate.rationale || variant.why).toString().trim(),
             promptTile: variant.promptTile,
             promptText: variant.promptText,
+            allocationStrategy: (candidate.allocationStrategy || candidate.channelAllocation || variant.allocationStrategy || "").toString().trim(),
+            deliveryTiming: (candidate.deliveryTiming || candidate.timingRecommendation || variant.deliveryTiming || "").toString().trim(),
+            roiReasoning: (candidate.roiReasoning || candidate.roiRationale || variant.roiReasoning || "").toString().trim(),
             variantKey: variant.key
           });
           buffer += `\n[Completed ${variantTitle}]`;
@@ -1240,6 +1403,8 @@ ${agentCatalog}
       selectedInputs: new Set(),
       rawDataByAgent: RAW_DATA_BY_AGENT,
       error: "",
+      complianceDetails: null,
+      selectedPlanCompliance: null,
       visualizationLoading: false,
       visualizationNarrative: "",
       runToken: 0
@@ -1253,6 +1418,8 @@ ${agentCatalog}
       architectPlans: fallbackPlans,
       plan: [],
       error: "Loaded synthetic architect plans after an orchestration error.",
+      complianceDetails: null,
+      selectedPlanCompliance: null,
       visualizationLoading: false,
       visualizationNarrative: ""
     });
@@ -1278,22 +1445,53 @@ async function startAgents() {
     const campaignPrompt = (state.campaignPrompt || demo?.problem || "Launch a converged ad campaign.").trim();
     const inputBlob = `Campaign Brief:\n${campaignPrompt}\n\nSupplemental Inputs:\n${Utils.formatDataEntries(entries)}`;
     const runToken = Date.now();
+    const selectedPlanRecord = state.architectPlans.find((plan) => plan.id === state.selectedArchitectPlanId);
+    const baselineCompliance = state.selectedPlanCompliance || selectedPlanRecord?.complianceValidation || evaluatePlanCompliance({
+      campaignPrompt,
+      allocationStrategy: selectedPlanRecord?.allocationStrategy || "",
+      variantKey: selectedPlanRecord?.variantKey || ""
+    });
+    const complianceOutput = {
+      id: Utils.uniqueId("out"),
+      nodeId: PARALLEL_COMPLIANCE_NODE_ID,
+      phase: "Parallel",
+      name: "Compliance Agent (Parallel)",
+      task: "Validate campaign parameters against compliance rules while the six-stage workflow executes.",
+      instruction: "Run compliance checks in parallel, flag restricted combinations, and recommend compliant alternatives. Include one sentence that starts with Why this matters:.",
+      dataKey: "complianceRulebook",
+      text: "",
+      status: "running",
+      startedAt: Date.now()
+    };
+    const runningCompliance = {
+      ...baselineCompliance,
+      status: "Running",
+      summary: "Parallel compliance agent is validating campaign parameters against the compliance dataset."
+    };
 
     setState({
       stage: "run",
-      agentOutputs: [],
+      agentOutputs: [complianceOutput],
       error: "",
-      runningNodeIds: new Set(),
-      latestNodeId: null,
+      runningNodeIds: new Set([PARALLEL_COMPLIANCE_NODE_ID]),
+      latestNodeId: PARALLEL_COMPLIANCE_NODE_ID,
       dashboard: null,
       issueNodeIds: new Set(),
       approvedPlanCsv: "",
-      complianceDetails: hasComplianceRole(state.plan) ? buildComplianceDetails() : null,
+      selectedPlanCompliance: baselineCompliance,
+      complianceDetails: buildComplianceDetails(runningCompliance),
       complianceExplanationOpen: false,
       visualizationExplanationOpen: false,
       visualizationLoading: false,
       visualizationNarrative: "",
       runToken
+    });
+
+    const compliancePromise = runParallelComplianceAgent(complianceOutput, {
+      creds,
+      model,
+      campaignPrompt,
+      selectedPlan: selectedPlanRecord
     });
 
     const phases = new Map();
@@ -1341,6 +1539,8 @@ async function startAgents() {
       context += `\n\n--- Stage ${phase} ---\n${results.map((r, i) => `Output ${agents[i].agentName}:\n${r}`).join("\n")}`;
     }
 
+    const complianceResult = await compliancePromise;
+
     const nextDashboard = buildDashboard(state.agentOutputs, {
       campaignPrompt,
       selectedPlanId: state.selectedArchitectPlanId || "",
@@ -1363,7 +1563,8 @@ async function startAgents() {
       dashboard: nextDashboard,
       approvedPlanCsv: buildApprovedPlanCsv(),
       rawDataByAgent: buildRawDataByPlan(state.plan),
-      complianceDetails: hasComplianceRole(state.plan) ? buildComplianceDetails() : null,
+      selectedPlanCompliance: complianceResult || baselineCompliance,
+      complianceDetails: buildComplianceDetails(complianceResult || baselineCompliance),
       visualizationLoading: false,
       visualizationNarrative,
       visualizationExplanationOpen: true
@@ -1373,11 +1574,81 @@ async function startAgents() {
   }
 }
 
+function buildComplianceNarrative(evaluation, selectedPlan) {
+  const findings = evaluation?.findings || [];
+  const alternatives = evaluation?.alternatives || [];
+  const sources = evaluation?.sources || [];
+  const lines = [
+    "### Compliance Validation Result",
+    `Status: ${evaluation?.status || "Passed"}. ${evaluation?.summary || ""}`,
+    "",
+    "Why this matters: parallel compliance validation prevents non-compliant spend from entering activation while preserving return on investment objectives."
+  ];
+
+  if (selectedPlan?.allocationStrategy) {
+    lines.push("");
+    lines.push("### Allocation Context");
+    lines.push(selectedPlan.allocationStrategy);
+  }
+
+  if (findings.length) {
+    lines.push("");
+    lines.push("### Findings");
+    findings.forEach((finding) => lines.push(`- ${finding}`));
+  }
+
+  if (alternatives.length) {
+    lines.push("");
+    lines.push("### Compliant Alternatives");
+    alternatives.forEach((item) => lines.push(`- ${item}`));
+  }
+
+  if (sources.length) {
+    lines.push("");
+    lines.push("### Source Traceability");
+    sources.forEach((source) => lines.push(`- ${source.policy}: ${source.source}. Reason: ${source.why}`));
+  }
+
+  return lines.join("\n");
+}
+
+async function runParallelComplianceAgent(out, opts) {
+  const { creds, model, campaignPrompt, selectedPlan } = opts;
+  const baseline = evaluatePlanCompliance({
+    campaignPrompt,
+    allocationStrategy: selectedPlan?.allocationStrategy || "",
+    variantKey: selectedPlan?.variantKey || ""
+  });
+  const context = `Parallel compliance context\nPlan strategy: ${selectedPlan?.strategy || "N/A"}\nAllocation strategy: ${selectedPlan?.allocationStrategy || "N/A"}\nDelivery timing: ${selectedPlan?.deliveryTiming || "N/A"}`;
+  const inputBlob = `Compliance dataset focus:\n${buildDatasetContext("complianceRulebook")}`;
+  const llmNarrative = await runSyntheticAgent(out, {
+    creds,
+    model,
+    agentStyle: "",
+    campaignPrompt,
+    inputBlob,
+    context
+  });
+  const deterministicNarrative = buildComplianceNarrative(baseline, selectedPlan);
+  const merged = [llmNarrative?.trim(), deterministicNarrative].filter(Boolean).join("\n\n");
+  updateAgent(out.id, merged, "done");
+  return baseline;
+}
+
+function buildSupplementalDatasetContext(agent) {
+  const role = inferAgentRole(agent);
+  if (role === "inventory-yield") {
+    return buildDatasetContext("yieldIntelligenceFeed");
+  }
+  return "";
+}
+
 async function runSyntheticAgent(out, opts) {
   const { creds, model, agentStyle, campaignPrompt, inputBlob, context } = opts;
   let narrative = "";
   try {
     const datasetBlock = buildDatasetContext(out.dataKey);
+    const supplementalContext = buildSupplementalDatasetContext(out);
     const priorContext = Utils.truncate(context, 2400);
     await Utils.streamChatCompletion({
       llm: creds,
@@ -1392,7 +1663,7 @@ async function runSyntheticAgent(out, opts) {
           {
             role: "user",
             content:
-              `Campaign Brief:\n${campaignPrompt}\n\nTask:\n${out.task}\n\nRelevant Dataset:\n${datasetBlock}\n\nSupplemental Inputs:\n${inputBlob}\n\nPrior Outputs:\n${priorContext}`
+              `Campaign Brief:\n${campaignPrompt}\n\nTask:\n${out.task}\n\nRelevant Dataset:\n${datasetBlock}${supplementalContext ? `\n\nAdditional Yield Intelligence:\n${supplementalContext}` : ""}\n\nSupplemental Inputs:\n${inputBlob}\n\nPrior Outputs:\n${priorContext}`
           }
         ]
       },
@@ -1490,49 +1761,83 @@ function buildSyntheticAgentNarrative(out, campaignPrompt) {
   const quality = state.dataQuality || computeDataQuality(datasets.audienceGraph || []);
   const compliance = buildComplianceDetails();
 
-  if (role === "planner") {
-    return `### Audience Resolution Narrative
-For the campaign prompt "${campaignPrompt}", the planning step used the Olli household graph to isolate high-propensity Auto Intender households with deterministic filtering rules. The resulting audience contains ${reach.uniqueHouseholds.toLocaleString()} unique households and ${reach.deviceCount.toLocaleString()} connected devices, which creates a measurable base for cross-platform activation.
+  if (role === "planning-identity") {
+    return `### Planning and Identity Narrative
+For the campaign prompt "${campaignPrompt}", the planning and identity stage used the unified audience base dataset to resolve high-value audience cohorts by state. The deterministic output identifies ${reach.uniqueHouseholds.toLocaleString()} unique households and ${reach.deviceCount.toLocaleString()} connected devices that can be activated across channels.
 
 ### Data Quality Review
-This audience was validated for quality before activation. The synthetic audience dataset includes ${quality.duplicateCount} duplicate household identifiers and ${quality.nullDmaCount} records with missing designated market area values. These anomalies were explicitly flagged so that downstream budgeting decisions do not overstate unique reach.
+This stage explicitly documented data quality signals before allocation. The synthetic audience base includes ${quality.duplicateCount} duplicate household identifiers and ${quality.nullDmaCount} records with missing designated market area values, which were flagged to avoid overstating addressable reach.
 
-### Planning Decision Outcome
-The selected audience blueprint balances household scale and confidence score quality, and it is now ready to pass into media line construction with documented limitations and expected overlap behavior.`;
+### Why this matters
+Accurate identity resolution determines whether downstream allocation decisions improve return on investment or simply increase unproductive delivery volume.`;
   }
 
-  if (role === "sales-rep") {
-    return `### Converged Media Plan Construction
-The media planning step translated the audience blueprint into a twelve-line converged schedule covering both linear and digital distribution paths. Budget weighting follows the campaign brief and keeps inventory choices tied to available impressions, daypart performance, and signal reliability.
+  if (role === "inventory-yield") {
+    const intelligence = (datasets.yieldIntelligenceFeed || []).slice(0, 3);
+    return `### Inventory Yield Narrative
+This stage merged unified audience context with Yield Intelligence signals to identify timing windows with higher demand probability. The signal review included sources such as Twitter trends, news signals, and external feed indicators so that delivery can be timed around audience spikes.
 
-### Inventory and Spend Logic
-Linear placements were prioritized for broad household coverage and digital placements were used to improve incremental touch frequency. Each selected line item includes spend, impression volume, and effective cost per thousand impressions. The current effective cost per thousand impressions estimate is ${effectiveCostPerThousandImpressions.toFixed(2)} United States dollars based on deterministic synthetic delivery totals.
+### Yield Intelligence Highlights
+${intelligence.map((item) => `- ${item.source_type} signal "${item.topic}" in ${item.region} indicates ${item.expected_roi_lift_pct} percent expected return on investment lift with ${item.recommended_channel} emphasis during ${item.spike_window}.`).join("\n")}
 
-### Risk Visibility
-Potential Society of Cable Telecommunications Engineers cue-tone standard (SCTE-35) signal degradation was preserved in the plan notes so that operational teams can anticipate under-delivery risk before launch and prepare make-good paths in advance.`;
+### Why this matters
+Yield-aware timing decisions improve return on investment by shifting spend toward periods where audience attention and conversion likelihood are measurably stronger.`;
   }
 
-  if (role === "compliance-bot") {
-    return `### Compliance Validation Narrative
-The compliance review step evaluated planned destinations and categories against synthetic policy rows from the Global Compliance Policy Engine dataset. The review blocked non-compliant financial services placements in Saudi Arabia, enforced disclaimer requirements for pharmaceutical creative in Germany, and preserved only approved routing outcomes.
+  if (role === "booking-proposals") {
+    return `### Booking and Proposals Narrative
+The booking stage converted yield and audience recommendations into channel proposals with deterministic allocation logic. The proposal uses return on investment as the decision objective and keeps fallback paths available when inventory quality changes by state.
 
-### Policy Sources and Rationale
-Source one: ${compliance.sources[0]?.policy || "Saudi Arabia financial services rule"}. Source dataset: ${compliance.sources[0]?.source || "Global Compliance Policy Engine"}. Reason applied: ${compliance.sources[0]?.why || "Restricted category was detected for the target market."}
-Source two: ${compliance.sources[1]?.policy || "Germany pharmaceutical disclaimer rule"}. Source dataset: ${compliance.sources[1]?.source || "Global Compliance Policy Engine"}. Reason applied: ${compliance.sources[1]?.why || "Creative category requires disclaimer handling."}
+### Allocation and Cost Logic
+Each booking recommendation ties spend to expected impression quality, demand timing, and inventory reliability. The current effective cost per thousand impressions estimate is ${effectiveCostPerThousandImpressions.toFixed(2)} United States dollars based on synthetic delivery totals.
 
-### Operational Result
-The output includes approved replacements for blocked inventory and preserves an audit trail so that reviewers can validate exactly where each policy decision originated.`;
+### Why this matters
+Proposal quality directly controls whether budget is deployed into inventory that can generate measurable business outcomes.`;
   }
 
-  if (role === "ops-director") {
+  if (role === "trafficking-signals") {
+    return `### Trafficking and Signals Narrative
+The trafficking stage prepared activation instructions and validated signal pathways before launch. Signal checks emphasized routing consistency, placement metadata quality, and execution readiness under variable daypart demand.
+
+### Signal Reliability Interpretation
+Potential signal risk points were documented with explicit mitigation instructions so operations can respond before pacing degradation affects return on investment.
+
+### Why this matters
+Even strong allocation strategy fails without reliable trafficking and signal execution, so this step protects delivery quality before budget goes live.`;
+  }
+
+  if (role === "inflight-operations") {
     return `### In-Flight Operations Narrative
-The operations step evaluated pacing trends across linear and digital delivery logs and identified a deterministic under-delivery condition in linear inventory during the mid-campaign window. A make-good reallocation of ${makeGood.shiftBudget.toLocaleString()} United States dollars was triggered toward digital ad-lite inventory to restore delivery confidence.
+The operations stage evaluated pacing trends and identified deterministic under-delivery pressure in the linear lane during the mid-campaign window. A make-good reallocation of ${makeGood.shiftBudget.toLocaleString()} United States dollars was triggered to protect delivery against target outcomes.
 
 ### Financial Interpretation
-Before intervention, modeled return on investment measured ${makeGood.beforeRoi.toFixed(2)}. After intervention, modeled return on investment rose to ${makeGood.afterRoi.toFixed(2)}. This improvement is tied to better realized impressions and lower under-delivery exposure during constrained linear windows.
+Before intervention, modeled return on investment measured ${makeGood.beforeRoi.toFixed(2)}. After intervention, modeled return on investment rose to ${makeGood.afterRoi.toFixed(2)} as pacing variance was reduced.
 
-### Delivery Interpretation
-This step closes the loop between planning assumptions and live execution evidence, ensuring that every budget movement is justified with transparent pacing data and business impact metrics.`;
+### Why this matters
+In-flight correction protects campaign value by preventing prolonged under-delivery from eroding final return on investment.`;
+  }
+
+  if (role === "measurement") {
+    return `### Measurement Narrative
+The measurement stage consolidated cross-channel outcomes and quantified performance with deterministic attribution indicators. Reported reach includes ${reach.uniqueHouseholds.toLocaleString()} unique households, ${reach.deviceCount.toLocaleString()} devices, and ${reach.overlapPct} percent cross-platform overlap.
+
+### Return on Investment Interpretation
+Measurement output links delivery behavior, channel mix, and corrective actions to final outcome quality so optimization decisions can be replicated in future cycles.
+
+### Why this matters
+Without clear measurement traceability, return on investment improvements cannot be validated or scaled across campaigns.`;
+  }
+
+  if (role === "compliance-agent") {
+    return `### Parallel Compliance Narrative
+The compliance agent executed in parallel with the six-stage workflow and validated campaign parameters against synthetic policy rules. Rule evidence was logged with source references and compliant alternatives where restrictions were detected.
+
+### Policy Sources and Rationale
+Source one: ${compliance.sources[0]?.policy || "Financial services restriction policy"}. Source dataset: ${compliance.sources[0]?.source || "Global Compliance Policy Engine"}. Reason applied: ${compliance.sources[0]?.why || "Restricted category was detected for the target market."}
+Source two: ${compliance.sources[1]?.policy || "Pharmaceutical disclaimer policy"}. Source dataset: ${compliance.sources[1]?.source || "Global Compliance Policy Engine"}. Reason applied: ${compliance.sources[1]?.why || "Creative category requires disclaimer handling."}
+
+### Why this matters
+Parallel compliance validation prevents non-compliant activation while preserving campaign pacing and return on investment goals.`;
   }
 
   return `### Agent Narrative
@@ -1544,10 +1849,17 @@ function inferAgentRole(agent) {
   const name = (agent?.agentName || agent?.name || "").toString().toLowerCase();
   const text = `${id} ${name}`;
 
-  if (text.includes("compliance")) return "compliance-bot";
-  if (text.includes("planner") || text.includes("audience")) return "planner";
-  if (text.includes("sales") || text.includes("media") || text.includes("inventory")) return "sales-rep";
-  if (text.includes("ops") || text.includes("operation") || text.includes("delivery") || text.includes("optimization")) return "ops-director";
+  if (text.includes("parallel-compliance") || text.includes("compliance agent")) return "compliance-agent";
+  if (text.includes("compliance")) return "compliance-agent";
+  if (text.includes("planning-identity") || text.includes("planning and identity")) return "planning-identity";
+  if (text.includes("inventory-yield") || text.includes("inventory yield")) return "inventory-yield";
+  if (text.includes("booking-proposals") || text.includes("booking and proposals")) return "booking-proposals";
+  if (text.includes("trafficking-signals") || text.includes("trafficking and signals")) return "trafficking-signals";
+  if (text.includes("inflight-operations") || text.includes("in-flight operations")) return "inflight-operations";
+  if (text.includes("measurement")) return "measurement";
+  if (text.includes("planner") || text.includes("audience")) return "planning-identity";
+  if (text.includes("sales") || text.includes("booking") || text.includes("proposal")) return "booking-proposals";
+  if (text.includes("ops") || text.includes("operation") || text.includes("delivery") || text.includes("optimization")) return "inflight-operations";
 
   if (AGENT_DATASET_MAP[agent?.nodeId]) return agent.nodeId;
   if (AGENT_DATASET_MAP[agent?.agentName]) return agent.agentName;
@@ -1564,23 +1876,22 @@ function resolveDatasetKey(agent) {
 
   const phase = Number(agent?.phase);
   if (Number.isFinite(phase)) {
-    if (phase <= 1) return "audienceGraph";
-    if (phase <= 3) return "inventoryMatrix";
-    if (phase <= 4) return "globalLawRegistry";
-    return "liveDeliveryLog";
+    if (phase >= 1 && phase <= TARGET_ARCHITECT_AGENTS) return "unifiedAudienceDataset";
+    return "complianceRulebook";
   }
-  return "liveDeliveryLog";
+  return "unifiedAudienceDataset";
 }
 
 function hasComplianceRole(plan = []) {
-  return (plan || []).some((agent) => inferAgentRole(agent) === "compliance-bot");
+  return Array.isArray(plan) && plan.length > 0;
 }
 
 function buildRawDataByPlan(plan = []) {
   if (!Array.isArray(plan) || !plan.length) return RAW_DATA_BY_AGENT;
   const map = {};
   plan.forEach((agent) => {
-    const dataKey = resolveDatasetKey(agent);
+    const role = inferAgentRole(agent);
+    const dataKey = role === "inventory-yield" ? "yieldIntelligenceFeed" : resolveDatasetKey(agent);
     const entry = RAW_DATA_BY_KEY[dataKey];
     if (!entry) return;
     map[agent.nodeId] = entry;
@@ -1589,35 +1900,252 @@ function buildRawDataByPlan(plan = []) {
   return Object.keys(map).length ? map : RAW_DATA_BY_AGENT;
 }
 
-function buildComplianceDetails() {
-  const rows = datasets.globalLawRegistry || [];
-  const saFinancial = rows.find((row) => row.country_code === "SA" && row.restriction_category === "financial_services");
-  const dePharma = rows.find((row) => row.country_code === "DE" && row.restriction_category === "pharma");
-  const frAlcohol = rows.find((row) => row.country_code === "FR" && row.restriction_category === "alcohol");
+function detectCampaignCountries(prompt = "") {
+  const text = (prompt || "").toString().toLowerCase();
+  const map = [
+    { code: "US", terms: ["united states", "usa", " us "] },
+    { code: "IN", terms: ["india", " indian "] },
+    { code: "DE", terms: ["germany", " german "] },
+    { code: "FR", terms: ["france", " french "] },
+    { code: "SA", terms: ["saudi arabia", " saudi "] },
+    { code: "UK", terms: ["united kingdom", " britain ", " uk "] },
+    { code: "AE", terms: ["uae", "united arab emirates"] },
+    { code: "CA", terms: ["canada"] },
+    { code: "MX", terms: ["mexico"] }
+  ];
+  const padded = ` ${text} `;
+  const hits = map
+    .filter((item) => item.terms.some((term) => padded.includes(term)))
+    .map((item) => item.code);
+  return hits.length ? hits : ["US"];
+}
 
-  const sources = [
-    saFinancial ? {
-      policy: `Saudi Arabia financial services policy (${saFinancial.restriction_type})`,
-      source: "Global Compliance Policy Engine synthetic dataset, country_code = SA",
-      why: "The campaign includes financial services messaging and the rule marks this category as blocked for Saudi Arabia placements."
-    } : null,
-    dePharma ? {
-      policy: `Germany pharmaceutical policy (${dePharma.restriction_type})`,
-      source: "Global Compliance Policy Engine synthetic dataset, country_code = DE",
-      why: "Any pharmaceutical creative routed to Germany must include required on-screen disclaimer language before approval."
-    } : null,
-    frAlcohol ? {
-      policy: `France alcohol policy (${frAlcohol.restriction_type})`,
-      source: "Global Compliance Policy Engine synthetic dataset, country_code = FR",
-      why: "Alcohol placements are subject to local time constraints and therefore require daypart checks before final routing."
-    } : null
-  ].filter(Boolean);
+function detectCampaignCategories(prompt = "") {
+  const text = (prompt || "").toString().toLowerCase();
+  const categories = new Set();
+  if (/\b(alcohol|beer|wine|whiskey|vodka|liquor)\b/i.test(text)) categories.add("alcohol");
+  if (/\b(finance|financial|bank|loan|credit|investment)\b/i.test(text)) categories.add("financial_services");
+  if (/\b(credit)\b/i.test(text)) categories.add("credit");
+  if (/\b(pharma|pharmaceutical|medicine|drug|healthcare)\b/i.test(text)) categories.add("pharma");
+  if (/\b(prescription)\b/i.test(text)) categories.add("prescription_drugs");
+  if (/\b(gambling|casino)\b/i.test(text)) categories.add("gambling");
+  if (/\b(betting)\b/i.test(text)) categories.add("betting");
+  if (/\b(tobacco|cigarette|nicotine)\b/i.test(text)) categories.add("tobacco");
+  if (/\b(cannabis|marijuana)\b/i.test(text)) categories.add("cannabis");
+  if (/\b(crypto|cryptocurrency)\b/i.test(text)) categories.add("cryptocurrency");
+  if (/\b(political|election|party)\b/i.test(text)) categories.add("political");
+  if (/\b(adult)\b/i.test(text)) categories.add("adult_content");
+  if (/\b(children|kids|child)\b/i.test(text)) categories.add("children_products");
+  if (/\b(weight loss|slimming)\b/i.test(text)) categories.add("weight_loss");
+  if (/\b(job|hiring|recruitment)\b/i.test(text)) categories.add("job");
+  if (/\b(housing|real estate|rental)\b/i.test(text)) categories.add("housing");
+  return categories.size ? [...categories] : ["general_brand"];
+}
+
+function detectCampaignPlatforms(text = "") {
+  const value = (text || "").toString().toLowerCase();
+  const platforms = new Set();
+  if (/\b(linear|television|tv|broadcast)\b/i.test(value)) {
+    platforms.add("linear");
+    platforms.add("tv");
+    platforms.add("broadcast");
+    platforms.add("video");
+  }
+  if (/\b(streaming|digital|connected tv|ott|max ad-lite|discovery\+)\b/i.test(value)) {
+    platforms.add("streaming");
+    platforms.add("digital");
+    platforms.add("video");
+  }
+  if (/\b(social)\b/i.test(value)) {
+    platforms.add("social");
+    platforms.add("digital");
+  }
+  if (/\b(sports|live sports)\b/i.test(value)) {
+    platforms.add("sports");
+    platforms.add("live_sports");
+  }
+  if (!platforms.size) {
+    platforms.add("streaming");
+    platforms.add("linear");
+  }
+  return [...platforms];
+}
+
+function detectAudienceSignals(text = "") {
+  const value = (text || "").toString().toLowerCase();
+  const signals = new Set();
+  if (/\b(minor|minors)\b/i.test(value)) signals.add("minors");
+  if (/\b(under 18|under-18|u18)\b/i.test(value)) signals.add("under_18");
+  if (/\b(under 21|under-21|u21)\b/i.test(value)) signals.add("under_21");
+  if (/\b(teen|teenager|teens)\b/i.test(value)) signals.add("teenagers");
+  if (/\b(children|kids|child)\b/i.test(value)) signals.add("children");
+  if (/\b(vulnerable|economically vulnerable|financially vulnerable)\b/i.test(value)) signals.add("vulnerable_financial");
+  if (/\b(religion|ethnicity|race|gender)\b/i.test(value)) {
+    signals.add("religion");
+    signals.add("ethnicity");
+    signals.add("race");
+    signals.add("gender");
+  }
+  return [...signals];
+}
+
+function detectScheduleSignals(text = "") {
+  const value = (text || "").toString().toLowerCase();
+  const signals = new Set();
+  if (/\b(daytime|morning|afternoon)\b/i.test(value)) signals.add("daytime");
+  if (/\b(live sports)\b/i.test(value)) signals.add("live_sports_minor");
+  return [...signals];
+}
+
+function splitRuleValues(value = "") {
+  return (value || "")
+    .toString()
+    .split("|")
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+function includesAnyValue(haystack = [], needles = []) {
+  const set = new Set((haystack || []).map((item) => item.toString().toLowerCase()));
+  return (needles || []).some((needle) => set.has(needle.toString().toLowerCase()));
+}
+
+function isAnyRuleValue(value = "") {
+  const values = splitRuleValues(value || "any");
+  return values.length === 0 || values.includes("any");
+}
+
+function hasSpecificRuleConstraint(rule = {}) {
+  return ["applies_product", "applies_platform", "applies_audience", "applies_schedule"].some((field) => !isAnyRuleValue(rule[field]));
+}
+
+function buildComplianceContext(campaignPrompt = "", allocationStrategy = "") {
+  const combined = `${campaignPrompt || ""}\n${allocationStrategy || ""}`.toLowerCase();
+  const countries = detectCampaignCountries(combined);
+  const geos = new Set(countries);
+  geos.add("GLOBAL");
+  if (countries.some((country) => ["DE", "FR"].includes(country))) geos.add("EU");
+  if (countries.some((country) => ["SA", "AE"].includes(country))) geos.add("MIDDLE_EAST");
+  if (countries.length > 1) geos.add("CROSS_BORDER");
+  return {
+    text: combined,
+    countries,
+    geos: [...geos],
+    categories: detectCampaignCategories(combined),
+    platforms: detectCampaignPlatforms(combined),
+    audienceSignals: detectAudienceSignals(combined),
+    scheduleSignals: detectScheduleSignals(combined)
+  };
+}
+
+function ruleAppliesToContext(rule, context) {
+  const geo = splitRuleValues(rule.applies_geo || "GLOBAL");
+  if (!geo.includes("any") && !includesAnyValue(context.geos, geo)) return false;
+
+  const products = splitRuleValues(rule.applies_product || "any");
+  if (!products.includes("any") && !includesAnyValue(context.categories, products)) return false;
+
+  const platforms = splitRuleValues(rule.applies_platform || "any");
+  if (!platforms.includes("any") && !includesAnyValue(context.platforms, platforms)) return false;
+
+  const audience = splitRuleValues(rule.applies_audience || "any");
+  if (!audience.includes("any") && !includesAnyValue(context.audienceSignals, audience)) return false;
+
+  const schedule = splitRuleValues(rule.applies_schedule || "any");
+  if (!schedule.includes("any") && !includesAnyValue(context.scheduleSignals, schedule)) return false;
+
+  const triggers = splitRuleValues(rule.trigger_terms || "");
+  if (triggers.length && !triggers.some((term) => context.text.includes(term))) return false;
+
+  return true;
+}
+
+function ruleEvidencePresent(rule, context) {
+  const evidenceTerms = splitRuleValues(rule.required_evidence || "");
+  if (!evidenceTerms.length) return false;
+  return evidenceTerms.some((term) => context.text.includes(term));
+}
+
+function evaluatePlanCompliance({ campaignPrompt = "", allocationStrategy = "", variantKey = "" } = {}) {
+  const rows = datasets.complianceRulebook || [];
+  const context = buildComplianceContext(campaignPrompt, allocationStrategy);
+  const findings = [];
+  const alternatives = [];
+  const sources = [];
+  const matchedRules = [];
+  const violatedRuleIds = new Set();
+
+  rows.forEach((rule) => {
+    if (!ruleAppliesToContext(rule, context)) return;
+    matchedRules.push(rule);
+
+    const action = (rule.required_action || "enforce_policy").toLowerCase();
+    const severity = (rule.severity || "medium").toLowerCase();
+    const hasEvidence = ruleEvidencePresent(rule, context);
+    const hasTriggerCondition = splitRuleValues(rule.trigger_terms || "").length > 0;
+    const enforceEvidence = ["require_disclaimer", "require_disclosure", "require_consent", "enforce_frequency", "enforce_safety", "enforce_metadata"].includes(action);
+    const isBlockingAction = action === "block";
+    const evidenceMissing = enforceEvidence && !hasEvidence;
+    const policyNeedsManualReview = action === "enforce_policy" && (hasSpecificRuleConstraint(rule) || hasTriggerCondition);
+    const shouldFlag = isBlockingAction || evidenceMissing || policyNeedsManualReview;
+    if (!shouldFlag) return;
+    violatedRuleIds.add(rule.rule_id);
+
+    findings.push(`Rule ${rule.rule_id} (${severity.toUpperCase()}, ${rule.rule_category}): ${rule.rule_description}`);
+    alternatives.push(rule.suggested_fix || "Apply compliant alternative before activation.");
+    sources.push({
+      policy: `Rule ${rule.rule_id} (${rule.rule_category})`,
+      source: `${rule.source_reference || "Advertising Compliance Rulebook synthetic dataset"} (rule_id=${rule.rule_id})`,
+      why: isBlockingAction
+        ? "Campaign context matches a blocked combination under this rule."
+        : evidenceMissing
+          ? `Required evidence is missing (${rule.required_evidence || "policy evidence"}).`
+          : "Policy review is required for this campaign context."
+    });
+  });
+
+  if (!sources.length) {
+    const sourceRows = matchedRules.length ? matchedRules.slice(0, 3) : rows.slice(0, 3);
+    sourceRows.forEach((row) => {
+      sources.push({
+        policy: `Rule ${row.rule_id} (${row.rule_category})`,
+        source: `${row.source_reference || "Advertising Compliance Rulebook synthetic dataset"} (rule_id=${row.rule_id})`,
+        why: "This rule was checked against the current campaign context."
+      });
+    });
+  }
+
+  const hasBlocking = rows.some((row) =>
+    violatedRuleIds.has(row.rule_id)
+    && (row.required_action || "").toLowerCase() === "block"
+    && (row.severity || "").toLowerCase() === "high"
+  );
+  const status = hasBlocking ? "Failed" : findings.length ? "Passed with Adjustments" : "Passed";
+  const summary = findings.length
+    ? `Parallel compliance check evaluated ${matchedRules.length} matched rules and found ${findings.length} issues in the 50-rule dataset. Apply fixes before activation.`
+    : `Parallel compliance check evaluated ${matchedRules.length} matched rules in the 50-rule dataset with no actionable issues.`;
 
   return {
-    summary: "Compliance decisions in this demo are sourced from the synthetic Global Compliance Policy Engine dataset bundled in data.js.",
+    status,
+    summary,
+    findings,
+    alternatives,
     sources,
+    allocationStrategy,
+    variantKey
+  };
+}
+
+function buildComplianceDetails(evaluation = null) {
+  const result = evaluation || evaluatePlanCompliance({ campaignPrompt: state.campaignPrompt || "" });
+  return {
+    status: result.status,
+    summary: result.summary,
+    findings: result.findings || [],
+    alternatives: result.alternatives || [],
+    sources: result.sources || [],
     detailedExplanation:
-      "The compliance step is not using external legal APIs at runtime. It reads deterministic policy rows from the synthetic registry, matches each media line by country and category, and then applies a rule outcome of blocked, restricted by time, or disclaimer required. This makes the behavior auditable for demos while still showing how real policy sourcing would be surfaced in production."
+      "The parallel compliance agent evaluates campaign parameters against a synthetic 50-rule Advertising Compliance Rulebook inspired by India, European Union, United Kingdom, United States, and major ad-platform policy baselines. It checks product restrictions, audience targeting constraints, geographic requirements, privacy obligations, and platform safety controls. When a rule condition is matched, it records the violated rule, explains the reason, links the underlying source reference, and suggests a compliant alternative so the six-agent workflow can continue with auditable policy coverage."
   };
 }
 
@@ -1640,8 +2168,10 @@ function updateAgent(id, text, status) {
 }
 
 function shouldFlagIssue(agent) {
-  if (!agent || inferAgentRole(agent) !== "compliance-bot") return false;
-  return !!extractIssueReason(agent.text || "");
+  if (!agent || inferAgentRole(agent) !== "compliance-agent") return false;
+  const text = (agent.text || "").toLowerCase();
+  if (/\b(unresolved|failed compliance|cannot proceed|activation blocked)\b/.test(text)) return true;
+  return false;
 }
 
 let chartsScheduled = false;
@@ -1932,7 +2462,18 @@ function nodeClassForKind(kind) {
 function addFlowchartPositions(flowchart) {
   if (flowchart.nodes.some(n => n.position)) return flowchart;
 
-  const pipelineOrder = ["ui", "orchestration", "planner", "sales-rep", "compliance-bot", "ops-director", "output"];
+  const pipelineOrder = [
+    "ui",
+    "orchestration",
+    "planning-identity-agent",
+    "inventory-yield-agent",
+    "booking-proposals-agent",
+    "trafficking-signals-agent",
+    "inflight-operations-agent",
+    "measurement-agent",
+    PARALLEL_COMPLIANCE_NODE_ID,
+    "output"
+  ];
   const xStart = 0;
   const xStep = 210;
   const yMain = 0;
