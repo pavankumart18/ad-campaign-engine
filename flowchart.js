@@ -17,11 +17,11 @@ const NODE_BASE_STYLE = {
   "font-size": "15px",
   "font-weight": "600",
   "text-wrap": "wrap",
-  "text-max-width": "260px",
+  "text-max-width": "220px",
   "text-margin-y": 0,
   width: "label",
   height: "label",
-  "min-zoomed-font-size": 10,
+  "min-zoomed-font-size": 7,
   "overlay-opacity": 0,
   "transition-property": "background-color, border-color, shadow-blur",
   "transition-duration": "200ms",
@@ -43,45 +43,6 @@ const EDGE_BASE_STYLE = {
 };
 
 const STATE_STYLES = [
-  {
-    selector: "node.is-active",
-    style: {
-      "background-color": "#ffb703",
-      "border-color": "#fb8500",
-      color: "#2b261f",
-      "shadow-blur": 20,
-      "shadow-color": "#ffb70366",
-      "shadow-opacity": 1,
-      "shadow-offset-x": 0,
-      "shadow-offset-y": 0,
-    },
-  },
-  {
-    selector: "node.is-complete",
-    style: {
-      "background-color": "#2d6a4f",
-      "border-color": "#1b4332",
-    },
-  },
-  {
-    selector: "node.is-selected",
-    style: {
-      "border-color": "#ffd166",
-      "border-width": 5,
-      "shadow-blur": 18,
-      "shadow-color": "#ffd16666",
-      "shadow-opacity": 1,
-      "shadow-offset-x": 0,
-      "shadow-offset-y": 0,
-    },
-  },
-  {
-    selector: "node.is-failed",
-    style: {
-      "background-color": "#9b2226",
-      "border-color": "#ae2012",
-    },
-  },
   {
     selector: "node.node-system",
     style: {
@@ -105,7 +66,7 @@ const STATE_STYLES = [
     style: {
       "background-color": "#3b3f57",
       "border-color": "#ff8c42",
-      "font-size": "14px",
+      "font-size": "13px",
     },
   },
   {
@@ -113,9 +74,9 @@ const STATE_STYLES = [
     style: {
       "background-color": "#20243a",
       "border-color": "#6dd3fb",
-      "font-size": "12px",
+      "font-size": "11px",
       "font-weight": "500",
-      "text-max-width": "190px",
+      "text-max-width": "150px",
       padding: "12px",
     },
   },
@@ -143,6 +104,68 @@ const STATE_STYLES = [
     style: {
       "background-color": "#303658",
       "border-color": "#ff6600",
+    },
+  },
+  {
+    selector: "node.is-pending",
+    style: {
+      "border-style": "dashed",
+      "border-width": 4,
+      "border-color": "#8a93ad",
+      opacity: 0.96,
+    },
+  },
+  {
+    selector: "node.is-active",
+    style: {
+      "background-color": "#ffb703",
+      "border-color": "#ffd166",
+      "border-width": 6,
+      color: "#2b261f",
+      "font-weight": "700",
+      "shadow-blur": 28,
+      "shadow-color": "#ffb70366",
+      "shadow-opacity": 1,
+      "shadow-offset-x": 0,
+      "shadow-offset-y": 0,
+    },
+  },
+  {
+    selector: "node.is-complete",
+    style: {
+      "background-color": "#2d6a4f",
+      "border-color": "#95d5b2",
+      "border-width": 5,
+      "shadow-blur": 16,
+      "shadow-color": "#2d6a4f55",
+      "shadow-opacity": 1,
+      "shadow-offset-x": 0,
+      "shadow-offset-y": 0,
+    },
+  },
+  {
+    selector: "node.is-selected",
+    style: {
+      "border-color": "#ffd166",
+      "border-width": 5,
+      "shadow-blur": 18,
+      "shadow-color": "#ffd16666",
+      "shadow-opacity": 1,
+      "shadow-offset-x": 0,
+      "shadow-offset-y": 0,
+    },
+  },
+  {
+    selector: "node.is-failed",
+    style: {
+      "background-color": "#9b2226",
+      "border-color": "#ae2012",
+      "border-width": 5,
+      "shadow-blur": 18,
+      "shadow-color": "#9b222655",
+      "shadow-opacity": 1,
+      "shadow-offset-x": 0,
+      "shadow-offset-y": 0,
     },
   },
   {
@@ -223,7 +246,7 @@ export function createFlowchart(containerOrSelector, elements = [], options = {}
     userPanningEnabled: true,
   });
 
-  let nodeState = { activeIds: [], completedIds: [], failedIds: [], selectedId: null };
+  let nodeState = { activeIds: [], completedIds: [], failedIds: [], pendingIds: [], selectedId: null };
   let docClickHandler = null;
   function alignDataNodes() {
     const dataNodes = cy.nodes(".node-data");
@@ -325,12 +348,13 @@ export function createFlowchart(containerOrSelector, elements = [], options = {}
         if (elements.length === 0) return;
 
         const bb = elements.boundingBox({ includeLabels: true, includeOverlays: true });
-        const PADDING_Y = 100;
-        const MIN_HEIGHT = 480;
+        const PADDING_Y = controller.orientation === "vertical" ? 160 : 120;
+        const MIN_HEIGHT = controller.orientation === "vertical" ? 560 : 540;
         const desiredHeight = bb.h + PADDING_Y;
         const rect = container.getBoundingClientRect();
         const available = window.innerHeight - rect.top - 24;
-        const maxHeight = Math.max(MIN_HEIGHT, Math.floor(available * 0.75));
+        const maxHeightFactor = controller.orientation === "vertical" ? 0.88 : 0.8;
+        const maxHeight = Math.max(MIN_HEIGHT, Math.floor(available * maxHeightFactor));
         const newHeight = Math.min(Math.max(MIN_HEIGHT, desiredHeight), maxHeight);
 
         if (Math.abs(container.offsetHeight - newHeight) > 5) {
@@ -356,15 +380,17 @@ export function createFlowchart(containerOrSelector, elements = [], options = {}
             : [],
         completedIds: Array.isArray(nextState.completedIds) ? nextState.completedIds.filter(Boolean) : [],
         failedIds: Array.isArray(nextState.failedIds) ? nextState.failedIds.filter(Boolean) : [],
+        pendingIds: Array.isArray(nextState.pendingIds) ? nextState.pendingIds.filter(Boolean) : [],
         selectedId: nextState.selectedId ?? null,
       };
       controller.applyNodeState();
     },
     applyNodeState() {
       cy.startBatch();
-      cy.nodes().forEach((node) => node.removeClass("is-active is-complete is-selected is-failed"));
+      cy.nodes().forEach((node) => node.removeClass("is-pending is-active is-complete is-selected is-failed"));
       cy.nodes().forEach((node) => {
         const id = node.id();
+        if (nodeState.pendingIds.includes(id)) node.addClass("is-pending");
         if (nodeState.activeIds.includes(id)) node.addClass("is-active");
         if (nodeState.selectedId === id) node.addClass("is-selected");
         if (nodeState.completedIds.includes(id)) node.addClass("is-complete");

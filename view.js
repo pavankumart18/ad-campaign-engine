@@ -147,18 +147,77 @@ function renderPrettySection(title, value) {
   `;
 }
 
-function renderPrettySubAgents(items = []) {
+function subAgentStatusMeta(status = "") {
+  const value = (status || "").toLowerCase();
+  if (value === "done") return { label: "Done", tone: "success" };
+  if (value === "running") return { label: "Running", tone: "primary" };
+  if (value === "error") return { label: "Error", tone: "danger" };
+  return { label: "Pending", tone: "secondary" };
+}
+
+function resolveSelectedSubAgent(items = [], state = {}, contextKey = "") {
+  if (!items.length) return { selected: null, selectedId: null };
+  const chosenId = contextKey ? state?.subAgentSelections?.[contextKey] : null;
+  const selected = items.find((item) => item.id === chosenId)
+    || items.find((item) => item.status === "running")
+    || items.find((item) => item.status === "error")
+    || items[0];
+  return { selected, selectedId: selected?.id || null };
+}
+
+function renderPrettySubAgents(items = [], state = {}, actions = {}, options = {}) {
   if (!items.length) return html`<span class="detail-null">No sub-agent results recorded.</span>`;
+  const {
+    contextKey = "subagents",
+    sectionLabel = "Select Sub-Agent Output"
+  } = options;
+  const { selected, selectedId } = resolveSelectedSubAgent(items, state, contextKey);
+  const selectedMeta = subAgentStatusMeta(selected?.status);
   return html`
-    <div class="detail-card-grid">
-      ${items.map((item) => html`
-        <div class="detail-card">
-          <div class="detail-card-title">${item.name || "Sub-Agent"}</div>
-          ${(item.details || []).length
-            ? html`<ul class="detail-list mb-0">${(item.details || []).map((detail) => html`<li>${detail}</li>`)}</ul>`
-            : html`<span class="detail-null">No notes recorded.</span>`}
+    <div class="subagent-switcher">
+      <div class="detail-section-label">${sectionLabel}</div>
+      <div class="subagent-tab-row">
+        ${items.map((item) => {
+          const meta = subAgentStatusMeta(item.status);
+          return html`
+            <button
+              type="button"
+              class="subagent-tab ${item.id === selectedId ? "is-active" : ""}"
+              @click=${() => actions?.selectSubAgent?.(contextKey, item.id)}
+            >
+              <span class="subagent-tab-name">${item.name || "Sub-Agent"}</span>
+              <span class="subagent-tab-status tone-${meta.tone}">${meta.label}</span>
+            </button>
+          `;
+        })}
+      </div>
+      ${selected ? html`
+        <div class="detail-card subagent-focus-card">
+          <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+            <div class="detail-card-title mb-0">${selected.name || "Sub-Agent"}</div>
+            <span class="badge text-bg-${selectedMeta.tone}">${selectedMeta.label}</span>
+          </div>
+          ${(selected.details || []).length
+            ? html`<ul class="detail-list mb-0">${(selected.details || []).slice(0, 4).map((detail) => html`<li>${detail}</li>`)}</ul>`
+            : selected.summary
+              ? html`<div class="detail-text-panel">${selected.summary}</div>`
+              : html`<span class="detail-null">No notes recorded.</span>`}
+          ${selected.text ? html`
+            <div class="detail-section">
+              <div class="detail-section-label">Live Output</div>
+              <div class="detail-text-panel">${selected.text}</div>
+            </div>
+          ` : null}
+          ${renderPrettySection("Input Data", selected.inputData)}
+          ${renderPrettySection("Output Data", selected.outputData)}
+          ${selected.whyMatters ? html`
+            <div class="detail-section">
+              <div class="detail-section-label">Why This Matters</div>
+              <div class="detail-text-panel">${selected.whyMatters}</div>
+            </div>
+          ` : null}
         </div>
-      `)}
+      ` : null}
     </div>
   `;
 }
@@ -191,21 +250,38 @@ function hasStructuredAgentDetail(agent) {
   return hasInputData || hasStateUpdate || hasSubAgents || hasHandoff;
 }
 
-function renderAgentStructuredDetails(agent, wrapperClass = "") {
+function renderAgentStructuredDetailsContent(agent, state = {}, actions = {}, options = {}) {
+  if (!hasStructuredAgentDetail(agent)) return null;
+  const {
+    includeSubAgents = true,
+    includeInputData = true,
+    includeStateUpdate = true,
+    includeHandoff = true,
+    subAgentContextKey = agent?.nodeId ? `stage-${agent.nodeId}` : "stage-subagents",
+    subAgentSectionLabel = "Select Sub-Agent Output"
+  } = options;
+  return html`
+    ${includeInputData ? renderPrettySection("Input Data", agent.inputData) : null}
+    ${includeSubAgents && agent.subAgentResults?.length ? html`
+      <div class="detail-section">
+        ${renderPrettySubAgents(agent.subAgentResults, state, actions, {
+          contextKey: subAgentContextKey,
+          sectionLabel: subAgentSectionLabel
+        })}
+      </div>
+    ` : null}
+    ${includeStateUpdate ? renderPrettySection("Campaign_State_Object Update", agent.stateUpdate) : null}
+    ${includeHandoff ? renderPrettySection("Handoff", agent.handoff) : null}
+  `;
+}
+
+function renderAgentStructuredDetails(agent, state = {}, actions = {}, wrapperClass = "", options = {}) {
   if (!hasStructuredAgentDetail(agent)) return null;
   const classes = wrapperClass ? ` ${wrapperClass}` : "";
   return html`
     <details class=${`detail-disclosure${classes}`}>
       <summary>Detailed execution</summary>
-      ${renderPrettySection("Input Data", agent.inputData)}
-      ${agent.subAgentResults?.length ? html`
-        <div class="detail-section">
-          <div class="detail-section-label">Sub-Agent Results</div>
-          ${renderPrettySubAgents(agent.subAgentResults)}
-        </div>
-      ` : null}
-      ${renderPrettySection("Campaign_State_Object Update", agent.stateUpdate)}
-      ${renderPrettySection("Handoff", agent.handoff)}
+      ${renderAgentStructuredDetailsContent(agent, state, actions, options)}
     </details>
   `;
 }
@@ -289,7 +365,7 @@ export function renderApp(container, state, config, actions) {
     ${renderCampaignPrompt(state, demo, actions)}
     ${renderPlan(state, actions)}
     ${renderDataInputs(state, actions)}
-    ${renderFlow(state)}
+    ${renderFlow(state, actions)}
     ${renderTimeline(state)}
     ${renderComplianceBanner(state)}
     ${renderComplianceDetails(state, actions)}
@@ -410,30 +486,60 @@ function renderDataInputs(state, actions) {
     : selectedPlan?.recommended
       ? "Execute Recommended Scenario"
       : "Launch Campaign with Synthetic Data";
+  const selectedCount = state.selectedInputs?.size || 0;
   return html`
     <section class="card mb-4" data-running-key=${state.stage === "data" ? "data-inputs" : null}>
-      <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2"><div><i class="bi bi-database me-2"></i>Synthetic Data Sources</div><button class="btn btn-sm btn-primary" @click=${actions.startAgents} ?disabled=${disabled}>${launchLabel}</button></div>
-      <div class="card-body">
-        <div class="row g-3">
-          <div class="col-lg-7">
-            <div class="list-group">${state.suggestedInputs.map((input) => {
-              const selected = state.selectedInputs.has(input.id);
-              return html`<button type="button" class="list-group-item list-group-item-action d-flex flex-column gap-1 ${selected ? "active text-white" : ""}" @click=${() => actions.toggleSuggestedInput(input.id)}><div class="d-flex justify-content-between align-items-center w-100"><span class="fw-semibold ${selected ? "text-white" : ""}">${input.title}</span><span class="badge text-uppercase bg-secondary">${input.type}</span></div><pre class="mb-0 small ${selected ? "text-white" : "text-body-secondary"}" style="white-space: pre-wrap; word-break: break-word;">${truncate(input.content, 420)}</pre></button>`;
-            })}</div>
-            ${!state.suggestedInputs.length ? html`<p class="text-body-secondary small">Select an architect plan to load synthetic data sources.</p>` : null}
-          </div>
-          <div class="col-lg-5">
-            <div class="mb-3"><label class="form-label small fw-semibold">Upload CSV, JSON, or text files</label><input class="form-control" type="file" multiple accept=".txt,.csv,.json" @change=${actions.handleFileUpload} /><ul class="list-group list-group-flush mt-2 small">${state.uploads.map((u) => html`<li class="list-group-item d-flex justify-content-between align-items-center"><div><div class="fw-semibold">${u.title}</div><div class="text-body-secondary">${formatBytes(u.meta?.size)} | ${u.type.toUpperCase()}</div></div><button class="btn btn-link btn-sm text-danger" @click=${() => actions.removeUpload(u.id)}>Remove</button></li>`)}</ul>${!state.uploads.length ? html`<p class="small text-body-secondary mt-2 mb-0">Attached files stay in the browser.</p>` : null}</div>
-            <div><label class="form-label small fw-semibold">Inline notes</label><textarea class="form-control" rows="4" placeholder="Paste key metrics, performance indicators, or transcript notes..." .value=${state.notes} @input=${(e) => actions.setNotes(e.target.value)}></textarea></div>
-          </div>
+      <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div><i class="bi bi-database me-2"></i>Synthetic Data Sources</div>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          <span class="badge text-bg-secondary">${selectedCount} selected</span>
+          <button class="btn btn-sm btn-primary" @click=${actions.startAgents} ?disabled=${disabled}>${launchLabel}</button>
         </div>
       </div>
+      <details class="synthetic-data-disclosure">
+        <summary class="synthetic-data-summary d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <small class="text-body-secondary">Review the synthetic inputs feeding the six-stage workflow before launch.</small>
+          <small class="text-body-secondary">Click to expand</small>
+        </summary>
+        <div class="card-body">
+          <div class="mb-3">
+            <small class="text-body-secondary">The launch button stays available in the header while this section remains collapsed.</small>
+          </div>
+          <div class="row g-3">
+            <div class="col-lg-7">
+              <div class="list-group">${state.suggestedInputs.map((input) => {
+                const selected = state.selectedInputs.has(input.id);
+                return html`<button type="button" class="list-group-item list-group-item-action d-flex flex-column gap-1 ${selected ? "active text-white" : ""}" @click=${() => actions.toggleSuggestedInput(input.id)}><div class="d-flex justify-content-between align-items-center w-100"><span class="fw-semibold ${selected ? "text-white" : ""}">${input.title}</span><span class="badge text-uppercase bg-secondary">${input.type}</span></div><pre class="mb-0 small ${selected ? "text-white" : "text-body-secondary"}" style="white-space: pre-wrap; word-break: break-word;">${truncate(input.content, 420)}</pre></button>`;
+              })}</div>
+              ${!state.suggestedInputs.length ? html`<p class="text-body-secondary small">Select an architect plan to load synthetic data sources.</p>` : null}
+            </div>
+            <div class="col-lg-5">
+              <div class="mb-3"><label class="form-label small fw-semibold">Upload CSV, JSON, or text files</label><input class="form-control" type="file" multiple accept=".txt,.csv,.json" @change=${actions.handleFileUpload} /><ul class="list-group list-group-flush mt-2 small">${state.uploads.map((u) => html`<li class="list-group-item d-flex justify-content-between align-items-center"><div><div class="fw-semibold">${u.title}</div><div class="text-body-secondary">${formatBytes(u.meta?.size)} | ${u.type.toUpperCase()}</div></div><button class="btn btn-link btn-sm text-danger" @click=${() => actions.removeUpload(u.id)}>Remove</button></li>`)}</ul>${!state.uploads.length ? html`<p class="small text-body-secondary mt-2 mb-0">Attached files stay in the browser.</p>` : null}</div>
+              <div><label class="form-label small fw-semibold">Inline notes</label><textarea class="form-control" rows="4" placeholder="Paste key metrics, performance indicators, or transcript notes..." .value=${state.notes} @input=${(e) => actions.setNotes(e.target.value)}></textarea></div>
+            </div>
+          </div>
+        </div>
+      </details>
     </section>`;
 }
 
-function renderFlow(state) {
+function renderFlow(state, actions) {
   if (!state.plan.length) return null;
-  return html`<section class="card mb-4" data-running-key="execution-flow"><div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2"><span><i class="bi bi-diagram-3 me-2"></i>Orchestrator and Sub-Agent Flow</span><small class="text-body-secondary">Click the manager, master agents, or sub-agents to inspect what each one is doing.</small></div><div class="card-body"><div class="row g-3 align-items-stretch"><div class="col-xl-9 col-lg-8"><div id="flowchart-canvas" class="flowchart-canvas border rounded-3 bg-body-tertiary" data-flow-orientation=${state.flowOrientation} data-flow-columns=${state.flowColumns}></div></div><div class="col-xl-3 col-lg-4">${renderFlowOutputPanel(state)}</div></div></div></section>`;
+  return html`
+    <section class="card mb-4" data-running-key="execution-flow">
+      <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <span><i class="bi bi-diagram-3 me-2"></i>Orchestrator and Sub-Agent Flow</span>
+        <small class="text-body-secondary">Gold nodes are running, green nodes are finished, slate nodes are queued, and red nodes need attention.</small>
+      </div>
+      <div class="card-body">
+        ${renderFlowStatusBoard(state)}
+        <div class="d-flex flex-column gap-3">
+          <div id="flowchart-canvas" class="flowchart-canvas border rounded-3 bg-body-tertiary" data-flow-orientation=${state.flowOrientation} data-flow-columns=${state.flowColumns}></div>
+          ${renderFlowOutputPanel(state, actions)}
+        </div>
+      </div>
+    </section>
+  `;
 }
 
 function renderTimeline(state) {
@@ -481,6 +587,188 @@ function renderComplianceDetails(state, actions) {
 function renderFlowNodeStatus(status) {
   if (!status) return null;
   return html`<span class="badge text-bg-${status.c}">${status.l}</span>`;
+}
+
+function getFlowNodeOrder(state, nodeId) {
+  if (!nodeId) return 9999;
+  if (nodeId === "campaign-brief-node") return 0;
+  if (nodeId === "orchestrator-agent") return 900;
+  if (nodeId === "parallel-compliance-agent") return 350;
+  if (nodeId === "campaign-output-node") return 1200;
+
+  const masterIndex = state.plan.findIndex((item) => item.nodeId === nodeId);
+  if (masterIndex >= 0) return 100 + (masterIndex * 20);
+
+  for (let i = 0; i < state.plan.length; i += 1) {
+    const master = state.plan[i];
+    const subIndex = (state.subAgentCatalog?.[master.nodeId] || []).findIndex((item) => item.id === nodeId);
+    if (subIndex >= 0) return 100 + (i * 20) + subIndex;
+  }
+
+  return 999;
+}
+
+function getFlowNodeCategory(state, nodeId) {
+  if (nodeId === "orchestrator-agent") return 4;
+  if (nodeId === "parallel-compliance-agent") return 2;
+  if (state.plan.some((item) => item.nodeId === nodeId)) return 1;
+  for (const items of Object.values(state.subAgentCatalog || {})) {
+    if ((items || []).some((item) => item.id === nodeId)) return 0;
+  }
+  return 3;
+}
+
+function getFlowLiveCandidates(state) {
+  const runningIds = new Set([...(state.runningNodeIds || [])]);
+  if (state.stage === "run") runningIds.add(state.orchestratorNodeId || "orchestrator-agent");
+  let ids = [...runningIds].filter((id) => !!resolveFlowNodeDetail(state, id));
+  const withoutOrchestrator = ids.filter((id) => id !== (state.orchestratorNodeId || "orchestrator-agent"));
+  if (withoutOrchestrator.length) ids = withoutOrchestrator;
+  return ids
+    .sort((a, b) => {
+      const categoryDelta = getFlowNodeCategory(state, a) - getFlowNodeCategory(state, b);
+      if (categoryDelta !== 0) return categoryDelta;
+      return getFlowNodeOrder(state, a) - getFlowNodeOrder(state, b);
+    })
+    .map((id) => {
+      const detail = resolveFlowNodeDetail(state, id);
+      return {
+        id,
+        title: detail?.title || resolveFlowNodeTitle(state, id) || id,
+        status: detail?.status || { l: "Running", c: "primary" }
+      };
+    });
+}
+
+function renderFlowLiveSwitcher(candidates = [], selectedId = "", actions = {}) {
+  if (candidates.length <= 1) return null;
+  return html`
+    <div class="flow-live-switcher mb-3">
+      <div class="detail-section-label mb-2">Live Output Selector</div>
+      <div class="flow-live-tab-row">
+        ${candidates.map((item) => html`
+          <button
+            type="button"
+            class="flow-live-tab ${item.id === selectedId ? "is-active" : ""}"
+            @click=${() => actions?.selectFlowOutputNode?.(item.id)}
+          >
+            <span class="flow-live-tab-name">${item.title}</span>
+            <span class="flow-live-tab-status tone-${item.status?.c || "secondary"}">${item.status?.l || "Running"}</span>
+          </button>
+        `)}
+      </div>
+    </div>
+  `;
+}
+
+function resolveFlowNodeTitle(state, nodeId) {
+  if (!nodeId) return null;
+  if (nodeId === "campaign-brief-node") return "Campaign Brief";
+  if (nodeId === "orchestrator-agent") return "Orchestrator Agent";
+  if (nodeId === "parallel-compliance-agent") return "Parallel Compliance Agent";
+  if (nodeId === "campaign-output-node") return "Output and Measurement";
+
+  const masterAgent = state.plan.find((item) => item.nodeId === nodeId);
+  if (masterAgent) return masterAgent.agentName;
+
+  const executionDetails = state.campaignStateObject?.executionDetails || {};
+  for (const detail of Object.values(executionDetails)) {
+    const subAgent = (detail?.subAgentResults || []).find((item) => item.id === nodeId);
+    if (subAgent) return subAgent.name;
+  }
+
+  for (const items of Object.values(state.subAgentCatalog || {})) {
+    const subAgent = (items || []).find((item) => item.id === nodeId);
+    if (subAgent) return subAgent.name;
+  }
+
+  return nodeId;
+}
+
+function buildFlowStatusSummary(state) {
+  const knownIds = new Set([
+    "campaign-brief-node",
+    state.orchestratorNodeId || "orchestrator-agent",
+    "parallel-compliance-agent",
+    "campaign-output-node",
+    ...state.plan.map((item) => item.nodeId)
+  ]);
+
+  Object.values(state.subAgentCatalog || {}).forEach((items) => {
+    (items || []).forEach((item) => knownIds.add(item.id));
+  });
+
+  const errorIds = state.agentOutputs.filter((item) => item.status === "error").map((item) => item.nodeId);
+  const failedIds = new Set([...(state.issueNodeIds || []), ...errorIds]);
+  const activeIds = new Set([...(state.runningNodeIds || [])]);
+  const completedIds = new Set(state.agentOutputs.filter((item) => item.status === "done").map((item) => item.nodeId));
+  const executionDetails = state.campaignStateObject?.executionDetails || {};
+
+  if (state.stage === "run") activeIds.add(state.orchestratorNodeId || "orchestrator-agent");
+  if (state.stage === "idle" && state.agentOutputs.length) completedIds.add(state.orchestratorNodeId || "orchestrator-agent");
+  if (state.plan.length) knownIds.add("campaign-brief-node");
+  if (state.dashboard) completedIds.add("campaign-output-node");
+
+  state.plan.forEach((agent) => {
+    (state.subAgentCatalog?.[agent.nodeId] || []).forEach((subAgent) => {
+      knownIds.add(subAgent.id);
+      const subResult = executionDetails[agent.nodeId]?.subAgentResults?.find((item) => item.id === subAgent.id);
+      if (subResult?.status === "running") activeIds.add(subAgent.id);
+      if (subResult?.status === "done") completedIds.add(subAgent.id);
+      if (subResult?.status === "error") failedIds.add(subAgent.id);
+    });
+  });
+
+  const pendingIds = [...knownIds].filter((id) => !activeIds.has(id) && !completedIds.has(id) && !failedIds.has(id));
+  const currentIds = [...activeIds];
+  const currentTitles = currentIds.map((id) => resolveFlowNodeTitle(state, id)).filter(Boolean);
+
+  return {
+    currentIds,
+    currentTitles,
+    activeCount: activeIds.size,
+    completedCount: completedIds.size,
+    failedCount: failedIds.size,
+    pendingCount: pendingIds.length
+  };
+}
+
+function renderFlowStatusBoard(state) {
+  const summary = buildFlowStatusSummary(state);
+  return html`
+    <div class="flow-status-board mb-3">
+      <div class="flow-status-card flow-status-card-running">
+        <div class="flow-status-label">Current Working</div>
+        <div class="flow-status-value">${summary.activeCount || 0}</div>
+        <div class="flow-status-list">
+          ${summary.currentTitles.length
+            ? summary.currentTitles.slice(0, 3).map((title) => html`<span class="flow-status-pill running">${title}</span>`)
+            : html`<span class="flow-status-pill neutral">Waiting to start</span>`}
+        </div>
+      </div>
+      <div class="flow-status-card flow-status-card-done">
+        <div class="flow-status-label">Finished</div>
+        <div class="flow-status-value">${summary.completedCount}</div>
+        <div class="flow-status-note">Completed agents stay green in the graph.</div>
+      </div>
+      <div class="flow-status-card">
+        <div class="flow-status-label">Pending</div>
+        <div class="flow-status-value">${summary.pendingCount}</div>
+        <div class="flow-status-note">Queued nodes stay muted until they start.</div>
+      </div>
+      <div class="flow-status-card flow-status-card-issue">
+        <div class="flow-status-label">Issues</div>
+        <div class="flow-status-value">${summary.failedCount}</div>
+        <div class="flow-status-note">Red nodes show failures or flagged issues.</div>
+      </div>
+    </div>
+    <div class="flow-status-legend mb-3">
+      <span class="flow-legend-item"><span class="legend-swatch status-running"></span>Running</span>
+      <span class="flow-legend-item"><span class="legend-swatch status-complete"></span>Finished</span>
+      <span class="flow-legend-item"><span class="legend-swatch status-pending"></span>Pending</span>
+      <span class="flow-legend-item"><span class="legend-swatch status-error"></span>Issue</span>
+    </div>
+  `;
 }
 
 function resolveFlowNodeDetail(state, nodeId) {
@@ -551,13 +839,15 @@ function resolveFlowNodeDetail(state, nodeId) {
     if (!subAgent) continue;
     const parent = state.plan.find((item) => item.nodeId === masterId);
     const parentOutput = state.agentOutputs.find((item) => item.nodeId === masterId);
-    const status = parentOutput?.status === "done"
+    const status = subAgent.status === "done"
       ? { l: "Done", c: "success" }
-      : parentOutput?.status === "error"
+      : subAgent.status === "error"
         ? { l: "Error", c: "danger" }
-        : parentOutput?.status === "running"
+        : subAgent.status === "running"
           ? { l: "Running", c: "primary" }
-          : { l: "Pending", c: "secondary" };
+          : parentOutput?.status === "running"
+            ? { l: "Running", c: "primary" }
+            : { l: "Pending", c: "secondary" };
     return {
       kind: "structured",
       title: subAgent.name,
@@ -566,14 +856,16 @@ function resolveFlowNodeDetail(state, nodeId) {
       detail: {
         summaryLines: (subAgent.details || []).slice(0, 2),
         subAgentResults: [],
-        inputData: {
+        inputData: subAgent.inputData || {
           parent_master_agent: parent?.agentName || masterId,
           node_id: nodeId
         },
-        stateUpdate: {
+        stateUpdate: subAgent.outputData || {
           notes: subAgent.details || []
         },
-        whyMatters: detail?.whyMatters || "This sub-agent contributes a bounded piece of work to its parent master agent."
+        stateUpdateLabel: "Output Data",
+        liveOutput: subAgent.text || "",
+        whyMatters: subAgent.whyMatters || detail?.whyMatters || "This sub-agent contributes a bounded piece of work to its parent master agent."
       }
     };
   }
@@ -614,7 +906,7 @@ function resolveFlowNodeDetail(state, nodeId) {
   return null;
 }
 
-function renderStructuredFlowDetail(detail) {
+function renderStructuredFlowDetail(detail, state = {}, actions = {}, liveSwitcher = null) {
   const data = detail?.detail || {};
   const summaryLines = data.summaryLines || [];
   const subAgents = data.subAgentResults || [];
@@ -627,16 +919,24 @@ function renderStructuredFlowDetail(detail) {
         </div>
         ${renderFlowNodeStatus(detail.status)}
       </div>
+      ${liveSwitcher}
       <div class="agent-stream border rounded-3 p-3 bg-body overflow-auto flex-grow-1">
         ${summaryLines.length ? html`<div class="mb-3">${summaryLines.map((line) => html`<p class="small mb-2">${line}</p>`)}</div>` : null}
         ${subAgents.length ? html`
           <div class="mb-3">
-            <div class="detail-section-label">Owned Agents</div>
-            ${renderPrettySubAgents(subAgents)}
+            ${renderPrettySubAgents(subAgents, state, actions, {
+              contextKey: detail.contextKey || `flow-${detail.title || "subagents"}`,
+              sectionLabel: "Select Sub-Agent Output"
+            })}
           </div>
         ` : null}
-        ${renderPrettySection("Input Data", data.inputData)}
-        ${renderPrettySection("State Update", data.stateUpdate)}
+        ${data.liveOutput ? html`
+          <div class="detail-section">
+            <div class="detail-section-label">Live Output</div>
+            <div class="detail-text-panel">${data.liveOutput}</div>
+          </div>
+        ` : null}
+        ${renderPrettySection(data.stateUpdateLabel || "State Update", data.stateUpdate)}
         ${data.whyMatters ? html`
           <div class="detail-section">
             <div class="detail-section-label">Why This Matters</div>
@@ -648,19 +948,27 @@ function renderStructuredFlowDetail(detail) {
   `;
 }
 
-function renderFlowOutputPanel(state) {
-  const liveId = state.focusedNodeId ?? (state.latestNodeId || state.orchestratorNodeId || (state.plan[0]?.nodeId));
+function renderFlowOutputPanel(state, actions = {}) {
+  const liveCandidates = getFlowLiveCandidates(state);
+  const candidateIds = new Set(liveCandidates.map((item) => item.id));
+  const selectedCandidateId = state.flowPanelNodeId && candidateIds.has(state.flowPanelNodeId)
+    ? state.flowPanelNodeId
+    : liveCandidates[0]?.id || null;
+  const liveId = state.focusedNodeId
+    ?? selectedCandidateId
+    ?? (state.latestNodeId || state.orchestratorNodeId || (state.plan[0]?.nodeId));
   const resolved = resolveFlowNodeDetail(state, liveId);
   if (!resolved) {
     return html`<div class="flow-output-panel h-100 d-flex flex-column"><div class="agent-stream border rounded-3 p-3 bg-body flex-grow-1 overflow-auto"><div class="text-body-secondary small">Build agents to stream output.</div></div></div>`;
   }
+  const liveSwitcher = renderFlowLiveSwitcher(liveCandidates, liveId, actions);
   if (resolved.kind === "agent") {
     const output = resolved.output;
     const panelTitle = state.focusedNodeId ? "Pinned Step" : "Live Output";
     const status = output ? (output.status === "done" ? { l: "Done", c: "success" } : output.status === "error" ? { l: "Error", c: "danger" } : { l: "Running", c: "primary" }) : null;
-    return html`<div class="flow-output-panel h-100 d-flex flex-column"><div class="d-flex justify-content-between align-items-start mb-2"><div><p class="text-uppercase small text-body-secondary mb-1">${panelTitle}</p><h6 class="mb-1">${resolved.title}</h6></div>${status ? html`<span class="badge text-bg-${status.c}">${status.l}</span>` : null}</div><div class="${output ? agentStreamClasses(output) : "agent-stream border rounded-3 p-3 bg-body"} flex-grow-1 overflow-auto">${output ? html`${renderOutputBody(output)}${renderAgentStructuredDetails(output, "mt-3")}` : html`<div class="text-body-secondary small">Build agents to stream output.</div>`}</div></div>`;
+    return html`<div class="flow-output-panel h-100 d-flex flex-column"><div class="d-flex justify-content-between align-items-start mb-2"><div><p class="text-uppercase small text-body-secondary mb-1">${panelTitle}</p><h6 class="mb-1">${resolved.title}</h6></div>${status ? html`<span class="badge text-bg-${status.c}">${status.l}</span>` : null}</div>${liveSwitcher}<div class="${output ? agentStreamClasses(output) : "agent-stream border rounded-3 p-3 bg-body"} flex-grow-1 overflow-auto">${output ? html`${renderOutputBody(output)}${renderAgentStructuredDetails(output, state, actions, "mt-3", { includeInputData: false, subAgentContextKey: `flow-${output.nodeId}` })}` : html`<div class="text-body-secondary small">Build agents to stream output.</div>`}</div></div>`;
   }
-  return renderStructuredFlowDetail(resolved);
+  return renderStructuredFlowDetail(resolved, state, actions, liveSwitcher);
 }
 
 function renderAgentOutputs(state, demo, actions) {
@@ -687,27 +995,160 @@ function renderAgentCard(agent, state, simple, actions) {
   const quality = state.dataQuality;
   const subAgents = agent.subAgentResults || [];
   const summaryLines = agent.summaryLines || [];
+  const hasInputData = !!(agent?.inputData && Object.keys(agent.inputData).length);
+  const hasStateUpdate = !!(agent?.stateUpdate && Object.keys(agent.stateUpdate).length);
+  const hasHandoff = !!(agent?.handoff && String(agent.handoff).trim());
   const qualityBadge = isPlanner(agent) && quality ? html`<span class="badge data-quality mt-2">Data Quality: ${quality.duplicateCount} duplicate households, ${quality.nullDmaCount} missing designated market area values</span>` : null;
   const rawToggle = rawEntry ? html`<button class="btn btn-sm btn-outline-warning" @click=${() => actions.toggleRawData(agent.nodeId)}>${isOpen ? "Hide Raw Data" : "View Raw Data"}</button>` : null;
-  const detailBlock = renderAgentStructuredDetails(agent, "mt-3");
-  const subAgentBlock = subAgents.length ? html`
-    <div class="mt-3">
-      <div class="small text-uppercase text-body-secondary mb-2">Sub-Agents</div>
-      <div class="d-flex flex-wrap gap-2 mb-2">
-        ${subAgents.map((item) => html`<span class="badge text-bg-secondary">${item.name}</span>`)}
-      </div>
-      ${subAgents.slice(0, 3).map((item) => html`<p class="small text-body-secondary mb-1"><strong>${item.name}:</strong> ${(item.details || [])[0] || ""}</p>`)}
-    </div>
-  ` : null;
   const summaryBlock = summaryLines.length ? html`
-    <div class="mt-3">
+    <div class="stage-summary-lines">
       ${summaryLines.slice(0, 2).map((line) => html`<p class="small text-body-secondary mb-1">${line}</p>`)}
     </div>
   ` : null;
+  const subDone = subAgents.filter((item) => item.status === "done").length;
+  const subRunning = subAgents.filter((item) => item.status === "running").length;
+  const quickPills = [
+    subAgents.length ? `${subDone}/${subAgents.length} sub-agents done` : null,
+    subRunning ? `${subRunning} sub-agent live` : null,
+    agent.stateUpdate && Object.keys(agent.stateUpdate).length ? "Campaign state updated" : null,
+    rawEntry ? "Stage raw data available" : null
+  ].filter(Boolean);
+  const quickPillBlock = quickPills.length ? html`
+    <div class="detail-pill-row stage-pill-row mt-3">
+      ${quickPills.map((label) => html`<span class="detail-pill">${label}</span>`)}
+    </div>
+  ` : null;
+  const previewText = (() => {
+    if (!agent.text) return "";
+    const source = agent.status === "running" ? String(agent.text).trim().slice(-420) : String(agent.text).trim();
+    const plain = source
+      .replace(/```[\s\S]*?```/g, " ")
+      .replace(/`([^`]*)`/g, "$1")
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+      .replace(/^#{1,6}\s*/gm, "")
+      .replace(/^\s*[-*+]\s+/gm, "")
+      .replace(/^\s*\d+\.\s+/gm, "")
+      .replace(/[>*_~|]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    const clipped = plain.length > 360 ? `${plain.slice(0, 360).trimEnd()}...` : plain;
+    return clipped;
+  })();
+  const outputPreview = agent.text
+    ? html`${agent.status === "running"
+      ? html`<pre class="stage-preview-live mb-0">${previewText}</pre>`
+      : html`<p class="stage-preview-text mb-0">${previewText}</p>`}`
+    : html`<p class="small text-body-secondary mb-0">Waiting for the live LLM response for this stage.</p>`;
+  const stageOutputHeading = agent.status === "running"
+    ? html`
+      <div class="d-flex align-items-center gap-2 flex-wrap">
+        <h6 class="mb-0">Live LLM output in progress</h6>
+        <span class="stage-live-indicator">
+          <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+          <span>Streaming...</span>
+        </span>
+      </div>
+    `
+    : html`<h6 class="mb-0">Compact stage preview</h6>`;
+  const fullOutputBlock = agent.text ? html`
+    <details class="stage-output-disclosure mt-3">
+      <summary>${agent.status === "running" ? "Open live LLM output" : "Open full stage output"}</summary>
+      <div class="${agentStreamClasses(agent)} mt-3">${renderOutputBody(agent)}</div>
+    </details>
+  ` : null;
+  const subAgentDetails = subAgents.length ? html`
+    <details class="stage-side-disclosure mt-3">
+      <summary>Sub-Agent Details</summary>
+      <div class="stage-side-disclosure-body">
+        ${renderAgentStructuredDetailsContent(agent, state, actions, {
+          includeInputData: false,
+          includeStateUpdate: false,
+          includeHandoff: false,
+          subAgentContextKey: `stage-${agent.nodeId}`,
+          subAgentSectionLabel: "Which Sub-Agent Output Do You Want To See?"
+        })}
+      </div>
+    </details>
+  ` : null;
+  const stageContextBlock = (hasInputData || hasStateUpdate || hasHandoff || rawEntry) ? html`
+    <details class="stage-output-disclosure mt-3">
+      <summary>Show Input Data and Stage Context</summary>
+      <div class="stage-side-disclosure-body">
+        ${renderAgentStructuredDetailsContent(agent, state, actions, {
+          includeSubAgents: false,
+          includeInputData: true,
+          includeStateUpdate: true,
+          includeHandoff: true
+        })}
+        ${rawEntry ? html`
+          <div class="detail-section">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+              <div class="detail-section-label mb-0">Raw Stage Data</div>
+              ${rawToggle}
+            </div>
+            ${isOpen ? renderExpandedDataEntry(rawEntry, "mt-2") : null}
+          </div>
+        ` : null}
+      </div>
+    </details>
+  ` : null;
   if (simple) {
-    return html`<div class="h-100 d-flex flex-column border rounded-3 overflow-hidden shadow-sm"><div class="p-3 bg-body-tertiary border-bottom d-flex justify-content-between align-items-center gap-2"><div class="text-truncate"><h6 class="mb-0 text-truncate" title="${agent.name}">${agent.name}</h6><small class="text-body-secondary text-truncate d-block" title="${agent.task}">${agent.task}</small></div><span class="badge text-bg-${meta.c}">${meta.l}</span></div>${summaryBlock ? html`<div class="px-3 pt-3">${summaryBlock}</div>` : null}${subAgentBlock ? html`<div class="px-3 pb-3">${subAgentBlock}</div>` : null}<div class="${agentStreamClasses(agent)} flex-grow-1 border-0 rounded-0" style="min-height: 200px;">${renderOutputBody(agent)}</div>${detailBlock ? html`<div class="px-3 pb-3">${detailBlock}</div>` : null}${rawEntry ? html`<div class="p-3 border-top d-flex flex-column gap-2">${rawToggle}${isOpen ? renderExpandedDataEntry(rawEntry) : null}</div>` : null}</div>`;
+    return html`
+      <div class="h-100 d-flex flex-column border rounded-3 overflow-hidden shadow-sm stage-compact-card">
+        <div class="p-3 bg-body-tertiary border-bottom d-flex justify-content-between align-items-start gap-2">
+          <div class="text-truncate">
+            <h6 class="mb-0 text-truncate" title="${agent.name}">${agent.name}</h6>
+            <small class="text-body-secondary text-truncate d-block" title="${agent.task}">${agent.task}</small>
+          </div>
+          <span class="badge text-bg-${meta.c}">${meta.l}</span>
+        </div>
+        <div class="p-3 d-flex flex-column gap-3 flex-grow-1">
+          ${summaryBlock}
+          ${quickPillBlock}
+          <div class="stage-output-card compact">
+            <div class="small text-uppercase text-body-secondary mb-2">Stage Output Preview</div>
+            ${outputPreview}
+            ${fullOutputBlock}
+            ${stageContextBlock}
+          </div>
+          ${qualityBadge}
+          ${subAgentDetails}
+        </div>
+      </div>
+    `;
   }
-  return html`<div class="col-md-4 d-flex flex-column"><p class="text-uppercase small text-body-secondary mb-1">${agent.phase ? `Stage ${agent.phase}` : "Step"}</p><h6 class="mb-2">${agent.name}</h6><p class="text-body-secondary small flex-grow-1 mb-3">${agent.task}</p><span class="badge text-bg-${meta.c} align-self-start">${meta.l}</span>${qualityBadge}${summaryBlock}${subAgentBlock}${rawToggle ? html`<div class="mt-3">${rawToggle}</div>` : null}</div><div class="col-md-8"><div class="${agentStreamClasses(agent)}">${renderOutputBody(agent)}</div>${detailBlock ? html`<div class="mt-3">${detailBlock}</div>` : null}${isOpen && rawEntry ? html`<div class="mt-3">${renderExpandedDataEntry(rawEntry)}</div>` : null}</div>`;
+  return html`
+    <div class="col-md-4 d-flex flex-column">
+      <div class="stage-sidebar-card h-100">
+        <div class="d-flex justify-content-between align-items-start gap-2">
+          <div>
+            <p class="text-uppercase small text-body-secondary mb-1">${agent.phase ? `Stage ${agent.phase}` : "Step"}</p>
+            <h6 class="mb-2">${agent.name}</h6>
+          </div>
+          <span class="badge text-bg-${meta.c} align-self-start">${meta.l}</span>
+        </div>
+        <p class="text-body-secondary small flex-grow-1 mb-0">${agent.task}</p>
+        ${qualityBadge}
+        ${summaryBlock}
+        ${quickPillBlock}
+        ${subAgentDetails}
+      </div>
+    </div>
+    <div class="col-md-8">
+      <div class="stage-output-card h-100">
+        <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+          <div>
+            <div class="small text-uppercase text-body-secondary mb-1">Stage Output</div>
+            ${stageOutputHeading}
+          </div>
+          ${subAgents.length ? html`<span class="badge text-bg-dark border stage-subagent-count">${subAgents.length} sub-agents</span>` : null}
+        </div>
+        ${outputPreview}
+        ${fullOutputBlock}
+        ${stageContextBlock}
+      </div>
+    </div>
+  `;
 }
 
 function renderOutputBody(agent) {

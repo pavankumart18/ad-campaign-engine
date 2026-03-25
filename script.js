@@ -241,8 +241,9 @@ let state = {
   focusedNodeId: null,
   runningNodeIds: new Set(),
   latestNodeId: null,
+  flowPanelNodeId: null,
   flowOrientation: "horizontal",
-  flowColumns: 2,
+  flowColumns: 4,
   savedAgents: [],
   supabaseConfigured: false,
   session: null,
@@ -264,7 +265,8 @@ let state = {
   runToken: 0,
   campaignStateObject: null,
   orchestratorNodeId: ORCHESTRATOR_NODE_ID,
-  subAgentCatalog: MASTER_AGENT_SUBAGENTS
+  subAgentCatalog: MASTER_AGENT_SUBAGENTS,
+  subAgentSelections: {}
 };
 
 const llmSession = { creds: null };
@@ -295,6 +297,19 @@ const actions = {
   removeUpload: (id) => setState({ uploads: state.uploads.filter(u => u.id !== id) }),
   setNotes: (val) => setState({ notes: val }),
   setCampaignPrompt: (val) => setState({ campaignPrompt: val }),
+  selectSubAgent: (contextKey, subAgentId) => {
+    if (!contextKey || !subAgentId) return;
+    setState({
+      subAgentSelections: {
+        ...(state.subAgentSelections || {}),
+        [contextKey]: subAgentId
+      }
+    });
+  },
+  selectFlowOutputNode: (nodeId) => {
+    if (!nodeId) return;
+    setState({ flowPanelNodeId: nodeId, focusedNodeId: null });
+  },
   toggleRawData: (id) => {
     const next = new Set(state.rawDataOpen);
     next.has(id) ? next.delete(id) : next.add(id);
@@ -600,6 +615,7 @@ function resetRunState(extras) {
     focusedNodeId: null,
     runningNodeIds: new Set(),
     latestNodeId: null,
+    flowPanelNodeId: null,
     dashboard: null,
     rawDataOpen: new Set(),
     issueNodeIds: new Set(),
@@ -612,7 +628,8 @@ function resetRunState(extras) {
     visualizationLoading: false,
     visualizationNarrative: "",
     runToken: 0,
-    campaignStateObject: null
+    campaignStateObject: null,
+    subAgentSelections: {}
   });
 }
 
@@ -646,6 +663,8 @@ function applyArchitectSelection(picked) {
     visualizationNarrative: "",
     runToken: 0,
     campaignStateObject: null,
+    flowPanelNodeId: null,
+    subAgentSelections: {},
     stage: "data",
     error: ""
   });
@@ -1059,6 +1078,12 @@ function parseArchitectJson(rawText) {
   if (!text) return {};
   const direct = Utils.safeParseJson(text);
   if (Object.keys(direct).length) return direct;
+
+  const fencedMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fencedMatch?.[1]) {
+    const fencedParsed = Utils.safeParseJson(fencedMatch[1]);
+    if (Object.keys(fencedParsed).length) return fencedParsed;
+  }
 
   const firstBrace = text.indexOf("{");
   const lastBrace = text.lastIndexOf("}");
@@ -1566,9 +1591,210 @@ function buildScenarioDatasetInput(campaignPrompt = "", selectedPlan = null) {
   };
 }
 
+function buildArchitectRealtimeDataset(campaignPrompt = "", scenarioCatalog = null) {
+  const catalog = scenarioCatalog || buildScenarioBlueprints(campaignPrompt);
+  const intelligence = catalog.intelligence || {};
+  const pseudoState = {
+    productFamily: intelligence.campaign?.productFamily || deriveProductFamily(campaignPrompt),
+    countries: intelligence.campaign?.countries || detectCampaignCountries(campaignPrompt)
+  };
+  const yieldSignals = selectRelevantYieldSignals(pseudoState, 3).map((item) => ({
+    topic: item.topic,
+    vertical_tag: item.vertical_tag,
+    region: item.region,
+    spike_window: item.spike_window,
+    signal_strength: item.signal_strength,
+    recommended_channel: item.recommended_channel,
+    expected_roi_lift_pct: item.expected_roi_lift_pct
+  }));
+
+  return {
+    campaign_prompt: catalog.campaignPrompt || campaignPrompt,
+    campaign_summary: {
+      budget_usd: intelligence.campaign?.budgetUsd || extractBudgetUsd(campaignPrompt),
+      countries: intelligence.campaign?.countries || detectCampaignCountries(campaignPrompt),
+      product_family: intelligence.campaign?.productFamily?.displayLabel || deriveProductFamily(campaignPrompt).displayLabel
+    },
+    audience_summary: {
+      unique_households: intelligence.uniqueHouseholds || 0,
+      average_age: intelligence.avgAge || 0,
+      streaming_heavy_share_pct: intelligence.streamingHeavyShare || 0,
+      linear_heavy_share_pct: intelligence.linearHeavyShare || 0,
+      cross_platform_overlap_pct: intelligence.overlapPct || 0,
+      young_share_pct: intelligence.youngShare || 0,
+      older_share_pct: intelligence.olderShare || 0,
+      parent_share_pct: intelligence.parentShare || 0
+    },
+    top_tags: (intelligence.topTags || []).slice(0, 5),
+    top_segments: (intelligence.topSegments || []).slice(0, 4),
+    top_states: (intelligence.topStates || []).slice(0, 4),
+    top_platforms: (intelligence.topPlatforms || []).slice(0, 4),
+    ranked_networks: (intelligence.networkScores
+      ? Object.entries(intelligence.networkScores).map(([name, score]) => ({
+        name,
+        score: roundToTwo(score, 1),
+        lift: roundToTwo(intelligence.networkLift?.[name] || 1, 2)
+      })).sort((a, b) => b.score - a.score)
+      : []),
+    sample_profiles: (intelligence.sampleRows || []).slice(0, 6),
+    yield_signals: yieldSignals,
+    deterministic_reference: (catalog.options || []).map((option) => ({
+      variant_key: option.variantKey,
+      title: option.title,
+      recommended: !!option.recommended,
+      allocation: option.allocation,
+      allocation_strategy: option.allocationStrategy,
+      recommendation_reason: option.recommendationReason
+    }))
+  };
+}
+
+function buildArchitectAgentContract() {
+  return WORKFLOW_AGENTS.map((agent) => ({
+    stage: agent.phase,
+    node_id: agent.nodeId,
+    agent_name: agent.agentName,
+    focus: agent.focus,
+    sub_agents: (MASTER_AGENT_SUBAGENTS[agent.nodeId] || []).map((item) => ({
+      id: item.id,
+      name: item.name,
+      summary: item.summary
+    }))
+  }));
+}
+
+function buildArchitectFallbackSummary(problemText = "", scenarioCatalog = null) {
+  const catalog = scenarioCatalog || buildScenarioBlueprints(problemText);
+  const intelligence = catalog.intelligence || {};
+  const recommended = (catalog.options || []).find((option) => option.recommended) || catalog.options?.[0];
+  return [
+    "Architecting scenarios from the natural-language brief.",
+    `Detected product family: ${intelligence.campaign?.productFamily?.displayLabel || deriveProductFamily(problemText).displayLabel}.`,
+    `Matched ${(intelligence.uniqueHouseholds || 0).toLocaleString()} deduplicated households across ${(intelligence.topStates || []).map((item) => item.label).slice(0, 3).join(", ") || "core markets"}.`,
+    `Top behavioral tags: ${(intelligence.topTags || []).map((item) => item.label).slice(0, 3).join(", ") || "no dominant tags detected"}.`,
+    `Recommended scenario: ${recommended?.title || ARCHITECT_PLAN_FALLBACK_TITLES[0]}.`
+  ];
+}
+
+function buildArchitectSystemPrompt(agentStyle = "", customArchitectPrompt = "") {
+  const styleBlock = normalizeWhitespace(agentStyle);
+  const customBlock = normalizeWhitespace(customArchitectPrompt);
+  return [
+    "You are the WBD Scenario Architect.",
+    "Analyze the supplied synthetic WBD first-party audience intelligence and generate three materially different campaign scenarios in real time.",
+    "The scenarios must feel product-specific, not templated, and they must map to these exact variant keys: plan-a-streaming, plan-b-linear, and plan-c-balanced.",
+    "Use the supplied audience, network, and yield signals to justify every scenario and recommend exactly one option.",
+    "Keep the six-stage master-agent plan intact. Use the exact node IDs and stage numbers provided in the agent contract.",
+    "Respond in two parts only:",
+    "Part 1: 3 to 6 short plain-text lines summarizing the audience diagnosis and the recommended scenario. Do not use braces in Part 1.",
+    "Part 2: one JSON object with keys architectSummary, recommendedVariantKey, and architectPlans.",
+    "Each item in architectPlans must include: variantKey, title, strategy, why, promptTile, promptText, allocationStrategy, deliveryTiming, roiReasoning, recommended, recommendationReason, scenarioIntelligence, and plan.",
+    "scenarioIntelligence must include allocation and rankedNetworks if you reference them.",
+    "plan must contain exactly six items using the provided master-agent contract with fields: nodeId, agentName, stage, systemInstruction, initialTask.",
+    "Set recommended to true on exactly one plan. The same plan must also match recommendedVariantKey.",
+    "Do not wrap the JSON in markdown fences."
+      + (styleBlock ? ` ${styleBlock}` : "")
+      + (customBlock ? ` ${customBlock}` : "")
+  ].join(" ");
+}
+
+function buildArchitectUserPrompt({ problemText = "", dataset = {}, agentContract = [] } = {}) {
+  return [
+    `Campaign Brief:\n${problemText}`,
+    `\nSynthetic WBD Intelligence:\n${JSON.stringify(dataset, null, 2)}`,
+    `\nSix-Stage Master-Agent Contract:\n${JSON.stringify(agentContract, null, 2)}`,
+    "\nRequirements:",
+    "1. Generate three genuinely different scenarios: one streaming-heavy, one linear-heavy, and one balanced/converged.",
+    "2. Tie every scenario to the supplied data, especially audience age, viewing habit, platform usage, network lift, and behavioral tags.",
+    "3. Recommend exactly one scenario and explain why it wins for this prompt.",
+    "4. Keep the plan realistic for the WBD ecosystem and preserve all six master-agent stages.",
+    "5. Output Part 1 plain text followed by Part 2 JSON only."
+  ].join("\n");
+}
+
+async function getConfiguredArchitectCreds({ interactive = false } = {}) {
+  if (llmSession.creds?.apiKey) return llmSession.creds;
+  if (!interactive) return null;
+  try {
+    return await ensureCreds();
+  } catch {
+    return null;
+  }
+}
+
+function ensureSingleRecommendedArchitectPlan(plans = [], preferredVariantKey = "") {
+  if (!Array.isArray(plans) || !plans.length) return [];
+  let recommendedIndex = plans.findIndex((plan) => !!plan.recommended);
+  if (recommendedIndex < 0 && preferredVariantKey) {
+    recommendedIndex = plans.findIndex((plan) => plan.variantKey === preferredVariantKey);
+  }
+  if (recommendedIndex < 0) recommendedIndex = 0;
+  return plans.map((plan, index) => ({ ...plan, recommended: index === recommendedIndex }));
+}
+
+async function generateArchitectPlansLive({ creds, model, problemText, scenarioCatalog, demo, maxAgents }) {
+  if (!creds?.apiKey) throw new Error("No live LLM credentials available for architect generation.");
+
+  const agentStyle = $("#agent-style")?.value || config.defaults?.agentStyle || "";
+  const customArchitectPrompt = $("#architect-prompt")?.value || config.defaults?.architectPrompt || "";
+  const dataset = buildArchitectRealtimeDataset(problemText, scenarioCatalog);
+  const agentContract = buildArchitectAgentContract();
+  const summarySeed = buildArchitectFallbackSummary(problemText, scenarioCatalog);
+  const systemPrompt = buildArchitectSystemPrompt(agentStyle, customArchitectPrompt);
+  const userPrompt = buildArchitectUserPrompt({ problemText, dataset, agentContract });
+
+  let rawText = `${summarySeed.join("\n")}\n\nConnecting to live LLM architect...\n`;
+
+  await Utils.streamChatCompletion({
+    llm: creds,
+    body: {
+      model,
+      stream: true,
+      temperature: 0.35,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt }
+      ]
+    },
+    onChunk: (chunk) => {
+      rawText += chunk;
+      setState({ architectBuffer: rawText });
+    }
+  });
+
+  const parsed = parseArchitectJson(rawText);
+  const candidates = extractArchitectPlanCandidates(parsed);
+  if (!candidates.length) {
+    throw new Error("Live LLM architect response could not be parsed into scenario plans.");
+  }
+
+  const normalized = ensureSingleRecommendedArchitectPlan(
+    normalizeArchitectPlans(candidates, demo, maxAgents),
+    parsed.recommendedVariantKey || scenarioCatalog.recommendedVariantKey
+  );
+
+  if (normalized.length !== 3) {
+    throw new Error("Live LLM architect response did not yield three valid scenario plans.");
+  }
+
+  const recommendedPlan = normalized.find((plan) => plan.recommended)
+    || normalized.find((plan) => plan.variantKey === (parsed.recommendedVariantKey || scenarioCatalog.recommendedVariantKey))
+    || normalized[0];
+
+  return {
+    rawText,
+    plans: normalized,
+    recommendedPlan
+  };
+}
+
 function formatPlanOutputDetails(variant, campaignPrompt, existing = {}) {
   const catalog = buildScenarioBlueprints(campaignPrompt);
   const blueprint = catalog.options.find((option) => option.variantKey === (existing.variantKey || variant.key)) || {};
+  const mergedScenarioIntelligence = {
+    ...(blueprint.scenarioIntelligence || {}),
+    ...(existing.scenarioIntelligence || {})
+  };
   const budget = extractBudgetUsd(campaignPrompt);
   const allocationStrategy = (existing.allocationStrategy || blueprint.allocationStrategy || variant.allocationStrategy || "")
     .replace(/\$BUDGET_USD/g, budget.toLocaleString());
@@ -1590,7 +1816,7 @@ function formatPlanOutputDetails(variant, campaignPrompt, existing = {}) {
     promptText: existing.promptText || blueprint.promptText || variant.promptText,
     recommended: existing.recommended ?? blueprint.recommended ?? false,
     recommendationReason: existing.recommendationReason || blueprint.recommendationReason || "",
-    scenarioIntelligence: existing.scenarioIntelligence || blueprint.scenarioIntelligence || null
+    scenarioIntelligence: Object.keys(mergedScenarioIntelligence).length ? mergedScenarioIntelligence : null
   };
 }
 
@@ -1612,7 +1838,7 @@ function normalizeArchitectPlans(rawPlans, demo, maxAgents) {
       const details = formatPlanOutputDetails(variant, campaignPrompt, entry);
       return {
         id: Utils.uniqueId("architect-plan"),
-        title: fallbackTitle,
+        title: (entry.title || fallbackTitle).toString().trim(),
         strategy: (details.strategy || entry.summary || variant.strategy).toString().trim(),
         why: (details.why || entry.rationale || variant.why).toString().trim(),
         promptTile: details.promptTile || variant.promptTile,
@@ -1796,13 +2022,7 @@ async function runArchitect() {
     const maxAgents = clampAgentCount($("#max-agents")?.value, TARGET_ARCHITECT_AGENTS);
     const scenarioCatalog = buildScenarioBlueprints(problemText);
     const fallbackPlans = buildFallbackArchitectPlans(demo, maxAgents);
-    const summaryLines = [
-      "Architecting scenarios from the natural-language brief.",
-      `Detected product family: ${scenarioCatalog.intelligence.campaign.productFamily.displayLabel}.`,
-      `Matched ${scenarioCatalog.intelligence.uniqueHouseholds.toLocaleString()} deduplicated households across ${scenarioCatalog.intelligence.topStates.map((item) => item.label).slice(0, 3).join(", ")}.`,
-      `Top behavioral tags: ${scenarioCatalog.intelligence.topTags.map((item) => item.label).slice(0, 3).join(", ")}.`,
-      `Recommended scenario: ${scenarioCatalog.options.find((option) => option.recommended)?.title || ARCHITECT_PLAN_FALLBACK_TITLES[0]}.`
-    ];
+    const summaryLines = buildArchitectFallbackSummary(problemText, scenarioCatalog);
 
     setState({
       stage: "architect",
@@ -1821,10 +2041,43 @@ async function runArchitect() {
       campaignStateObject: null,
       architectBuffer: summaryLines.join("\n")
     });
-    const orderedPlans = normalizeArchitectPlans(fallbackPlans, demo, maxAgents);
-    const recommendedPlan = orderedPlans.find((plan) => plan.recommended)
+
+    const model = $("#model")?.value || config.defaults?.model || "gpt-4o";
+    setState({
+      architectBuffer: `${summaryLines.join("\n")}\n\nRequesting live architect scenarios from the LLM...`
+    });
+    const creds = await getConfiguredArchitectCreds({ interactive: true });
+    let orderedPlans = ensureSingleRecommendedArchitectPlan(
+      normalizeArchitectPlans(fallbackPlans, demo, maxAgents),
+      scenarioCatalog.recommendedVariantKey
+    );
+    let recommendedPlan = orderedPlans.find((plan) => plan.recommended)
       || orderedPlans.find((plan) => plan.variantKey === scenarioCatalog.recommendedVariantKey)
       || orderedPlans[0];
+
+    if (creds) {
+      try {
+        const liveArchitect = await generateArchitectPlansLive({
+          creds,
+          model,
+          problemText,
+          scenarioCatalog,
+          demo,
+          maxAgents
+        });
+        orderedPlans = liveArchitect.plans;
+        recommendedPlan = liveArchitect.recommendedPlan;
+      } catch (liveError) {
+        console.warn("Live architect generation failed, using pre-calculated demo information:", liveError?.message || liveError);
+        setState({
+          architectBuffer: `${summaryLines.join("\n")}\n\nLive LLM architect failed. Falling back to pre-calculated demo information.`
+        });
+      }
+    } else {
+      setState({
+        architectBuffer: `${summaryLines.join("\n")}\n\nLive LLM architect credentials were not provided. Using pre-calculated demo information.`
+      });
+    }
 
     const selectedPlan = expandAndEnrichPlan(
       recommendedPlan.plan || [],
@@ -1862,7 +2115,11 @@ async function runArchitect() {
   } catch (e) {
     const fallbackDemo = getSelectedDemo();
     const maxAgents = clampAgentCount($("#max-agents")?.value, TARGET_ARCHITECT_AGENTS);
-    const fallbackPlans = buildFallbackArchitectPlans(fallbackDemo, maxAgents);
+    const fallbackCatalog = buildScenarioBlueprints(fallbackDemo?.problem || fallbackDemo?.body || "");
+    const fallbackPlans = ensureSingleRecommendedArchitectPlan(
+      buildFallbackArchitectPlans(fallbackDemo, maxAgents),
+      fallbackCatalog.recommendedVariantKey
+    );
     const recommendedPlan = fallbackPlans.find((plan) => plan.recommended) || fallbackPlans[0];
     const selectedPlan = expandAndEnrichPlan(
       recommendedPlan?.plan || [],
@@ -1887,7 +2144,7 @@ async function runArchitect() {
       plan: selectedPlan,
       suggestedInputs: normalizedInputs,
       selectedInputs: new Set(normalizedInputs.map((item) => item.id)),
-      error: "Loaded synthetic architect plans after an orchestration error.",
+      error: "Loaded pre-calculated demo information after a live architect error.",
       rawDataByAgent: buildRawDataByPlan(selectedPlan, null, recommendedPlan),
       complianceDetails: buildComplianceDetails(savedCompliance),
       selectedPlanCompliance: savedCompliance,
@@ -2603,11 +2860,423 @@ ${escapeHtml(result.whyMatters || "")}
 _Open the Detailed execution panel below to inspect input data, sub-agent results, state updates, and handoff details._`;
 }
 
-async function runMasterAgentStage(out, campaignState, selectedPlan) {
-  updateAgent(out.id, "Orchestrator is dispatching sub-agents and assembling the shared Campaign_State_Object update.", "running");
+function cloneStructured(value) {
+  if (value === undefined) return undefined;
+  return JSON.parse(JSON.stringify(value));
+}
+
+function parseLooseResponseJson(rawText = "") {
+  const text = (rawText || "").toString().trim();
+  if (!text) return {};
+  const direct = Utils.safeParseJson(text);
+  if (Object.keys(direct).length) return direct;
+
+  const fencedMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fencedMatch?.[1]) {
+    const fencedParsed = Utils.safeParseJson(fencedMatch[1]);
+    if (Object.keys(fencedParsed).length) return fencedParsed;
+  }
+
+  const firstBrace = text.indexOf("{");
+  const lastBrace = text.lastIndexOf("}");
+  if (firstBrace >= 0 && lastBrace > firstBrace) {
+    const sliced = text.slice(firstBrace, lastBrace + 1);
+    const parsed = Utils.safeParseJson(sliced);
+    if (Object.keys(parsed).length) return parsed;
+  }
+  return {};
+}
+
+function mergeStructuredObjects(base, override) {
+  if (Array.isArray(base) || Array.isArray(override)) {
+    return Array.isArray(override) && override.length ? override : (Array.isArray(base) ? base : []);
+  }
+
+  if (isPlainExecutionObject(base) || isPlainExecutionObject(override)) {
+    const result = {};
+    const baseObj = isPlainExecutionObject(base) ? base : {};
+    const overrideObj = isPlainExecutionObject(override) ? override : {};
+    const keys = new Set([...Object.keys(baseObj), ...Object.keys(overrideObj)]);
+    keys.forEach((key) => {
+      result[key] = mergeStructuredObjects(baseObj[key], overrideObj[key]);
+    });
+    return result;
+  }
+
+  if (override === undefined || override === null || override === "") return base;
+  return override;
+}
+
+function normalizeStageTextList(value, fallback = []) {
+  const source = Array.isArray(value)
+    ? value
+    : typeof value === "string"
+      ? [value]
+      : [];
+  const next = source.map((item) => normalizeWhitespace(item)).filter(Boolean);
+  const fallbackNext = (Array.isArray(fallback) ? fallback : []).map((item) => normalizeWhitespace(item)).filter(Boolean);
+  return next.length ? next : fallbackNext;
+}
+
+function normalizeLiveSubAgentResults(rawItems = [], fallbackItems = []) {
+  const source = Array.isArray(rawItems) ? rawItems : [];
+  if (!source.length && !fallbackItems.length) return [];
+
+  const sourceMap = new Map();
+  source.forEach((item, index) => {
+    const key = item?.id || item?.name || `sub-${index}`;
+    sourceMap.set(key, item);
+  });
+
+  const template = fallbackItems.length ? fallbackItems : source;
+  return template.map((fallbackItem, index) => {
+    const key = fallbackItem?.id || fallbackItem?.name || `sub-${index}`;
+    const rawItem = sourceMap.get(key) || source[index] || {};
+    const details = normalizeStageTextList(rawItem.details || rawItem.notes, fallbackItem?.details || []);
+    return {
+      ...(fallbackItem || {}),
+      id: rawItem.id || fallbackItem?.id || `sub-agent-${index + 1}`,
+      name: normalizeWhitespace(rawItem.name || fallbackItem?.name || `Sub-Agent ${index + 1}`),
+      status: rawItem.status || fallbackItem?.status || "done",
+      details: details.length ? details.slice(0, 5) : ["No detailed note returned by the language model."],
+      text: rawItem.text || fallbackItem?.text || "",
+      inputData: mergeStructuredObjects(fallbackItem?.inputData || {}, rawItem.inputData || rawItem.input_data || {}),
+      outputData: mergeStructuredObjects(fallbackItem?.outputData || {}, rawItem.outputData || rawItem.output_data || {}),
+      whyMatters: normalizeWhitespace(rawItem.whyMatters || rawItem.why_matters || rawItem.why || fallbackItem?.whyMatters || ""),
+      fallbackUsed: rawItem.fallbackUsed ?? fallbackItem?.fallbackUsed ?? false
+    };
+  });
+}
+
+function buildSubAgentNarrative(subAgent = {}) {
+  const detailLines = normalizeStageTextList(subAgent.details || [], []).slice(0, 3);
+  const summary = detailLines.length ? detailLines.map((line) => `- ${line}`).join("\n") : "- No live sub-agent summary was returned.";
+  const why = normalizeWhitespace(subAgent.whyMatters || "");
+  return `${subAgent.name || "Sub-Agent"}\n${summary}${why ? `\n\nWhy this matters: ${why}` : ""}`;
+}
+
+function createPendingSubAgentResult(masterOutput, subAgent = {}, index = 0) {
+  const name = normalizeWhitespace(subAgent.name || `Sub-Agent ${index + 1}`);
+  const details = normalizeStageTextList(subAgent.details || [], [`${name} is waiting for its live LLM call.`]).slice(0, 5);
+  return {
+    id: subAgent.id || `sub-agent-${index + 1}`,
+    name,
+    status: "pending",
+    details,
+    text: "",
+    inputData: {
+      parent_master_agent: masterOutput.name,
+      parent_node_id: masterOutput.nodeId
+    },
+    outputData: {},
+    whyMatters: "",
+    fallbackUsed: false
+  };
+}
+
+function normalizeSingleLiveSubAgentResult(raw = {}, fallback = {}) {
+  const payload = raw?.result || raw?.subAgentResult || raw?.output || raw;
+  const details = normalizeStageTextList(
+    payload.details || payload.notes || payload.summaryLines || payload.summary_lines,
+    fallback.details || []
+  ).slice(0, 5);
+  const next = {
+    ...(fallback || {}),
+    id: payload.id || fallback.id,
+    name: normalizeWhitespace(payload.name || fallback.name || "Sub-Agent"),
+    status: payload.status === "error" ? "error" : "done",
+    details: details.length ? details : ["No detailed note returned by the language model."],
+    inputData: mergeStructuredObjects(fallback.inputData || {}, payload.inputData || payload.input_data || {}),
+    outputData: mergeStructuredObjects(fallback.outputData || {}, payload.outputData || payload.output_data || payload.stateUpdate || payload.state_update || {}),
+    whyMatters: normalizeWhitespace(payload.whyMatters || payload.why_matters || payload.why || fallback.whyMatters || ""),
+    fallbackUsed: payload.fallbackUsed ?? fallback.fallbackUsed ?? false
+  };
+  next.text = normalizeWhitespace(payload.text || fallback.text || buildSubAgentNarrative(next));
+  return next;
+}
+
+function normalizeLiveMasterStageResult(raw = {}, baseline = {}) {
+  const payload = raw?.result || raw?.stageResult || raw?.output || raw;
+  return {
+    inputData: mergeStructuredObjects(baseline.inputData || {}, payload.inputData || payload.input_data || {}),
+    summaryLines: normalizeStageTextList(payload.summaryLines || payload.summary_lines, baseline.summaryLines || []).slice(0, 3),
+    subAgentResults: normalizeLiveSubAgentResults(payload.subAgentResults || payload.sub_agent_results || payload.subAgents || payload.sub_agents, baseline.subAgentResults || []),
+    whyMatters: normalizeWhitespace(payload.whyMatters || payload.why_matters || payload.why || baseline.whyMatters || ""),
+    handoff: normalizeWhitespace(payload.handoff || baseline.handoff || ""),
+    stateUpdate: mergeStructuredObjects(baseline.stateUpdate || {}, payload.stateUpdate || payload.state_update || payload.campaignStateUpdate || payload.campaign_state_update || {})
+  };
+}
+
+function buildMasterStageLiveSystemPrompt(out, baselineResult, agentStyle = "") {
+  return [
+    `You are ${out.name}, a live WBD master agent executing inside a hierarchical multi-agent campaign system.`,
+    out.instruction || "",
+    normalizeWhitespace(agentStyle),
+    "Return one JSON object only. Do not use markdown fences.",
+    "Top-level keys must be exactly: summaryLines, inputData, subAgentResults, stateUpdate, handoff, whyMatters.",
+    "summaryLines must be an array of exactly 2 or 3 concise business lines.",
+    "subAgentResults must preserve the sub-agent structure from the reference schema and each item must contain id, name, and details.",
+    "details must be an array of short concrete statements grounded in the provided data.",
+    "stateUpdate must preserve the exact nested shape of the reference schema so downstream agents can consume it.",
+    "Do not invent non-WBD channels or unsupported entities. Keep all values plausible and tied to the synthetic data."
+  ].filter(Boolean).join(" ");
+}
+
+function buildMasterStageLiveUserPrompt(out, campaignState, selectedPlan, baselineResult) {
+  const stageSnapshot = buildStageRawDataEntry(out, campaignState, selectedPlan);
+  const datasetBlock = Utils.truncate(buildDatasetContext(out.dataKey), 5000);
+  const supplementalContext = Utils.truncate(buildSupplementalDatasetContext(out), 1800);
+  const sharedStateSnapshot = {
+    prompt: campaignState.prompt,
+    budget_usd: campaignState.budgetUsd,
+    product_family: campaignState.productFamily,
+    selected_scenario: campaignState.selectedScenario,
+    prior_stage_outputs: campaignState.stageOutputs || {}
+  };
+
+  return [
+    `Campaign Brief:\n${campaignState.prompt}`,
+    `\nMaster Agent:\n${out.name}`,
+    `\nSelected Scenario:\n${JSON.stringify(campaignState.selectedScenario || {}, null, 2)}`,
+    `\nShared Campaign State Snapshot:\n${JSON.stringify(sharedStateSnapshot, null, 2)}`,
+    `\nStage Input Snapshot:\n${stageSnapshot?.content || JSON.stringify(baselineResult.inputData || {}, null, 2)}`,
+    `\nLive Sub-Agent Outputs:\n${JSON.stringify(baselineResult.subAgentResults || [], null, 2)}`,
+    `\nRelevant Dataset Excerpt:\n${datasetBlock}`,
+    supplementalContext ? `\nAdditional Context:\n${supplementalContext}` : "",
+    `\nReference JSON Shape And Fallback Values:\n${JSON.stringify(baselineResult, null, 2)}`,
+    "\nGenerate the live stage result now."
+  ].filter(Boolean).join("\n");
+}
+
+function buildSubAgentLiveSystemPrompt(masterOutput, subAgent, agentStyle = "") {
+  return [
+    `You are ${subAgent.name}, a live sub-agent operating under ${masterOutput.name} in a hierarchical WBD campaign workflow.`,
+    normalizeWhitespace(agentStyle),
+    "Return one JSON object only. Do not use markdown fences.",
+    "Top-level keys must be: details, inputData, outputData, whyMatters, and optional text.",
+    "details must contain 2 to 4 short concrete statements grounded in the supplied synthetic data and upstream stage context.",
+    "inputData should summarize what this sub-agent used.",
+    "outputData should capture the structured result this sub-agent is handing back to its master agent.",
+    "whyMatters should be one concise business sentence.",
+    "Keep the response tightly scoped to this sub-agent only."
+  ].filter(Boolean).join(" ");
+}
+
+function buildSubAgentLiveUserPrompt(masterOutput, subAgent, campaignState, selectedPlan, baselineResult, fallbackSubAgent) {
+  const stageSnapshot = buildStageRawDataEntry(masterOutput, campaignState, selectedPlan);
+  const datasetBlock = Utils.truncate(buildDatasetContext(masterOutput.dataKey), 4200);
+  const supplementalContext = Utils.truncate(buildSupplementalDatasetContext(masterOutput), 1600);
+  return [
+    `Campaign Brief:\n${campaignState.prompt}`,
+    `\nParent Master Agent:\n${masterOutput.name}`,
+    `\nSub-Agent:\n${subAgent.name}`,
+    `\nSub-Agent Summary:\n${subAgent.summary || fallbackSubAgent?.details?.[0] || "No summary provided."}`,
+    `\nSelected Scenario:\n${JSON.stringify(campaignState.selectedScenario || {}, null, 2)}`,
+    `\nPrior Stage Outputs:\n${JSON.stringify(campaignState.stageOutputs || {}, null, 2)}`,
+    `\nCurrent Stage Input Snapshot:\n${stageSnapshot?.content || JSON.stringify(baselineResult.inputData || {}, null, 2)}`,
+    `\nReference Fallback Shape:\n${JSON.stringify(fallbackSubAgent || {}, null, 2)}`,
+    `\nRelevant Dataset Excerpt:\n${datasetBlock}`,
+    supplementalContext ? `\nAdditional Context:\n${supplementalContext}` : "",
+    "\nGenerate the live sub-agent result now."
+  ].filter(Boolean).join("\n");
+}
+
+function syncMasterSubAgentState(masterOutputId, masterNodeId, campaignState, subAgentResults = [], latestNodeId = null) {
+  const nextResults = cloneStructured(subAgentResults);
+  const outputs = state.agentOutputs.map((item) => (
+    item.id === masterOutputId ? { ...item, subAgentResults: nextResults } : item
+  ));
+  const currentDetail = campaignState.executionDetails[masterNodeId] || {};
+  campaignState.executionDetails[masterNodeId] = {
+    ...currentDetail,
+    subAgentResults: nextResults
+  };
+
+  const runningNodeIds = new Set(state.runningNodeIds);
+  nextResults.forEach((item) => {
+    if (item.status === "running") runningNodeIds.add(item.id);
+    else runningNodeIds.delete(item.id);
+  });
+
+  const updates = {
+    agentOutputs: outputs,
+    campaignStateObject: campaignState,
+    runningNodeIds
+  };
+  if (latestNodeId) updates.latestNodeId = latestNodeId;
+  setState(updates);
+}
+
+async function generateLiveSubAgentResult(masterOutput, subAgent, fallbackSubAgent, campaignState, selectedPlan, baselineResult, opts = {}, onPartial = () => {}) {
+  const { creds, model, agentStyle = "" } = opts;
+  if (!creds?.apiKey) throw new Error("No live LLM credentials available for sub-agent execution.");
+
+  let rawText = "";
+  await Utils.streamChatCompletion({
+    llm: creds,
+    body: {
+      model,
+      stream: true,
+      temperature: 0.35,
+      messages: [
+        {
+          role: "system",
+          content: buildSubAgentLiveSystemPrompt(masterOutput, subAgent, agentStyle)
+        },
+        {
+          role: "user",
+          content: buildSubAgentLiveUserPrompt(masterOutput, subAgent, campaignState, selectedPlan, baselineResult, fallbackSubAgent)
+        }
+      ]
+    },
+    onChunk: (chunk) => {
+      rawText += chunk;
+      onPartial(rawText);
+    }
+  });
+
+  const parsed = parseLooseResponseJson(rawText);
+  if (!Object.keys(parsed).length) {
+    throw new Error(`Live LLM response for sub-agent ${subAgent.name} could not be parsed into JSON.`);
+  }
+
+  return normalizeSingleLiveSubAgentResult(parsed, fallbackSubAgent);
+}
+
+async function runLiveSubAgentsForMaster(out, campaignState, selectedPlan, baselineResult, opts = {}) {
+  const subAgentCatalog = MASTER_AGENT_SUBAGENTS[out.nodeId] || [];
+  const initialResults = (baselineResult.subAgentResults || []).map((item, index) => createPendingSubAgentResult(out, item, index));
+  if (!initialResults.length) return [];
+
+  syncMasterSubAgentState(out.id, out.nodeId, campaignState, initialResults, initialResults[0]?.id || out.nodeId);
+  const mutableResults = initialResults.map((item) => ({ ...item }));
+
+  await Promise.all(mutableResults.map(async (pendingItem, index) => {
+    const catalogItem = subAgentCatalog.find((item) => item.id === pendingItem.id || item.name === pendingItem.name) || subAgentCatalog[index] || {};
+    mutableResults[index] = {
+      ...pendingItem,
+      status: "running",
+      text: `Live sub-agent call in progress for ${pendingItem.name}...`
+    };
+    syncMasterSubAgentState(out.id, out.nodeId, campaignState, mutableResults, pendingItem.id);
+
+    try {
+      const finalResult = await generateLiveSubAgentResult(
+        out,
+        catalogItem,
+        mutableResults[index],
+        campaignState,
+        selectedPlan,
+        baselineResult,
+        opts,
+        (rawText) => {
+          mutableResults[index] = {
+            ...mutableResults[index],
+            status: "running",
+            text: `Live sub-agent call in progress...\n\n${rawText.length > 1600 ? rawText.slice(-1600) : rawText}`
+          };
+          syncMasterSubAgentState(out.id, out.nodeId, campaignState, mutableResults, pendingItem.id);
+        }
+      );
+      mutableResults[index] = {
+        ...mutableResults[index],
+        ...finalResult,
+        status: "done",
+        text: finalResult.text || buildSubAgentNarrative(finalResult)
+      };
+    } catch (err) {
+      console.warn(`Live sub-agent execution failed for ${pendingItem.name}, using fallback:`, err?.message || err);
+      mutableResults[index] = {
+        ...mutableResults[index],
+        status: "done",
+        fallbackUsed: true,
+        text: `### LLM Fallback Activated\nThe live sub-agent call did not complete, so a deterministic fallback was applied.\n\n${buildSubAgentNarrative(mutableResults[index])}`
+      };
+    }
+
+    syncMasterSubAgentState(out.id, out.nodeId, campaignState, mutableResults, pendingItem.id);
+  }));
+
+  return mutableResults.map((item) => ({ ...item }));
+}
+
+async function generateLiveMasterStageResult(out, campaignState, selectedPlan, baselineResult, opts = {}) {
+  const { creds, model, agentStyle = "" } = opts;
+  if (!creds?.apiKey) throw new Error("No live LLM credentials available for master-agent execution.");
+
+  let rawText = "";
+  await Utils.streamChatCompletion({
+    llm: creds,
+    body: {
+      model,
+      stream: true,
+      temperature: 0.3,
+      messages: [
+        {
+          role: "system",
+          content: buildMasterStageLiveSystemPrompt(out, baselineResult, agentStyle)
+        },
+        {
+          role: "user",
+          content: buildMasterStageLiveUserPrompt(out, campaignState, selectedPlan, baselineResult)
+        }
+      ]
+    },
+    onChunk: (chunk) => {
+      rawText += chunk;
+      const preview = rawText.length > 1800 ? rawText.slice(-1800) : rawText;
+      updateAgent(out.id, `Live LLM execution in progress...\n\n${preview}`, "running");
+    }
+  });
+
+  const parsed = parseLooseResponseJson(rawText);
+  if (!Object.keys(parsed).length) {
+    throw new Error(`Live LLM response for ${out.name} could not be parsed into JSON.`);
+  }
+
+  return normalizeLiveMasterStageResult(parsed, baselineResult);
+}
+
+async function runMasterAgentStage(out, campaignState, selectedPlan, opts = {}) {
+  updateAgent(out.id, "Orchestrator is dispatching a live LLM stage and assembling the shared Campaign_State_Object update.", "running");
   await wait(160);
-  const result = executeMasterStage(out, campaignState);
-  const narrative = buildMasterAgentNarrative(result);
+  const baselineCampaignState = cloneStructured(campaignState);
+  const baselineResult = executeMasterStage(out, baselineCampaignState);
+  campaignState.executionDetails[out.nodeId] = {
+    ...cloneStructured(baselineResult),
+    subAgentResults: (baselineResult.subAgentResults || []).map((item, index) => createPendingSubAgentResult(out, item, index))
+  };
+  patchAgent(out.id, {
+    subAgentResults: campaignState.executionDetails[out.nodeId].subAgentResults || [],
+    inputData: baselineResult.inputData || {}
+  });
+  setState({
+    campaignStateObject: campaignState,
+    latestNodeId: out.nodeId
+  });
+
+  let result = baselineResult;
+  let liveSubAgentResults = campaignState.executionDetails[out.nodeId].subAgentResults || [];
+  let usedFallback = false;
+
+  try {
+    liveSubAgentResults = await runLiveSubAgentsForMaster(out, campaignState, selectedPlan, baselineResult, opts);
+    const liveStageBaseline = {
+      ...baselineResult,
+      subAgentResults: liveSubAgentResults
+    };
+    setState({ latestNodeId: out.nodeId });
+    result = await generateLiveMasterStageResult(out, campaignState, selectedPlan, liveStageBaseline, opts);
+    result.subAgentResults = liveSubAgentResults;
+  } catch (err) {
+    usedFallback = true;
+    console.warn(`Live master-agent execution failed for ${out.name}, using deterministic fallback:`, err?.message || err);
+  }
+
+  result.subAgentResults = liveSubAgentResults.length ? liveSubAgentResults : (result.subAgentResults || []);
+
+  campaignState.stageOutputs[out.nodeId] = cloneStructured(result.stateUpdate || {});
+  const narrative = `${usedFallback ? "### LLM Fallback Activated\nThe live language-model execution did not complete for this stage, so a deterministic fallback was applied.\n\n" : ""}${buildMasterAgentNarrative(result)}`;
   campaignState.executionDetails[out.nodeId] = result;
   campaignState.actionLog.push({
     nodeId: out.nodeId,
@@ -2646,9 +3315,15 @@ async function startAgents() {
     try {
       creds = await ensureCreds();
     } catch (credsError) {
-      console.warn("Proceeding without live LLM credentials for execution:", credsError?.message || credsError);
+      setState({
+        error: "Live LLM credentials are required for multi-agent execution.",
+        stage: "data",
+        visualizationLoading: false
+      });
+      return;
     }
     const model = $("#model")?.value || "gpt-5-mini";
+    const agentStyle = $("#agent-style")?.value || config.defaults?.agentStyle || "";
     const demo = getSelectedDemo();
     const campaignPrompt = (state.campaignPrompt || demo?.problem || "Launch a converged ad campaign.").trim();
     const runToken = Date.now();
@@ -2765,7 +3440,11 @@ async function startAgents() {
         latestNodeId: outputs[0]?.nodeId
       });
 
-      await Promise.all(outputs.map((out) => runMasterAgentStage(out, campaignState, selectedPlanRecord)));
+      await Promise.all(outputs.map((out) => runMasterAgentStage(out, campaignState, selectedPlanRecord, {
+        creds,
+        model,
+        agentStyle
+      })));
     }
 
     const complianceResult = await compliancePromise;
@@ -3792,45 +4471,159 @@ function scheduleFlowchartSync() {
   requestAnimationFrame(() => { fcSched = false; syncFlowchart(); });
 }
 
+const FLOW_GRAPH_LABELS = {
+  [FLOW_BRIEF_NODE_ID]: "Campaign\nBrief",
+  [ORCHESTRATOR_NODE_ID]: "Orchestrator\nManager",
+  [PARALLEL_COMPLIANCE_NODE_ID]: "Parallel\nCompliance",
+  [FLOW_OUTPUT_NODE_ID]: "Output &\nMeasurement",
+  "planning-identity-agent": "Stage 1\nPlanning & Identity",
+  "inventory-yield-agent": "Stage 2\nInventory & Yield",
+  "booking-proposals-agent": "Stage 3\nBooking & Proposal",
+  "trafficking-signals-agent": "Stage 4\nTrafficking & Signals",
+  "inflight-operations-agent": "Stage 5\nIn-Flight Operations",
+  "measurement-agent": "Stage 6\nMeasurement",
+  "audience-segmentation": "Audience\nSegmentation",
+  "cross-platform-id-resolver": "Cross-Platform\nID Resolver",
+  "behavioral-indexer": "Behavioral\nIndexer",
+  "predictive-capacity": "Predictive\nCapacity",
+  "yield-optimizer": "Yield\nOptimizer",
+  "signal-forecaster": "Signal\nForecaster",
+  "deal-structurer": "Deal Structurer\n(NEO)",
+  "global-compliance-bot": "Global Compliance\nBot",
+  "proposal-assembler": "Proposal\nAssembler",
+  "asset-qa": "Asset QA",
+  "streamx-router": "StreamX\nRouter",
+  "launch-readiness": "Launch\nReadiness",
+  "real-time-pacing": "Real-Time\nPacing",
+  "autonomous-make-good": "Autonomous\nMake-Good",
+  "ops-alerting": "Ops\nAlerting",
+  "clean-room-matcher": "Clean Room\nMatcher",
+  "deterministic-roi": "Deterministic\nROI",
+  "learning-agenda": "Learning\nAgenda"
+};
+
+function getFlowGraphLabel(id, fallback = "") {
+  return FLOW_GRAPH_LABELS[id] || fallback;
+}
+
 function buildHierarchicalFlowGraph(plan = []) {
   if (!Array.isArray(plan) || !plan.length) return { nodes: [], edges: [] };
+  const sortedPlan = [...plan].sort((a, b) => (Number(a.phase) || 0) - (Number(b.phase) || 0));
+  const vertical = state.flowOrientation === "vertical";
+
+  if (vertical) {
+    const mainX = 430;
+    const branchXOffset = 320;
+    const complianceX = mainX + (branchXOffset * 2) + 60;
+    const stageYStart = 470;
+    const stageYGap = 280;
+    const subRowGap = 110;
+    const bookingIndex = Math.max(0, sortedPlan.findIndex((agent) => agent.nodeId === "booking-proposals-agent"));
+    const complianceY = stageYStart + (bookingIndex * stageYGap);
+    const nodes = [
+      {
+        id: FLOW_BRIEF_NODE_ID,
+        label: getFlowGraphLabel(FLOW_BRIEF_NODE_ID, "Campaign Brief"),
+        kind: "system",
+        position: { x: mainX, y: 40 }
+      },
+      {
+        id: ORCHESTRATOR_NODE_ID,
+        label: getFlowGraphLabel(ORCHESTRATOR_NODE_ID, "Orchestrator Agent"),
+        kind: "manager",
+        position: { x: mainX, y: 220 }
+      },
+      {
+        id: PARALLEL_COMPLIANCE_NODE_ID,
+        label: getFlowGraphLabel(PARALLEL_COMPLIANCE_NODE_ID, "Parallel Compliance Agent"),
+        kind: "parallel",
+        position: { x: complianceX, y: complianceY }
+      }
+    ];
+    const edges = [
+      { source: FLOW_BRIEF_NODE_ID, target: ORCHESTRATOR_NODE_ID },
+      { source: ORCHESTRATOR_NODE_ID, target: PARALLEL_COMPLIANCE_NODE_ID, kind: "control" }
+    ];
+
+    sortedPlan.forEach((agent, index) => {
+      const y = stageYStart + (index * stageYGap);
+      nodes.push({
+        id: agent.nodeId,
+        label: getFlowGraphLabel(agent.nodeId, agent.agentName),
+        kind: "master",
+        position: { x: mainX, y }
+      });
+      edges.push({ source: ORCHESTRATOR_NODE_ID, target: agent.nodeId, kind: "control" });
+      if (index > 0) {
+        edges.push({ source: sortedPlan[index - 1].nodeId, target: agent.nodeId });
+      }
+      if (agent.nodeId === "booking-proposals-agent") {
+        edges.push({ source: PARALLEL_COMPLIANCE_NODE_ID, target: agent.nodeId, kind: "control" });
+      }
+
+      const subAgents = MASTER_AGENT_SUBAGENTS[agent.nodeId] || [];
+      const rowCount = Math.max(1, Math.ceil(subAgents.length / 2));
+      subAgents.forEach((subAgent, subIndex) => {
+        const row = Math.floor(subIndex / 2);
+        const isLeft = subAgents.length > 1 ? subIndex % 2 === 0 : false;
+        const subId = subAgent.id;
+        const subY = y + ((row - ((rowCount - 1) / 2)) * subRowGap);
+        nodes.push({
+          id: subId,
+          label: getFlowGraphLabel(subId, subAgent.name),
+          kind: "subagent",
+          position: { x: mainX + (isLeft ? -branchXOffset : branchXOffset), y: subY }
+        });
+        edges.push({ source: agent.nodeId, target: subId, kind: "control" });
+      });
+    });
+
+    const lastMaster = sortedPlan[sortedPlan.length - 1];
+    nodes.push({
+      id: FLOW_OUTPUT_NODE_ID,
+      label: getFlowGraphLabel(FLOW_OUTPUT_NODE_ID, "Output and Measurement"),
+      kind: "output",
+      position: { x: mainX, y: stageYStart + (sortedPlan.length * stageYGap) }
+    });
+    if (lastMaster) edges.push({ source: lastMaster.nodeId, target: FLOW_OUTPUT_NODE_ID });
+    return { nodes, edges };
+  }
+
   const nodes = [
     {
       id: FLOW_BRIEF_NODE_ID,
-      label: "Campaign Brief",
+      label: getFlowGraphLabel(FLOW_BRIEF_NODE_ID, "Campaign Brief"),
       kind: "system",
-      position: { x: 40, y: 180 }
+      position: { x: 60, y: 250 }
     },
     {
       id: ORCHESTRATOR_NODE_ID,
-      label: "Orchestrator Agent",
+      label: getFlowGraphLabel(ORCHESTRATOR_NODE_ID, "Orchestrator Agent"),
       kind: "manager",
-      position: { x: 280, y: 180 }
+      position: { x: 300, y: 250 }
     },
     {
       id: PARALLEL_COMPLIANCE_NODE_ID,
-      label: "Parallel Compliance Agent",
+      label: getFlowGraphLabel(PARALLEL_COMPLIANCE_NODE_ID, "Parallel Compliance Agent"),
       kind: "parallel",
-      position: { x: 280, y: 20 }
+      position: { x: 1080, y: 70 }
     }
   ];
   const edges = [
     { source: FLOW_BRIEF_NODE_ID, target: ORCHESTRATOR_NODE_ID },
     { source: ORCHESTRATOR_NODE_ID, target: PARALLEL_COMPLIANCE_NODE_ID, kind: "control" }
   ];
-
-  const sortedPlan = [...plan].sort((a, b) => (Number(a.phase) || 0) - (Number(b.phase) || 0));
   const masterXStart = 560;
-  const masterXGap = 320;
-  const masterY = 180;
-  const subYStart = 330;
-  const subYGap = 110;
+  const masterXGap = 230;
+  const masterY = 250;
+  const subYStart = 400;
+  const subYGap = 100;
 
   sortedPlan.forEach((agent, index) => {
     const x = masterXStart + (index * masterXGap);
     nodes.push({
       id: agent.nodeId,
-      label: agent.agentName,
+      label: getFlowGraphLabel(agent.nodeId, agent.agentName),
       kind: "master",
       position: { x, y: masterY }
     });
@@ -3847,7 +4640,7 @@ function buildHierarchicalFlowGraph(plan = []) {
       const subId = subAgent.id;
       nodes.push({
         id: subId,
-        label: subAgent.name,
+        label: getFlowGraphLabel(subId, subAgent.name),
         kind: "subagent",
         position: { x, y: subYStart + (subIndex * subYGap) }
       });
@@ -3858,7 +4651,7 @@ function buildHierarchicalFlowGraph(plan = []) {
   const lastMaster = sortedPlan[sortedPlan.length - 1];
   nodes.push({
     id: FLOW_OUTPUT_NODE_ID,
-    label: "Output and Measurement",
+    label: getFlowGraphLabel(FLOW_OUTPUT_NODE_ID, "Output and Measurement"),
     kind: "output",
     position: { x: masterXStart + (sortedPlan.length * masterXGap), y: masterY }
   });
@@ -3948,7 +4741,11 @@ function syncFlowchart() {
 
   if (!fcCtrl || fcCtrl.container !== canvas) {
     fcCtrl?.destroy();
-    fcCtrl = createFlowchart(canvas, [], { orientation: state.flowOrientation, columnCount: state.flowColumns, onNodeSelected: (id) => setState({ focusedNodeId: id }) });
+    fcCtrl = createFlowchart(canvas, [], {
+      orientation: state.flowOrientation,
+      columnCount: state.flowColumns,
+      onNodeSelected: (id) => setState({ focusedNodeId: id, flowPanelNodeId: id || null })
+    });
     fcKey = "";
   } else {
     fcCtrl.setOrientation(state.flowOrientation);
@@ -3984,16 +4781,23 @@ function syncFlowchart() {
     const subAgents = MASTER_AGENT_SUBAGENTS[agent.nodeId] || [];
     subAgents.forEach((subAgent) => {
       const subId = subAgent.id;
-      if (output?.status === "running") activeIds.add(subId);
-      if (output?.status === "done" || executionDetails[agent.nodeId]?.subAgentResults?.some((item) => item.id === subId)) completedIds.add(subId);
-      if (output?.status === "error") failedIds.add(subId);
+      const subResult = executionDetails[agent.nodeId]?.subAgentResults?.find((item) => item.id === subId);
+      if (state.runningNodeIds?.has(subId) || subResult?.status === "running") activeIds.add(subId);
+      if (subResult?.status === "done") completedIds.add(subId);
+      if (subResult?.status === "error") failedIds.add(subId);
+      if (!subResult && output?.status === "error") failedIds.add(subId);
     });
   });
+
+  const pendingIds = graph.nodes
+    .map((node) => node.id)
+    .filter((id) => !activeIds.has(id) && !completedIds.has(id) && !failedIds.has(id));
 
   fcCtrl.setNodeState({
     activeIds: [...activeIds],
     completedIds: [...completedIds],
     failedIds: [...failedIds],
+    pendingIds,
     selectedId: state.focusedNodeId
   });
   fcCtrl.resize();
