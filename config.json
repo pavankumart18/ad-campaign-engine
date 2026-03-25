@@ -1,7 +1,7 @@
 {
-  "title": "WBD Converged Ad Campaign Engine",
-  "subtitle": "Orchestrate converged linear + streaming ad operations in one prompt.",
-  "narrative": "This demo simulates Warner Bros. Discovery's converged ad workflow: Olli audience planning, NEO + DemoDirect media planning, Global Compliance Policy Engine checks, and StreamX in-flight optimization with SCTE-35 resilience.",
+  "title": "WBD Scenario Planning and Multi-Agent Engine",
+  "subtitle": "Start with a simple campaign idea and let the system recommend the best converged scenario.",
+  "narrative": "This demo now starts from a natural-language campaign prompt, maps it to synthetic WBD first-party viewer data, recommends a scenario, and then runs a hierarchical multi-agent workflow across planning, yield, booking, trafficking, operations, and measurement.",
   "supabase": {
     "url": "https://cjjvgiczswsiqhcvapjp.supabase.co",
     "key": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqanZnaWN6c3dzaXFoY3ZhcGpwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUzODA3MTIsImV4cCI6MjA4MDk1NjcxMn0.CRQMGRp0QzMQ4uq2ZduWItYVZqjcvIv4AWPTiBfaY-k"
@@ -9,7 +9,7 @@
   "defaults": {
     "model": "gpt-4o",
     "architectPrompt": "",
-    "agentStyle": "Use WBD terminology and concise, data-driven bullets. Surface risks and compliance flags.",
+    "agentStyle": "Use clear, concise WBD business language. Explain the data signal behind each decision and surface risks when they matter.",
     "maxAgents": 6,
     "flowOrientation": "horizontal",
     "flowColumns": 4
@@ -17,42 +17,42 @@
   "demos": [
     {
       "id": "wbd-converged-engine",
-      "icon": "bi bi-broadcast-pin",
-      "title": "Converged Ad Campaign Version 1",
-      "body": "Single-prompt demo for converged planning, compliance, and in-flight optimization.",
-      "cta": "Load Pipeline",
-      "problem": "Launch a 50000 United States dollar auto campaign targeting Auto Intenders in the United States, and let the agents determine channel allocation according to state-level demand and compliance conditions.",
+      "icon": "bi bi-bag-heart",
+      "title": "Organic Toddler Snacks",
+      "body": "Natural-language brief for a young-family product that should pull the recommendation toward streaming-led household reach.",
+      "cta": "Try Recommended Scenario",
+      "problem": "I have $50K for organic toddler snacks and I want to reach U.S. parents of toddlers who are likely to buy healthier snacks.",
       "plan": {
         "plan": [
           {
             "agentName": "The Planner",
             "nodeId": "planner",
-            "systemInstruction": "You are the Audience Planning Agent for WBD's Olli platform. Given a campaign brief, query the Olli Audience Graph data to identify matching households. Report total matched households, device breakdown, platform overlap, and data quality flags (duplicates or missing DMA). Output a structured audience ID list using WBD terminology (Olli, household graph, device IDs, de-duplicated reach).",
-            "initialTask": "Resolve Auto Intender households, flag data quality issues, and produce a deduplicated audience ID list with reach summary.",
+            "systemInstruction": "Use the synthetic WBD viewer dataset and Olli graph to find young-parent households, highlight streaming-heavy behavior, and document the strongest audience and platform signals.",
+            "initialTask": "Resolve the highest-fit parent-of-toddler audience and explain why the selected audience should lean toward Max, discovery+, or linear support.",
             "stage": 1,
             "next": ["The Sales Rep"]
           },
           {
             "agentName": "The Sales Rep",
             "nodeId": "sales-rep",
-            "systemInstruction": "You are the Converged Media Planning Agent using NEO and DemoDirect. Given an audience list and total budget objective, create a 12-line converged media plan across linear (TNT Sports, CNN, Food Network) and digital (Max ad-lite, Discovery+). Determine the channel allocation based on state-level demand and inventory quality. Optimize for reach and cost per thousand impressions efficiency. Include at least one CNN Saudi Arabia placement for reach testing. Flag any SCTE-35 signal risks from StreamX inventory.",
-            "initialTask": "Build the converged media plan with line-item details (network, platform, daypart, country, impressions, spend, CPM) and identify SCTE-35 risks.",
+            "systemInstruction": "Build a converged proposal that reflects the audience evidence, the recommended scenario, and the strongest WBD networks for this product without forcing a fixed channel split.",
+            "initialTask": "Turn the recommended scenario into a converged plan with clear network, budget, impression, and pricing logic.",
             "stage": 2,
             "next": ["The Compliance Bot"]
           },
           {
             "agentName": "The Compliance Bot",
             "nodeId": "compliance-bot",
-            "systemInstruction": "You are the Global Ad Compliance Agent. Scan the media plan against the Global Compliance Policy Engine. For each line item, check country/region against regulations. Flag violations in RED with the specific law violated. Auto-approve compliant placements in GREEN. For violations, suggest an alternative placement. Output the approved & trafficked plan with reasons.",
-            "initialTask": "Validate the media plan against global restrictions and replace non-compliant placements with approved alternatives.",
+            "systemInstruction": "Check the selected product, audience, and markets against the synthetic compliance rulebook and suggest safer alternatives only if the plan needs them.",
+            "initialTask": "Validate the proposal, explain any compliance constraints, and keep the execution package launch-ready.",
             "stage": 3,
             "next": ["The Ops Director"]
           },
           {
             "agentName": "The Ops Director",
             "nodeId": "ops-director",
-            "systemInstruction": "You are the In-Flight Operations Agent monitoring StreamX delivery. Analyze the Live Delivery Log for pacing issues. If linear delivery is below 85% of target at any point, trigger a make-good by reallocating 3,200 United States dollars to Max ad-lite streaming. Calculate de-duplicated reach, effective cost per thousand impressions, frequency distribution, and projected return on investment. If SCTE-35 signals are failing, quantify revenue at risk. Output a final deterministic return on investment report with before-and-after the make-good.",
-            "initialTask": "Detect pacing failures, execute make-good reallocation, and produce the final return on investment report with before-and-after metrics.",
+            "systemInstruction": "Simulate in-flight delivery, look for pacing or signal risk, and use the scenario reserve to protect delivery and return on investment if one channel underdelivers.",
+            "initialTask": "Run the in-flight simulation, trigger make-good logic if needed, and report the before-and-after result.",
             "stage": 4,
             "next": []
           }
@@ -93,39 +93,48 @@
       "inputs": []
     },
     {
-      "id": "retail-promo-sprint",
-      "icon": "bi bi-cart4",
-      "title": "Converged Ad Campaign Version 2",
-      "body": "Three-week retail push with aggressive audience expansion and pacing controls across linear and streaming.",
-      "cta": "Generate Architect Plans",
-      "problem": "Launch a 21-day retail promotion with a total budget of 75000 United States dollars, prioritize in-market shoppers, and let the agents determine allocation by state-level demand while keeping cost efficiency strong.",
+      "id": "insurance-renewal-push",
+      "icon": "bi bi-shield-check",
+      "title": "Insurance Renewal Push",
+      "body": "Older-skewing category that should demonstrate why a linear-heavier scenario can be the smarter recommendation.",
+      "cta": "Try Recommended Scenario",
+      "problem": "I have $90K to promote auto and home insurance renewal offers in the U.S. and I want to reach adults 35 plus who are shopping for better coverage.",
+      "inputs": []
+    },
+    {
+      "id": "auto-launch-momentum",
+      "icon": "bi bi-car-front",
+      "title": "New Vehicle Launch",
+      "body": "Auto-intender template designed to sit closer to the middle and show how the system balances sports, streaming, and household reach.",
+      "cta": "Try Recommended Scenario",
+      "problem": "I have $65K to launch a new SUV in the U.S. and I want to reach people who are actively researching their next vehicle.",
       "inputs": []
     },
     {
       "id": "series-launch-momentum",
       "icon": "bi bi-film",
-      "title": "Converged Ad Campaign Version 3",
-      "body": "Premiere-week campaign for a new streaming series with daily delivery tracking and make-good readiness.",
-      "cta": "Generate Architect Plans",
-      "problem": "Promote a new streaming drama premiere over 14 days with a total budget of 90000 United States dollars, and let the agents determine state-level allocation while balancing broad reach and frequency control in the United States and Germany.",
+      "title": "Streaming Drama Premiere",
+      "body": "Entertainment-focused template that should bias toward younger streaming-heavy viewers and premium digital inventory.",
+      "cta": "Try Recommended Scenario",
+      "problem": "I have $85K to promote a new streaming drama premiere and I want to build buzz with younger binge-watchers across the U.S.",
       "inputs": []
     },
     {
-      "id": "global-compliance-stress-test",
-      "icon": "bi bi-shield-check",
-      "title": "Converged Ad Campaign Version 4",
-      "body": "High-regulation campaign scenario focused on early legal screening, policy evidence, and audit traceability.",
-      "cta": "Generate Architect Plans",
-      "problem": "Plan a cross-border financial services campaign with a total budget of 120000 United States dollars across the United States, Germany, and Saudi Arabia, and let the agents determine allocation by state and region while enforcing compliance restrictions.",
+      "id": "financial-compliance-case",
+      "icon": "bi bi-bank",
+      "title": "Financial Services Compliance Case",
+      "body": "Higher-regulation template that shows how the recommendation still works while the compliance layer tightens the path.",
+      "cta": "Try Recommended Scenario",
+      "problem": "I have $120K for a financial services campaign across the U.S. and Germany, and I need to reach affluent adults while staying inside compliance guardrails.",
       "inputs": []
     },
     {
       "id": "sports-finals-burst",
       "icon": "bi bi-trophy",
-      "title": "Converged Ad Campaign Version 5",
-      "body": "Short-window sports event burst with hour-level pacing sensitivity and contingency routing.",
-      "cta": "Generate Architect Plans",
-      "problem": "Run a seven-day sports finals campaign with a total budget of 65000 United States dollars, maximize unique household reach, and let the agents determine state-aware allocation and timing with resilient fallback planning for signal degradation during peak windows.",
+      "title": "Sports Finals Burst",
+      "body": "Short-window, high-volatility brief meant to stress pacing, make-good logic, and the hierarchy under pressure.",
+      "cta": "Try Recommended Scenario",
+      "problem": "I have $70K for a sports finals campaign and I want to maximize unique household reach fast without losing control if live delivery slips.",
       "inputs": []
     }
   ]

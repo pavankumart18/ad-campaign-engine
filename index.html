@@ -55,6 +55,29 @@
   </header>
 
   <main class="container my-4">
+    <section id="custom-problem-section" class="card mb-4 shadow-sm">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+          <div>
+            <p class="eyebrow text-uppercase mb-2">Custom Scenario</p>
+            <h3 class="h5 mb-1">Write Your Own Prompt Here</h3>
+            <p class="text-body-secondary small mb-0">Type a natural-language campaign idea here, or pick one of the templates below.</p>
+          </div>
+        </div>
+        <form id="custom-problem-form" class="mt-3">
+          <div class="row g-3 align-items-stretch">
+            <div class="col-lg-9">
+              <textarea id="custom-problem" class="form-control campaign-input" rows="3"
+                placeholder="Example: I have $50K for organic toddler snacks and I want to reach U.S. parents of toddlers."></textarea>
+            </div>
+            <div class="col-lg-3 d-flex">
+              <button id="run-custom-problem" class="btn btn-primary w-100" type="submit">Plan &amp; Build Custom</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </section>
+
     <div id="demo-cards" class="row g-3 justify-content-center mb-4"></div>
 
     <form id="settings-form" class="narrative mx-auto">

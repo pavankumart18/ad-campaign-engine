@@ -92,6 +92,43 @@ const STATE_STYLES = [
     },
   },
   {
+    selector: "node.node-manager",
+    style: {
+      "background-color": "#1d3557",
+      "border-color": "#457b9d",
+      "font-size": "14px",
+      "font-weight": "700",
+    },
+  },
+  {
+    selector: "node.node-master",
+    style: {
+      "background-color": "#3b3f57",
+      "border-color": "#ff8c42",
+      "font-size": "14px",
+    },
+  },
+  {
+    selector: "node.node-subagent",
+    style: {
+      "background-color": "#20243a",
+      "border-color": "#6dd3fb",
+      "font-size": "12px",
+      "font-weight": "500",
+      "text-max-width": "190px",
+      padding: "12px",
+    },
+  },
+  {
+    selector: "node.node-parallel",
+    style: {
+      "background-color": "#2f3e46",
+      "border-color": "#84a98c",
+      "font-size": "12px",
+      "font-weight": "600",
+    },
+  },
+  {
     selector: "node.node-data",
     style: {
       "background-color": "#20243a",
@@ -117,6 +154,18 @@ const STATE_STYLES = [
       "target-arrow-shape": "triangle",
       "arrow-scale": 1.2,
       opacity: 0.8,
+    },
+  },
+  {
+    selector: "edge.edge-control",
+    style: {
+      "line-style": "dashed",
+      "line-color": "#6dd3fb",
+      "target-arrow-color": "#6dd3fb",
+      "target-arrow-shape": "triangle",
+      "arrow-scale": 1.3,
+      opacity: 0.85,
+      width: 3,
     },
   },
   {

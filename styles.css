@@ -373,6 +373,111 @@ h6,
   color: var(--brand-muted);
 }
 
+.detail-disclosure summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--brand-text);
+}
+
+.detail-disclosure[open] > summary {
+  margin-bottom: 0.85rem;
+}
+
+.detail-section {
+  display: grid;
+  gap: 0.55rem;
+  margin-top: 0.9rem;
+}
+
+.detail-section-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--brand-muted);
+}
+
+.detail-kv {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.detail-kv-row,
+.detail-card,
+.detail-text-panel {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 0.75rem;
+  padding: 0.8rem 0.9rem;
+}
+
+.detail-kv-key {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--brand-muted);
+  margin-bottom: 0.35rem;
+}
+
+.detail-kv-value {
+  color: var(--brand-text);
+  word-break: break-word;
+}
+
+.detail-card-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.detail-card-title {
+  font-weight: 600;
+  color: var(--brand-text);
+  margin-bottom: 0.45rem;
+}
+
+.detail-pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.detail-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.24rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(255, 102, 0, 0.14);
+  color: var(--brand-accent-2);
+  border: 1px solid rgba(255, 102, 0, 0.28);
+  font-size: 0.78rem;
+}
+
+.detail-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: var(--brand-text);
+}
+
+.detail-list li + li {
+  margin-top: 0.35rem;
+}
+
+.detail-null {
+  color: var(--brand-muted);
+  font-style: italic;
+}
+
+.detail-text-panel {
+  white-space: pre-wrap;
+  line-height: 1.55;
+  color: var(--brand-text);
+}
+
+.detail-expanded {
+  display: grid;
+  gap: 0.75rem;
+}
+
 .campaign-input {
   background: rgba(18, 20, 35, 0.85);
   border: 1px solid rgba(255, 102, 0, 0.3);

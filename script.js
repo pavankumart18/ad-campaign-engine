@@ -1,4 +1,4 @@
-// VERSION: 2026-03-06 - Three-plan converged strategies with fixed six-agent workflow, yield intelligence, and parallel compliance validation.
+// VERSION: 2026-03-25 - Data-aware scenario generation with hierarchical master/sub-agent execution and shared campaign state.
 import { openaiConfig } from "bootstrap-llm-provider";
 import saveform from "saveform";
 import { createFlowchart } from "./flowchart.js";
@@ -11,65 +11,101 @@ import * as d3 from "d3";
 const $ = (s) => document.querySelector(s);
 const DEFAULT_BASE_URLS = ["https://api.openai.com/v1", "https://llmfoundry.straivedemo.com/openai/v1"];
 
+const FLOW_BRIEF_NODE_ID = "campaign-brief-node";
+const ORCHESTRATOR_NODE_ID = "orchestrator-agent";
+const FLOW_OUTPUT_NODE_ID = "campaign-output-node";
 const PARALLEL_COMPLIANCE_NODE_ID = "parallel-compliance-agent";
 const WORKFLOW_AGENTS = [
   {
     nodeId: "planning-identity-agent",
-    agentName: "Planning and Identity Agent",
+    agentName: "Planning and Identity Master Agent",
     phase: 1,
-    focus: "audience planning, identity resolution, and seed segment qualification across state-level markets"
+    focus: "audience segmentation, identity resolution, and cross-platform household understanding"
   },
   {
     nodeId: "inventory-yield-agent",
-    agentName: "Inventory Yield Agent",
+    agentName: "Inventory and Yield Master Agent",
     phase: 2,
-    focus: "inventory demand and yield optimization using trend-aware timing signals"
+    focus: "predictive capacity planning, yield optimization, and network-daypart pricing strategy"
   },
   {
     nodeId: "booking-proposals-agent",
-    agentName: "Booking and Proposals Agent",
+    agentName: "Booking and Proposal Master Agent",
     phase: 3,
-    focus: "channel allocation, proposal construction, and return on investment-centered booking logic"
+    focus: "deal structuring, proposal packaging, and compliance-aware booking decisions"
   },
   {
     nodeId: "trafficking-signals-agent",
-    agentName: "Trafficking and Signals Agent",
+    agentName: "Trafficking and Signals Master Agent",
     phase: 4,
-    focus: "placement trafficking, signal integrity checks, and delivery readiness assurance"
+    focus: "asset quality assurance, trafficking readiness, and StreamX signal routing"
   },
   {
     nodeId: "inflight-operations-agent",
-    agentName: "In-Flight Operations Agent",
+    agentName: "In-Flight Operations Master Agent",
     phase: 5,
-    focus: "live pacing correction, make-good routing, and budget protection during execution"
+    focus: "real-time pacing management, autonomous make-good logic, and delivery stabilization"
   },
   {
     nodeId: "measurement-agent",
-    agentName: "Measurement Agent",
+    agentName: "Measurement and Attribution Master Agent",
     phase: 6,
-    focus: "outcome attribution, return on investment interpretation, and optimization recommendations"
+    focus: "clean-room matching, deterministic return on investment analysis, and post-campaign learning"
   }
 ];
 
+const MASTER_AGENT_SUBAGENTS = {
+  "planning-identity-agent": [
+    { id: "audience-segmentation", name: "Audience Segmentation", summary: "Scores the natural-language brief against WBD viewer profiles to isolate high-fit cohorts." },
+    { id: "cross-platform-id-resolver", name: "Cross-Platform ID Resolver", summary: "Uses the Olli identity graph to deduplicate households across Max, CNN, and discovery+." },
+    { id: "behavioral-indexer", name: "Behavioral Indexer", summary: "Ranks behavioral tags, dayparts, and networks that over-index for the brief." }
+  ],
+  "inventory-yield-agent": [
+    { id: "predictive-capacity", name: "Predictive Capacity", summary: "Checks whether the recommended mix can be fulfilled without overselling future avails." },
+    { id: "yield-optimizer", name: "Yield Optimizer", summary: "Sets premium versus blended CPM guidance across streaming and linear inventory." },
+    { id: "signal-forecaster", name: "Signal Forecaster", summary: "Applies trend, news, and external-feed signals to recommend timing windows." }
+  ],
+  "booking-proposals-agent": [
+    { id: "deal-structurer", name: "Deal Structurer (NEO)", summary: "Builds a converged contract structure across the chosen networks and platforms." },
+    { id: "global-compliance-bot", name: "Global Compliance Bot", summary: "Screens the product, audience, and markets for regulatory risk before booking." },
+    { id: "proposal-assembler", name: "Proposal Assembler", summary: "Turns yield and compliance outputs into a buyer-ready proposal package." }
+  ],
+  "trafficking-signals-agent": [
+    { id: "asset-qa", name: "Asset QA", summary: "Validates that creative and metadata are ready across TV, CTV, and mobile surfaces." },
+    { id: "streamx-router", name: "StreamX Signal Router", summary: "Sets routing and SCTE-35 handling for live and on-demand streaming paths." },
+    { id: "launch-readiness", name: "Launch Readiness", summary: "Finalizes the trafficking checklist and escalation points before activation." }
+  ],
+  "inflight-operations-agent": [
+    { id: "real-time-pacing", name: "Real-Time Pacing", summary: "Monitors line-item delivery risk and channel under-performance as the campaign runs." },
+    { id: "autonomous-make-good", name: "Autonomous Make-Good", summary: "Reallocates spend from weak channels into stronger inventory when guarantees are at risk." },
+    { id: "ops-alerting", name: "Ops Alerting", summary: "Logs root causes and recovery instructions for human review." }
+  ],
+  "measurement-agent": [
+    { id: "clean-room-matcher", name: "Clean Room Matcher", summary: "Matches synthetic exposure logs against sales outcomes in a privacy-safe workflow." },
+    { id: "deterministic-roi", name: "Deterministic ROI Calculator", summary: "Calculates lift, efficiency, and payback from the converged campaign." },
+    { id: "learning-agenda", name: "Learning Agenda", summary: "Translates the measured outcome into next-flight recommendations." }
+  ]
+};
+
 const AGENT_DATASET_MAP = {
   "planning-identity-agent": "unifiedAudienceDataset",
-  "Planning and Identity Agent": "unifiedAudienceDataset",
-  "inventory-yield-agent": "unifiedAudienceDataset",
-  "Inventory Yield Agent": "unifiedAudienceDataset",
-  "booking-proposals-agent": "unifiedAudienceDataset",
-  "Booking and Proposals Agent": "unifiedAudienceDataset",
-  "trafficking-signals-agent": "unifiedAudienceDataset",
-  "Trafficking and Signals Agent": "unifiedAudienceDataset",
-  "inflight-operations-agent": "unifiedAudienceDataset",
-  "In-Flight Operations Agent": "unifiedAudienceDataset",
-  "measurement-agent": "unifiedAudienceDataset",
-  "Measurement Agent": "unifiedAudienceDataset",
+  "Planning and Identity Master Agent": "unifiedAudienceDataset",
+  "inventory-yield-agent": "inventoryMatrix",
+  "Inventory and Yield Master Agent": "inventoryMatrix",
+  "booking-proposals-agent": "inventoryMatrix",
+  "Booking and Proposal Master Agent": "inventoryMatrix",
+  "trafficking-signals-agent": "inventoryMatrix",
+  "Trafficking and Signals Master Agent": "inventoryMatrix",
+  "inflight-operations-agent": "liveDeliveryLog",
+  "In-Flight Operations Master Agent": "liveDeliveryLog",
+  "measurement-agent": "liveDeliveryLog",
+  "Measurement and Attribution Master Agent": "liveDeliveryLog",
   "planning-identity": "unifiedAudienceDataset",
-  "inventory-yield": "unifiedAudienceDataset",
-  "booking-proposals": "unifiedAudienceDataset",
-  "trafficking-signals": "unifiedAudienceDataset",
-  "inflight-operations": "unifiedAudienceDataset",
-  "measurement": "unifiedAudienceDataset",
+  "inventory-yield": "inventoryMatrix",
+  "booking-proposals": "inventoryMatrix",
+  "trafficking-signals": "inventoryMatrix",
+  "inflight-operations": "liveDeliveryLog",
+  "measurement": "liveDeliveryLog",
   "compliance-agent": "complianceRulebook",
   [PARALLEL_COMPLIANCE_NODE_ID]: "complianceRulebook",
   "Compliance Agent (Parallel)": "complianceRulebook",
@@ -85,29 +121,29 @@ const AGENT_DATASET_MAP = {
 };
 
 const AGENT_ACTION_SUMMARY = {
-  "planning-identity-agent": "Resolved identity graph, validated state-level audience readiness, and documented targetable reach confidence.",
-  "inventory-yield-agent": "Applied Yield Intelligence signals from Twitter trends, news signals, and external feeds to set high-value delivery windows.",
-  "booking-proposals-agent": "Produced channel booking proposals with return on investment-focused allocation and constraint-aware alternatives.",
-  "trafficking-signals-agent": "Validated trafficking package, verified signal health, and prepared compliant activation instructions.",
-  "inflight-operations-agent": "Monitored delivery pacing, triggered in-flight optimizations, and protected campaign return on investment.",
-  "measurement-agent": "Measured outcomes across channels, quantified return on investment impact, and documented next-iteration recommendations.",
+  "planning-identity-agent": "Scored WBD viewer profiles, resolved cross-platform overlap, and established the operating audience for the run.",
+  "inventory-yield-agent": "Checked future avails, priced the recommended mix, and identified the strongest timing windows.",
+  "booking-proposals-agent": "Structured the converged proposal and aligned it with compliance and guarantee logic.",
+  "trafficking-signals-agent": "Confirmed asset readiness, routing setup, and signal handling before launch.",
+  "inflight-operations-agent": "Simulated pacing, executed make-good logic, and protected the delivery guarantee.",
+  "measurement-agent": "Matched outcomes, calculated deterministic ROI, and wrote the learning agenda.",
   [PARALLEL_COMPLIANCE_NODE_ID]: "Validated campaign parameters against compliance rules and provided compliant alternatives when restrictions were detected."
 };
 
 const RAW_DATA_BY_AGENT = {
   "planning-identity-agent": datasetEntries.find((d) => d.key === "unifiedAudienceDataset"),
-  "inventory-yield-agent": datasetEntries.find((d) => d.key === "yieldIntelligenceFeed"),
-  "booking-proposals-agent": datasetEntries.find((d) => d.key === "unifiedAudienceDataset"),
-  "trafficking-signals-agent": datasetEntries.find((d) => d.key === "unifiedAudienceDataset"),
-  "inflight-operations-agent": datasetEntries.find((d) => d.key === "unifiedAudienceDataset"),
-  "measurement-agent": datasetEntries.find((d) => d.key === "unifiedAudienceDataset"),
+  "inventory-yield-agent": datasetEntries.find((d) => d.key === "inventoryMatrix"),
+  "booking-proposals-agent": datasetEntries.find((d) => d.key === "inventoryMatrix"),
+  "trafficking-signals-agent": datasetEntries.find((d) => d.key === "inventoryMatrix"),
+  "inflight-operations-agent": datasetEntries.find((d) => d.key === "liveDeliveryLog"),
+  "measurement-agent": datasetEntries.find((d) => d.key === "liveDeliveryLog"),
   [PARALLEL_COMPLIANCE_NODE_ID]: datasetEntries.find((d) => d.key === "complianceRulebook")
 };
 
 const ARCHITECT_PLAN_FALLBACK_TITLES = [
-  "Plan A - Streaming Focused",
-  "Plan B - Linear Focused",
-  "Plan C - Balanced Strategy"
+  "Scenario A - Streaming Heavy",
+  "Scenario B - Linear Heavy",
+  "Scenario C - Balanced"
 ];
 const MIN_ARCHITECT_AGENTS = 6;
 const MAX_ARCHITECT_AGENTS = 6;
@@ -115,62 +151,62 @@ const TARGET_ARCHITECT_AGENTS = 6;
 const PLAN_VARIANTS = [
   {
     key: "plan-a-streaming",
-    planLabel: "Plan A - Streaming Focused",
-    title: "Plan A - Streaming Focused",
-    promptTile: "Plan A - Streaming Focused",
-    promptText: "Prioritize streaming channels while preserving quality reach in core states and maximizing return on investment through dynamic optimization.",
-    strategy: "Streaming-first strategy with high digital video allocation and rapid optimization loops.",
-    why: "Streaming-heavy allocation can improve return on investment when high-intent audiences show stronger digital consumption patterns.",
-    allocationStrategy: "Channel allocation recommendation: 62 percent streaming video, 23 percent linear television, and 15 percent social extensions.",
-    deliveryTiming: "Prioritize evening and late-prime windows, then dynamically increase delivery during trend spikes detected in state-level demand signals.",
-    roiReasoning: "This plan improves return on investment by concentrating spend on higher engagement inventory and rapidly reallocating when signal-aware yield data indicates better conversion potential.",
+    planLabel: "Scenario A - Streaming Heavy",
+    title: "Scenario A - Streaming Heavy",
+    promptTile: "Scenario A - Streaming Heavy",
+    promptText: "Bias the plan toward Max and discovery+ when the brief skews to younger, streaming-first behavioral cohorts.",
+    strategy: "Streaming-heavy scenario built to maximize precision against younger and multi-device households.",
+    why: "This scenario is strongest when the matched audience over-indexes on Max daytime, discovery+, and mobile-first streaming behavior.",
+    allocationStrategy: "Initial allocation: 70 percent streaming, 20 percent linear, and 10 percent flexible optimization reserve.",
+    deliveryTiming: "Lean into high-index streaming dayparts and reserve flex budget for signal-led boosts.",
+    roiReasoning: "Return on investment improves when high-affinity streaming households can be reached repeatedly without wasting spend on low-fit linear inventory.",
     priorities: {
-      "planning-identity-agent": "Prioritize streaming-leaning households, high-device clusters, and state-level demand pockets where digital completion rates historically outperform baseline.",
-      "inventory-yield-agent": "Use Yield Intelligence from Twitter trends, news signals, and external feeds to identify streaming demand spikes and recommend intra-day timing shifts.",
-      "booking-proposals-agent": "Structure proposals with streaming as the primary spend lane while retaining selective linear anchors for baseline reach continuity.",
-      "trafficking-signals-agent": "Optimize trafficking for digital ad serving reliability, rapid creative refresh, and low-latency signal handling in high-demand windows.",
-      "inflight-operations-agent": "Monitor streaming pacing variance hourly and reallocate underperforming segments toward higher-return digital inventory.",
-      "measurement-agent": "Emphasize engagement depth, incremental conversion lift, and return on investment attribution from streaming-heavy touchpoints."
+      "planning-identity-agent": "Prioritize younger multi-device households, Parents of Toddlers, streaming-first viewers, and Max or discovery+ over-indexes.",
+      "inventory-yield-agent": "Prioritize premium streaming pockets and use yield signals to time Max and discovery+ delivery.",
+      "booking-proposals-agent": "Structure the proposal around streaming anchors first, with only supporting linear placements.",
+      "trafficking-signals-agent": "Optimize creative routing for CTV, mobile video, and rapid creative swaps.",
+      "inflight-operations-agent": "Protect streaming pacing first and rapidly redeploy budget into stronger digital avails.",
+      "measurement-agent": "Emphasize incremental reach and conversion lift from streaming-first touchpoints."
     }
   },
   {
     key: "plan-b-linear",
-    planLabel: "Plan B - Linear Focused",
-    title: "Plan B - Linear Focused",
-    promptTile: "Plan B - Linear Focused",
-    promptText: "Prioritize linear television coverage to maximize broad reach and sustained brand exposure while protecting return on investment.",
-    strategy: "Linear-first strategy with strong gross rating point coverage and selective digital reinforcement.",
-    why: "Linear-heavy allocation supports consistent broad-reach delivery and can raise top-of-funnel impact for brand visibility objectives.",
-    allocationStrategy: "Channel allocation recommendation: 58 percent linear television, 27 percent streaming video, and 15 percent social extensions.",
-    deliveryTiming: "Concentrate delivery in high-index dayparts for broad household reach, with measured streaming reinforcement around event-driven windows.",
-    roiReasoning: "This plan improves return on investment by stabilizing reach efficiency through linear scale while applying selective digital follow-through where incremental lift is strongest.",
+    planLabel: "Scenario B - Linear Heavy",
+    title: "Scenario B - Linear Heavy",
+    promptTile: "Scenario B - Linear Heavy",
+    promptText: "Bias the plan toward CNN, TNT Sports, HGTV, and other high-reach linear inventory when the brief skews older or household-level.",
+    strategy: "Linear-heavy scenario designed for older, news-led, and broad-reach household cohorts.",
+    why: "This scenario is strongest when the matched audience leans toward older adults, homeowners, and heavy linear viewing habits.",
+    allocationStrategy: "Initial allocation: 65 percent linear, 25 percent streaming, and 10 percent flexible optimization reserve.",
+    deliveryTiming: "Prioritize high-index linear dayparts and hold back a streaming layer for incremental frequency control.",
+    roiReasoning: "Return on investment improves when broad-reach linear avails cover high-value adult households efficiently before digital reinforcement is added.",
     priorities: {
-      "planning-identity-agent": "Prioritize broad state-level household coverage cohorts and stable identity segments that align with high-reach linear programming.",
-      "inventory-yield-agent": "Use Yield Intelligence from Twitter trends, news signals, and external feeds to decide when linear tentpole inventory should receive higher pacing priority.",
-      "booking-proposals-agent": "Structure proposals around linear gross rating point strength first, with digital support reserved for incremental frequency management.",
-      "trafficking-signals-agent": "Focus trafficking quality controls on linear signal integrity, cue reliability, and placement continuity in large-reach schedules.",
-      "inflight-operations-agent": "Protect linear pacing targets and only shift budget when delivery risk threatens return on investment thresholds.",
-      "measurement-agent": "Emphasize de-duplicated reach, brand exposure continuity, and return on investment from broad-reach linear execution."
+      "planning-identity-agent": "Prioritize stable household clusters, older adults, homeowners, and heavy-linear viewing behavior.",
+      "inventory-yield-agent": "Prioritize high-capacity linear avails and premium news or sports dayparts.",
+      "booking-proposals-agent": "Structure the proposal around broad linear reach with targeted streaming reinforcement.",
+      "trafficking-signals-agent": "Harden SCTE-35 cueing, network-level trafficking, and linear metadata quality.",
+      "inflight-operations-agent": "Watch for linear under-delivery and protect guarantees with selective digital make-goods.",
+      "measurement-agent": "Emphasize de-duplicated reach, household penetration, and broad-reach ROI."
     }
   },
   {
     key: "plan-c-balanced",
-    planLabel: "Plan C - Balanced Strategy",
-    title: "Plan C - Balanced Strategy",
-    promptTile: "Plan C - Balanced Strategy",
-    promptText: "Balance streaming, linear television, and social extensions to diversify risk and maintain durable return on investment across channels.",
-    strategy: "Balanced strategy with diversified channel mix, controlled risk, and adaptive pacing.",
-    why: "A balanced allocation can reduce over-exposure risk and preserve return on investment stability across uncertain market conditions.",
-    allocationStrategy: "Channel allocation recommendation: 40 percent streaming video, 40 percent linear television, and 20 percent social extensions.",
-    deliveryTiming: "Distribute delivery across core dayparts with adaptive boosts during verified demand spikes and under-delivery recovery windows.",
-    roiReasoning: "This plan improves return on investment by combining broad reach and targeted engagement while reducing concentration risk through diversified channel exposure.",
+    planLabel: "Scenario C - Balanced",
+    title: "Scenario C - Balanced",
+    promptTile: "Scenario C - Balanced",
+    promptText: "Balance streaming and linear when the brief needs both precise targeting and scaled household reach.",
+    strategy: "Balanced scenario designed to hedge inventory risk while preserving meaningful audience fit.",
+    why: "This scenario is strongest when both streaming and linear signals are credible and the audience spans multiple life stages.",
+    allocationStrategy: "Initial allocation: 50 percent streaming, 40 percent linear, and 10 percent flexible optimization reserve.",
+    deliveryTiming: "Split delivery across the best streaming and linear windows, then rebalance with in-flight learning.",
+    roiReasoning: "Return on investment improves when the system can shift between precise digital reach and high-scale linear exposure without starting from an extreme mix.",
     priorities: {
-      "planning-identity-agent": "Balance broad and high-intent identity segments so the campaign can scale reach without sacrificing precision in high-value states.",
-      "inventory-yield-agent": "Use Yield Intelligence from Twitter trends, news signals, and external feeds to rebalance timing between channels during demand inflections.",
-      "booking-proposals-agent": "Build mixed-channel proposals with balanced allocation logic and clear fallback paths for volatility in any one inventory lane.",
-      "trafficking-signals-agent": "Ensure trafficking and signal checks are symmetric across linear and digital paths to maintain continuity under mixed allocation.",
-      "inflight-operations-agent": "Use measured reallocation to sustain balanced pacing and protect return on investment when one channel underperforms.",
-      "measurement-agent": "Evaluate return on investment through blended attribution, de-duplicated reach, and channel interaction effects."
+      "planning-identity-agent": "Balance precision cohorts and broad household clusters so downstream stages can pivot in either direction.",
+      "inventory-yield-agent": "Keep comparable capacity and CPM visibility across both streaming and linear options.",
+      "booking-proposals-agent": "Build a mixed proposal with explicit fallback moves by channel.",
+      "trafficking-signals-agent": "Maintain symmetric launch readiness across streaming and linear paths.",
+      "inflight-operations-agent": "Rebalance calmly between channels when one lane weakens.",
+      "measurement-agent": "Evaluate blended attribution and channel interaction effects."
     }
   }
 ];
@@ -225,7 +261,10 @@ let state = {
   visualizationExplanationOpen: false,
   visualizationLoading: false,
   visualizationNarrative: "",
-  runToken: 0
+  runToken: 0,
+  campaignStateObject: null,
+  orchestratorNodeId: ORCHESTRATOR_NODE_ID,
+  subAgentCatalog: MASTER_AGENT_SUBAGENTS
 };
 
 const llmSession = { creds: null };
@@ -237,34 +276,7 @@ const actions = {
   chooseArchitectPlan: (id) => {
     const picked = state.architectPlans.find((plan) => plan.id === id);
     if (!picked) return;
-    const selectedPlan = expandAndEnrichPlan(
-      picked.plan || [],
-      clampAgentCount($("#max-agents")?.value, TARGET_ARCHITECT_AGENTS),
-      state.campaignPrompt || "",
-      picked.variantKey || PLAN_VARIANTS[0].key
-    );
-    const normalizedInputs = buildDatasetInputs().map((input) => ({ ...input, id: Utils.uniqueId("input") }));
-    const complianceValidation = picked.complianceValidation || evaluatePlanCompliance({
-      campaignPrompt: state.campaignPrompt || "",
-      allocationStrategy: picked.allocationStrategy || "",
-      variantKey: picked.variantKey || ""
-    });
-    setState({
-      selectedArchitectPlanId: picked.id,
-      plan: selectedPlan,
-      suggestedInputs: normalizedInputs,
-      selectedInputs: new Set(normalizedInputs.map((i) => i.id)),
-      rawDataByAgent: buildRawDataByPlan(selectedPlan),
-      selectedPlanCompliance: complianceValidation,
-      complianceDetails: buildComplianceDetails(complianceValidation),
-      complianceExplanationOpen: false,
-      visualizationExplanationOpen: false,
-      visualizationLoading: false,
-      visualizationNarrative: "",
-      runToken: 0,
-      stage: "data",
-      error: ""
-    });
+    applyArchitectSelection(picked);
   },
   startAgents: () => startAgents(),
   toggleSuggestedInput: (id) => {
@@ -394,7 +406,7 @@ const actions = {
     const savedPlan = expandAndEnrichPlan(agent.plan || [], savedMax, agent.problem || "");
     const savedInputs = (agent.inputs && agent.inputs.length)
       ? agent.inputs.map((input) => ({ ...input, id: input.id || Utils.uniqueId("input") }))
-      : buildDatasetInputs().map((input) => ({ ...input, id: Utils.uniqueId("input") }));
+      : buildDatasetInputs({ campaignPrompt: agent.problem || "" }).map((input) => ({ ...input, id: Utils.uniqueId("input") }));
     const savedCompliance = evaluatePlanCompliance({
       campaignPrompt: agent.problem || "",
       allocationStrategy: "Saved plan allocation derived from prior run.",
@@ -413,14 +425,15 @@ const actions = {
       error: "",
       editingAgentId: null, // Clear separate edit session
       campaignPrompt: agent.problem || "",
-      rawDataByAgent: buildRawDataByPlan(savedPlan),
+      rawDataByAgent: buildRawDataByPlan(savedPlan, null, null),
       selectedPlanCompliance: savedCompliance,
       complianceDetails: buildComplianceDetails(savedCompliance),
       complianceExplanationOpen: false,
       visualizationExplanationOpen: false,
       visualizationLoading: false,
       visualizationNarrative: "",
-      runToken: 0
+      runToken: 0,
+      campaignStateObject: null
     });
   },
   editAgent: (agent) => {
@@ -456,7 +469,7 @@ async function refreshAgents() {
 (async () => {
   config = await fetch("config.json").then(r => r.json());
   config.demos = (config.demos || []).map(d => {
-    const inputs = buildDatasetInputs();
+    const inputs = buildDatasetInputs({ campaignPrompt: d.problem || d.body || "" });
     return { ...d, inputs: inputs.map(i => ({ ...i, id: Utils.uniqueId("input") })) };
   });
 
@@ -598,16 +611,54 @@ function resetRunState(extras) {
     visualizationExplanationOpen: false,
     visualizationLoading: false,
     visualizationNarrative: "",
-    runToken: 0
+    runToken: 0,
+    campaignStateObject: null
   });
 }
 
-function buildDatasetInputs() {
-  return datasetEntries.map((entry) => ({
+function applyArchitectSelection(picked) {
+  const selectedPlan = expandAndEnrichPlan(
+    picked.plan || [],
+    clampAgentCount($("#max-agents")?.value, TARGET_ARCHITECT_AGENTS),
+    state.campaignPrompt || "",
+    picked.variantKey || PLAN_VARIANTS[0].key
+  );
+  const normalizedInputs = buildDatasetInputs({
+    campaignPrompt: state.campaignPrompt || "",
+    selectedPlan: picked
+  }).map((input) => ({ ...input, id: Utils.uniqueId("input") }));
+  const complianceValidation = picked.complianceValidation || evaluatePlanCompliance({
+    campaignPrompt: state.campaignPrompt || "",
+    allocationStrategy: picked.allocationStrategy || "",
+    variantKey: picked.variantKey || ""
+  });
+  setState({
+    selectedArchitectPlanId: picked.id,
+    plan: selectedPlan,
+    suggestedInputs: normalizedInputs,
+    selectedInputs: new Set(normalizedInputs.map((i) => i.id)),
+    rawDataByAgent: buildRawDataByPlan(selectedPlan, null, picked),
+    selectedPlanCompliance: complianceValidation,
+    complianceDetails: buildComplianceDetails(complianceValidation),
+    complianceExplanationOpen: false,
+    visualizationExplanationOpen: false,
+    visualizationLoading: false,
+    visualizationNarrative: "",
+    runToken: 0,
+    campaignStateObject: null,
+    stage: "data",
+    error: ""
+  });
+}
+
+function buildDatasetInputs({ campaignPrompt = state.campaignPrompt || "", selectedPlan = null } = {}) {
+  const entries = datasetEntries.map((entry) => ({
     title: entry.title,
     type: entry.type,
     content: entry.content
   }));
+  const scenarioInput = buildScenarioDatasetInput(campaignPrompt, selectedPlan);
+  return scenarioInput ? [scenarioInput, ...entries] : entries;
 }
 
 function buildDatasetContext(dataKey) {
@@ -622,15 +673,20 @@ function buildDatasetContext(dataKey) {
 
 function buildDashboard(agentOutputs = [], runContext = {}) {
   const profile = buildRunProfile(agentOutputs, runContext);
+  const campaignState = runContext.campaignStateObject || state.campaignStateObject || null;
   return {
     pacing: buildPacingSeries(datasets.liveDeliveryLog || [], profile),
-    reach: buildReachSummary(datasets.audienceGraph || [], datasets.liveDeliveryLog || [], profile),
+    reach: buildReachSummary(datasets.audienceGraph || [], datasets.liveDeliveryLog || [], profile, campaignState),
     actions: buildActionRows(agentOutputs, state.issueNodeIds || new Set()),
-    makeGood: buildMakeGoodSummary(datasets.liveDeliveryLog || [], profile)
+    makeGood: buildMakeGoodSummary(datasets.liveDeliveryLog || [], profile, campaignState)
   };
 }
 
 function buildRunProfile(agentOutputs = [], runContext = {}) {
+  const campaignState = runContext.campaignStateObject || null;
+  const scenario = campaignState?.selectedScenario || {};
+  const inflight = campaignState?.stageOutputs?.["inflight-operations-agent"]?.inflight_summary || {};
+  const intelligence = campaignState?.intelligence || {};
   const outputText = (agentOutputs || [])
     .map((agent) => `${agent.nodeId || ""}|${agent.name || ""}|${stripMarkdown(agent.text || "").slice(0, 600)}`)
     .join("|");
@@ -638,24 +694,27 @@ function buildRunProfile(agentOutputs = [], runContext = {}) {
     runContext.campaignPrompt || "",
     runContext.selectedPlanId || "",
     runContext.runToken || 0,
-    outputText
+    outputText,
+    scenario.variantKey || "",
+    intelligence.uniqueHouseholds || 0,
+    campaignState?.productFamily?.key || ""
   ].join("::");
   const seed = hashString(seedSource);
   return {
     seed,
     waveShift: seededInt(seed, 1, 7, 1),
     planShift: seededRange(seed, -0.07, 0.07, 2),
-    linearDeliveryShift: seededRange(seed, -0.1, 0.08, 3),
-    digitalDeliveryShift: seededRange(seed, -0.06, 0.11, 4),
-    overlapShift: seededRange(seed, -6, 7, 5),
-    reachShift: seededRange(seed, 0.88, 1.16, 6),
-    deviceShift: seededRange(seed, 0.9, 1.22, 7),
+    linearDeliveryShift: inflight.linear_delivery_rate_pct ? ((Number(inflight.linear_delivery_rate_pct) / 100) - 0.92) : seededRange(seed, -0.1, 0.08, 3),
+    digitalDeliveryShift: inflight.digital_delivery_rate_pct ? ((Number(inflight.digital_delivery_rate_pct) / 100) - 0.95) : seededRange(seed, -0.06, 0.11, 4),
+    overlapShift: intelligence.overlapPct ? intelligence.overlapPct - 18 : seededRange(seed, -6, 7, 5),
+    reachShift: intelligence.uniqueHouseholds ? clampNumber((intelligence.uniqueHouseholds || 1) / 28, 0.88, 1.3) : seededRange(seed, 0.88, 1.16, 6),
+    deviceShift: intelligence.matchedRows?.length ? clampNumber((intelligence.matchedRows.length || 1) / Math.max(intelligence.uniqueHouseholds || 1, 1), 0.9, 1.5) : seededRange(seed, 0.9, 1.22, 7),
     makeGoodHour: seededInt(seed, 10, 15, 8),
     linearDipFactor: seededRange(seed, 0.48, 0.82, 9),
     digitalBoostFactor: seededRange(seed, 1.07, 1.3, 10),
-    makeGoodBudget: seededInt(seed, 2400, 4300, 11),
-    roiBase: seededRange(seed, -0.08, 0.22, 12),
-    roiLift: seededRange(seed, 0.02, 0.22, 13)
+    makeGoodBudget: inflight.shift_budget_usd || seededInt(seed, 2400, 4300, 11),
+    roiBase: inflight.before_roi ? Number(inflight.before_roi) - 1.58 : seededRange(seed, -0.08, 0.22, 12),
+    roiLift: inflight.after_roi && inflight.before_roi ? Number(inflight.after_roi) - Number(inflight.before_roi) : seededRange(seed, 0.02, 0.22, 13)
   };
 }
 
@@ -681,10 +740,6 @@ function seededInt(seed, min, max, offset = 0) {
 
 function clampNumber(value, min, max) {
   return Math.min(max, Math.max(min, Number(value)));
-}
-
-function roundToTwo(value) {
-  return Math.round(Number(value) * 100) / 100;
 }
 
 function buildPacingSeries(logs, profile = {}) {
@@ -744,7 +799,24 @@ function buildPacingSeries(logs, profile = {}) {
   };
 }
 
-function buildReachSummary(audience, logs, profile = {}) {
+function buildReachSummary(audience, logs, profile = {}, campaignState = null) {
+  if (campaignState) {
+    const planning = campaignState.stageOutputs?.["planning-identity-agent"]?.audience_summary || {};
+    const inflight = campaignState.stageOutputs?.["inflight-operations-agent"]?.inflight_summary || {};
+    const finalAllocation = inflight.final_allocation || campaignState.selectedScenario?.allocation || {};
+    const uniqueHouseholds = Math.max(1, Number(planning.unique_households || campaignState.intelligence?.uniqueHouseholds || 1));
+    const deviceCount = Math.max(1, Number(campaignState.intelligence?.matchedRows?.length || uniqueHouseholds * 2));
+    const linearPct = Math.round(clampNumber(finalAllocation.linearPct || 40, 10, 80));
+    const overlapPct = Math.round(clampNumber(Number(planning.overlap_pct || campaignState.intelligence?.overlapPct || 18), 4, 64));
+    return {
+      uniqueHouseholds,
+      deviceCount,
+      scaledReach: uniqueHouseholds * 2100,
+      linearPct,
+      digitalPct: 100 - linearPct,
+      overlapPct
+    };
+  }
   const autoIntenders = audience.filter((row) => row.segment_name === "Auto Intenders" && row.auto_intender_score > 70);
   const uniqueMap = new Map();
   autoIntenders.forEach((row) => {
@@ -812,7 +884,9 @@ function buildActionSummary(agent, issueReason = "") {
 function stripMarkdown(text = "") {
   return (text || "")
     .replace(/```[\s\S]*?```/g, " ")
+    .replace(/<[^>]+>/g, " ")
     .replace(/^#{1,6}\s+/gm, "")
+    .replace(/^\s*[-*+]\s+/gm, "")
     .replace(/\*\*(.*?)\*\*/g, "$1")
     .replace(/\*(.*?)\*/g, "$1")
     .replace(/`([^`]*)`/g, "$1")
@@ -880,8 +954,10 @@ function computeDataQuality(audience = []) {
   };
 }
 
-function buildApprovedPlanCsv() {
-  const rows = buildApprovedPlanRows(datasets.inventoryMatrix || []);
+function buildApprovedPlanCsv(campaignState = state.campaignStateObject) {
+  const rows = campaignState?.stageOutputs?.["booking-proposals-agent"]?.booking_summary?.line_items?.length
+    ? campaignState.stageOutputs["booking-proposals-agent"].booking_summary.line_items
+    : buildApprovedPlanRows(datasets.inventoryMatrix || []);
   const columns = ["line_item_id", "network", "platform_type", "country_code", "daypart", "impressions", "spend_usd", "cpm_30s", "status"];
   return toCsv(rows, columns);
 }
@@ -923,14 +999,22 @@ function buildApprovedPlanRows(inventory) {
   return rows;
 }
 
-function buildMakeGoodSummary(logs, profile = {}) {
+function buildMakeGoodSummary(logs, profile = {}, campaignState = null) {
+  if (campaignState?.stageOutputs?.["inflight-operations-agent"]?.inflight_summary) {
+    const inflight = campaignState.stageOutputs["inflight-operations-agent"].inflight_summary;
+    return {
+      shiftBudget: Math.round(inflight.shift_budget_usd || 0),
+      beforeRoi: roundToTwo(inflight.before_roi || productRoiBaseline(campaignState.productFamily?.key || ""), 2),
+      afterRoi: roundToTwo(inflight.after_roi || productRoiBaseline(campaignState.productFamily?.key || ""), 2)
+    };
+  }
   const linear = logs.filter((row) => row.platform_type === "linear");
   const linearPlanned = linear.reduce((sum, row) => sum + row.planned_impressions, 0);
   const linearDelivered = linear.reduce((sum, row) => sum + row.delivered_impressions, 0) * clampNumber(1 + (profile.linearDeliveryShift || 0), 0.65, 1.25);
   const linearPct = linearPlanned ? linearDelivered / linearPlanned : 1;
-  const beforeRoi = roundToTwo(1.58 + (profile.roiBase || 0));
+  const beforeRoi = roundToTwo(1.58 + (profile.roiBase || 0), 2);
   const lift = linearPct < 0.9 ? (0.18 + (profile.roiLift || 0)) : (0.08 + (profile.roiLift || 0) * 0.5);
-  const afterRoi = roundToTwo(beforeRoi + lift);
+  const afterRoi = roundToTwo(beforeRoi + lift, 2);
   return {
     shiftBudget: Math.round(profile.makeGoodBudget || 3200),
     beforeRoi,
@@ -1013,12 +1097,483 @@ function extractBudgetUsd(prompt = "") {
   return 50000;
 }
 
+function splitPipeValue(value = "") {
+  return (value || "")
+    .toString()
+    .split("|")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function average(rows = [], field) {
+  if (!rows.length) return 0;
+  const total = rows.reduce((sum, row) => sum + Number(row?.[field] || 0), 0);
+  return total / rows.length;
+}
+
+function countBy(rows = [], getter = () => "") {
+  const map = new Map();
+  rows.forEach((row) => {
+    const key = getter(row);
+    if (!key) return;
+    map.set(key, (map.get(key) || 0) + 1);
+  });
+  return map;
+}
+
+function mapToRankedList(map, total, limit = 5, decimals = 1) {
+  return [...map.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([label, count]) => ({
+      label,
+      count,
+      pct: total ? roundToTwo((count / total) * 100, decimals) : 0
+    }));
+}
+
+function roundToTwo(value, decimals = 2) {
+  const factor = 10 ** decimals;
+  return Math.round(Number(value) * factor) / factor;
+}
+
+function normalizePromptText(prompt = "") {
+  return (prompt || "").toString().trim().replace(/\s+/g, " ");
+}
+
+function deriveProductFamily(prompt = "") {
+  const text = normalizePromptText(prompt).toLowerCase();
+  if (/\b(toddler|baby|infant)\b/.test(text) && /\b(snack|food|puff|cracker|bite|meal)\b/.test(text)) {
+    return { key: "toddler_snacks", label: "toddler snacks", displayLabel: "organic toddler snacks" };
+  }
+  if (/\binsurance\b/.test(text)) {
+    return { key: "insurance", label: "insurance", displayLabel: "insurance" };
+  }
+  if (/\b(auto|automotive|vehicle|car|suv|truck)\b/.test(text)) {
+    return { key: "automotive", label: "automotive", displayLabel: "automotive" };
+  }
+  if (/\b(finance|financial|bank|investment|credit|loan)\b/.test(text)) {
+    return { key: "financial_services", label: "financial services", displayLabel: "financial services" };
+  }
+  if (/\b(retail|shopper|shopping|grocery|promotion|sale)\b/.test(text)) {
+    return { key: "retail", label: "retail", displayLabel: "retail promotion" };
+  }
+  if (/\b(series|drama|premiere|streaming show|season)\b/.test(text)) {
+    return { key: "entertainment", label: "entertainment", displayLabel: "entertainment launch" };
+  }
+  if (/\b(sports|finals|tournament|playoffs)\b/.test(text)) {
+    return { key: "sports", label: "sports", displayLabel: "sports campaign" };
+  }
+  return { key: "general_brand", label: "general brand", displayLabel: "general brand campaign" };
+}
+
+function buildCampaignProfile(prompt = "") {
+  const text = normalizePromptText(prompt);
+  const lower = text.toLowerCase();
+  const productFamily = deriveProductFamily(text);
+  const countries = detectCampaignCountries(text);
+  return {
+    prompt: text,
+    lower,
+    budgetUsd: extractBudgetUsd(text),
+    countries,
+    productFamily,
+    prefersStreaming: /\b(streaming|digital|max|discovery\+|ott|connected tv)\b/.test(lower),
+    prefersLinear: /\b(linear|tv|television|broadcast|cnn|hgtv|food network|tnt)\b/.test(lower),
+    wantsFamilies: /\b(parent|parents|family|families|toddler|child|children|kids)\b/.test(lower),
+    wantsYoungAdults: /\b(gen z|gen-z|millennial|young parent|young adults?)\b/.test(lower),
+    wantsOlderAdults: /\b(older|older adults?|55\+|retiree|retirement|empty nester)\b/.test(lower),
+    wantsSports: /\b(sports|finals|playoff|tournament)\b/.test(lower),
+    wantsOrganic: /\b(organic|healthy|natural)\b/.test(lower),
+    wantsReach: /\b(reach|awareness|launch|premiere|broad)\b/.test(lower),
+    wantsEfficiency: /\b(roi|return on investment|efficiency|sales|conversion|performance)\b/.test(lower),
+  };
+}
+
+function tagsContain(row, terms = []) {
+  const text = `${row?.segment_name || ""}|${row?.behavioral_tags || ""}|${row?.viewing_habit || ""}`.toLowerCase();
+  return terms.some((term) => text.includes(term.toLowerCase()));
+}
+
+function scoreViewerProfile(row, campaign) {
+  let score = (Number(row.identity_confidence_score || 0) * 0.15)
+    + (Number(row.recent_conversion_propensity || 0) * 0.22)
+    + (Number(row.streaming_affinity_index || 0) * (campaign.prefersStreaming ? 0.16 : 0.08))
+    + (Number(row.linear_affinity_index || 0) * (campaign.prefersLinear ? 0.16 : 0.08));
+
+  const age = Number(row.age || 0);
+
+  if (campaign.wantsFamilies) {
+    score += Number(row.toddler_parent_score || 0) * 0.12;
+  }
+  if (campaign.wantsSports) {
+    score += Number(row.tnt_sports_index || 0) * 0.14;
+    score += Number(row.sports_fandom_index || 0) * 0.16;
+  }
+  if (campaign.wantsOrganic) {
+    score += Number(row.organic_food_index || 0) * 0.18;
+  }
+  if (campaign.wantsYoungAdults && age >= 24 && age <= 40) {
+    score += 18;
+  }
+  if (campaign.wantsOlderAdults && age >= 45) {
+    score += 20;
+  }
+  if (campaign.wantsReach) {
+    score += Number(row.linear_affinity_index || 0) * 0.05;
+    score += Number(row.streaming_affinity_index || 0) * 0.05;
+  }
+  if (campaign.wantsEfficiency) {
+    score += Number(row.recent_conversion_propensity || 0) * 0.1;
+  }
+
+  switch (campaign.productFamily.key) {
+    case "toddler_snacks":
+      score += Number(row.toddler_parent_score || 0) * 0.32;
+      score += Number(row.organic_food_index || 0) * 0.22;
+      score += Number(row.max_daytime_index || 0) * 0.14;
+      score += Number(row.discovery_plus_index || 0) * 0.12;
+      if (age >= 25 && age <= 42) score += 18;
+      if (tagsContain(row, ["parents of toddlers", "millennial parents", "organic buyers", "healthy families"])) score += 28;
+      break;
+    case "insurance":
+      score += Number(row.insurance_intender_score || 0) * 0.34;
+      score += Number(row.cnn_linear_index || 0) * 0.18;
+      score += Number(row.hgtv_linear_index || 0) * 0.12;
+      score += Number(row.financial_services_score || 0) * 0.16;
+      if (age >= 35 && age <= 64) score += 20;
+      if (tagsContain(row, ["insurance shoppers", "financial planners", "homeowners", "older adults"])) score += 24;
+      break;
+    case "automotive":
+      score += Number(row.auto_intender_score || 0) * 0.34;
+      score += Number(row.tnt_sports_index || 0) * 0.14;
+      score += Number(row.sports_fandom_index || 0) * 0.12;
+      if (tagsContain(row, ["auto intenders", "commuters", "deal researchers"])) score += 22;
+      break;
+    case "financial_services":
+      score += Number(row.financial_services_score || 0) * 0.34;
+      score += Number(row.cnn_linear_index || 0) * 0.18;
+      score += Number(row.insurance_intender_score || 0) * 0.12;
+      if (age >= 35 && age <= 64) score += 18;
+      if (tagsContain(row, ["financial planners", "business news viewers", "affluent professionals"])) score += 24;
+      break;
+    case "retail":
+      score += Number(row.retail_value_score || 0) * 0.28;
+      score += Number(row.food_network_index || 0) * 0.1;
+      score += Number(row.discovery_plus_index || 0) * 0.08;
+      if (tagsContain(row, ["value shoppers", "coupon users", "retail browsers"])) score += 24;
+      break;
+    case "entertainment":
+      score += Number(row.entertainment_binge_index || 0) * 0.32;
+      score += Number(row.max_daytime_index || 0) * 0.18;
+      score += Number(row.discovery_plus_index || 0) * 0.08;
+      if (age >= 18 && age <= 39) score += 18;
+      if (tagsContain(row, ["binge watchers", "prestige drama fans", "streaming first"])) score += 24;
+      break;
+    case "sports":
+      score += Number(row.tnt_sports_index || 0) * 0.24;
+      score += Number(row.sports_fandom_index || 0) * 0.24;
+      score += Number(row.streaming_affinity_index || 0) * 0.08;
+      if (tagsContain(row, ["sports fanatics", "live event viewers"])) score += 26;
+      break;
+    default:
+      score += Number(row.streaming_affinity_index || 0) * 0.06;
+      score += Number(row.linear_affinity_index || 0) * 0.06;
+      score += Number(row.retail_value_score || 0) * 0.04;
+      break;
+  }
+
+  return roundToTwo(score);
+}
+
+function analyzeAudienceAgainstCampaign(prompt = "") {
+  const campaign = buildCampaignProfile(prompt);
+  const allRows = (datasets.unifiedAudienceDataset || []).map((row) => ({
+    ...row,
+    fitScore: scoreViewerProfile(row, campaign)
+  }));
+  const ranked = [...allRows].sort((a, b) => b.fitScore - a.fitScore);
+  let matched = ranked.filter((row) => row.fitScore >= 70).slice(0, 84);
+  if (matched.length < 30) matched = ranked.slice(0, Math.min(54, ranked.length));
+
+  const globalTagCounts = new Map();
+  allRows.forEach((row) => splitPipeValue(row.behavioral_tags).forEach((tag) => globalTagCounts.set(tag, (globalTagCounts.get(tag) || 0) + 1)));
+
+  const tagCounts = new Map();
+  matched.forEach((row) => splitPipeValue(row.behavioral_tags).forEach((tag) => tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1)));
+
+  const stateCounts = countBy(matched, (row) => row.state_code);
+  const segmentCounts = countBy(matched, (row) => row.segment_name);
+  const viewingCounts = countBy(matched, (row) => row.viewing_habit);
+  const platformCounts = new Map();
+  matched.forEach((row) => splitPipeValue(row.primary_platforms).forEach((platform) => platformCounts.set(platform, (platformCounts.get(platform) || 0) + 1)));
+
+  const uniqueHouseholds = new Set(matched.map((row) => row.household_id)).size;
+  const multiPlatformHouseholds = matched.filter((row) => splitPipeValue(row.primary_platforms).length > 2).length;
+
+  const networkScores = {
+    "Max": average(matched, "max_daytime_index"),
+    "discovery+": average(matched, "discovery_plus_index"),
+    "CNN": average(matched, "cnn_linear_index"),
+    "HGTV": average(matched, "hgtv_linear_index"),
+    "Food Network": average(matched, "food_network_index"),
+    "TNT Sports": average(matched, "tnt_sports_index"),
+  };
+  const networkLift = {
+    "Max": average(matched, "max_daytime_index") / Math.max(average(allRows, "max_daytime_index"), 1),
+    "discovery+": average(matched, "discovery_plus_index") / Math.max(average(allRows, "discovery_plus_index"), 1),
+    "CNN": average(matched, "cnn_linear_index") / Math.max(average(allRows, "cnn_linear_index"), 1),
+    "HGTV": average(matched, "hgtv_linear_index") / Math.max(average(allRows, "hgtv_linear_index"), 1),
+    "Food Network": average(matched, "food_network_index") / Math.max(average(allRows, "food_network_index"), 1),
+    "TNT Sports": average(matched, "tnt_sports_index") / Math.max(average(allRows, "tnt_sports_index"), 1),
+  };
+
+  const matchedTotal = matched.length || 1;
+  const topTags = mapToRankedList(tagCounts, matchedTotal, 6);
+  const topSegments = mapToRankedList(segmentCounts, matchedTotal, 4);
+  const topStates = mapToRankedList(stateCounts, matchedTotal, 4);
+  const topPlatforms = mapToRankedList(platformCounts, matchedTotal, 4);
+  const youngShare = roundToTwo((matched.filter((row) => Number(row.age || 0) < 40).length / matchedTotal) * 100, 1);
+  const olderShare = roundToTwo((matched.filter((row) => Number(row.age || 0) >= 45).length / matchedTotal) * 100, 1);
+  const parentShare = roundToTwo((matched.filter((row) => tagsContain(row, ["parents of toddlers", "millennial parents"])).length / matchedTotal) * 100, 1);
+  const streamingHeavyShare = roundToTwo((matched.filter((row) => (row.viewing_habit || "").toLowerCase().includes("streaming")).length / matchedTotal) * 100, 1);
+  const linearHeavyShare = roundToTwo((matched.filter((row) => (row.viewing_habit || "").toLowerCase().includes("linear")).length / matchedTotal) * 100, 1);
+  const avgAge = roundToTwo(average(matched, "age"), 1);
+  const avgStreaming = average(matched, "streaming_affinity_index");
+  const avgLinear = average(matched, "linear_affinity_index");
+  const avgEntertainment = average(matched, "entertainment_binge_index");
+  const avgFinance = average(matched, "financial_services_score");
+  const avgRetail = average(matched, "retail_value_score");
+
+  const streamingScore = avgStreaming
+    + average(matched, "max_daytime_index") * 0.35
+    + average(matched, "discovery_plus_index") * 0.35
+    + streamingHeavyShare * 0.4
+    + (campaign.wantsYoungAdults ? 8 : 0)
+    + (campaign.productFamily.key === "toddler_snacks" ? 18 : 0)
+    + (campaign.productFamily.key === "entertainment" ? 22 : 0);
+
+  const linearScore = avgLinear
+    + average(matched, "cnn_linear_index") * 0.35
+    + average(matched, "hgtv_linear_index") * 0.2
+    + average(matched, "tnt_sports_index") * 0.2
+    + linearHeavyShare * 0.38
+    + (campaign.wantsOlderAdults ? 10 : 0)
+    + (campaign.productFamily.key === "insurance" ? 18 : 0)
+    + (campaign.productFamily.key === "financial_services" ? 20 : 0);
+
+  const balancedScore = 100
+    - Math.abs(streamingScore - linearScore) * 0.45
+    + (multiPlatformHouseholds / matchedTotal) * 35
+    + (campaign.productFamily.key === "retail" ? 14 : 0)
+    + (campaign.productFamily.key === "automotive" ? 10 : 0)
+    + (campaign.productFamily.key === "sports" ? 10 : 0);
+
+  const indexedTag = topTags
+    .map((tag) => {
+      const matchedShare = tag.count / matchedTotal;
+      const globalShare = (globalTagCounts.get(tag.label) || 1) / Math.max(allRows.length, 1);
+      return { ...tag, lift: matchedShare / Math.max(globalShare, 0.01) };
+    })
+    .sort((a, b) => b.lift - a.lift)[0];
+
+  return {
+    campaign,
+    matchedRows: matched,
+    rankedRows: ranked,
+    uniqueHouseholds,
+    topTags,
+    topSegments,
+    topStates,
+    topPlatforms,
+    viewingMix: mapToRankedList(viewingCounts, matchedTotal, 3),
+    networkScores,
+    networkLift,
+    avgAge,
+    youngShare,
+    olderShare,
+    parentShare,
+    streamingHeavyShare,
+    linearHeavyShare,
+    streamingScore,
+    linearScore,
+    balancedScore,
+    avgStreaming,
+    avgLinear,
+    avgEntertainment,
+    avgFinance,
+    avgRetail,
+    indexedTag,
+    overlapPct: roundToTwo((multiPlatformHouseholds / matchedTotal) * 100, 1),
+    sampleRows: matched.slice(0, 10).map((row) => ({
+      device_id: row.device_id,
+      household_id: row.household_id,
+      age: row.age,
+      income_bracket: row.income_bracket,
+      viewing_habit: row.viewing_habit,
+      behavioral_tags: row.behavioral_tags,
+      max_daytime_index: row.max_daytime_index,
+      discovery_plus_index: row.discovery_plus_index,
+      cnn_linear_index: row.cnn_linear_index,
+      hgtv_linear_index: row.hgtv_linear_index,
+      food_network_index: row.food_network_index,
+      tnt_sports_index: row.tnt_sports_index,
+      fit_score: row.fitScore
+    }))
+  };
+}
+
+function rankedNetworksForVariant(intelligence, variantKey = "") {
+  const networkEntries = Object.entries(intelligence.networkScores || {}).map(([name, score]) => ({
+    name,
+    score,
+    lift: intelligence.networkLift?.[name] || 1
+  }));
+  const streaming = networkEntries.filter((item) => ["Max", "discovery+"].includes(item.name)).sort((a, b) => b.score - a.score);
+  const linear = networkEntries.filter((item) => !["Max", "discovery+"].includes(item.name)).sort((a, b) => b.score - a.score);
+  if (variantKey === "plan-a-streaming") return [...streaming.slice(0, 2), ...linear.slice(0, 1)];
+  if (variantKey === "plan-b-linear") return [...linear.slice(0, 2), ...streaming.slice(0, 1)];
+  return [streaming[0], linear[0], linear[1] || streaming[1]].filter(Boolean);
+}
+
+function buildScenarioAllocation(intelligence, variantKey = "") {
+  const reservePct = 10;
+  if (variantKey === "plan-a-streaming") {
+    const streamingPct = clampNumber(Math.round(64 + ((intelligence.streamingScore - intelligence.linearScore) * 0.08)), 58, 82);
+    const linearPct = 100 - reservePct - streamingPct;
+    return { streamingPct, linearPct, reservePct };
+  }
+  if (variantKey === "plan-b-linear") {
+    const linearPct = clampNumber(Math.round(60 + ((intelligence.linearScore - intelligence.streamingScore) * 0.08)), 55, 80);
+    const streamingPct = 100 - reservePct - linearPct;
+    return { streamingPct, linearPct, reservePct };
+  }
+  const streamingPct = clampNumber(Math.round(46 + ((intelligence.streamingScore - intelligence.linearScore) * 0.03)), 42, 56);
+  const linearPct = 100 - reservePct - streamingPct;
+  return { streamingPct, linearPct, reservePct };
+}
+
+function buildDeliveryTiming(intelligence, variantKey = "") {
+  const topNetwork = rankedNetworksForVariant(intelligence, variantKey)[0]?.name || "Max";
+  const parentTilt = intelligence.parentShare >= 20 ? "daytime and early evening" : "evening and late prime";
+  if (variantKey === "plan-a-streaming") {
+    return `Push ${topNetwork} in ${parentTilt}, then use yield spikes to expand Max or discovery+ only when the forecasted return stays above the blended target.`;
+  }
+  if (variantKey === "plan-b-linear") {
+    return `Anchor delivery in prime linear dayparts on ${topNetwork}, then add measured streaming reinforcement around high-intent windows for incremental reach.`;
+  }
+  return `Start with split coverage across the strongest streaming and linear dayparts, then rebalance every pacing cycle using delivery and conversion signals.`;
+}
+
+function buildScenarioRecommendationReason(intelligence, variantKey = "") {
+  const tag = intelligence.indexedTag;
+  const rankedNetworks = rankedNetworksForVariant(intelligence, variantKey);
+  const leadNetwork = rankedNetworks[0];
+  const tagText = tag?.label || intelligence.topSegments[0]?.label || "matched viewers";
+  const liftText = tag?.lift ? `${roundToTwo(tag.lift, 1)}x` : `${roundToTwo(leadNetwork?.lift || 1, 1)}x`;
+
+  if (variantKey === "plan-a-streaming") {
+    return `${tagText} over-index ${liftText} on ${leadNetwork?.name || "Max"} streaming, making a streaming-heavy scenario the highest-fit option.`;
+  }
+  if (variantKey === "plan-b-linear") {
+    return `${tagText} skew older and more household-led, with linear networks like ${leadNetwork?.name || "CNN"} showing the strongest fit.`;
+  }
+  return `The matched audience is split across streaming and linear habits, so a balanced scenario reduces miss-risk while preserving optimization room.`;
+}
+
+function buildScenarioBlueprints(campaignPrompt = "") {
+  const intelligence = analyzeAudienceAgainstCampaign(campaignPrompt);
+  const scenarioScores = {
+    "plan-a-streaming": intelligence.streamingScore + (intelligence.campaign.prefersStreaming ? 10 : 0),
+    "plan-b-linear": intelligence.linearScore + (intelligence.campaign.prefersLinear ? 10 : 0),
+    "plan-c-balanced": intelligence.balancedScore
+  };
+  const recommendedVariantKey = Object.entries(scenarioScores)
+    .sort((a, b) => b[1] - a[1])[0]?.[0] || PLAN_VARIANTS[0].key;
+
+  const options = PLAN_VARIANTS.map((variant, index) => {
+    const allocation = buildScenarioAllocation(intelligence, variant.key);
+    const networks = rankedNetworksForVariant(intelligence, variant.key);
+    const topTag = intelligence.topTags[0]?.label || intelligence.topSegments[0]?.label || intelligence.campaign.productFamily.displayLabel;
+    const topState = intelligence.topStates[0]?.label || intelligence.campaign.countries[0] || "US";
+    const recommendationReason = buildScenarioRecommendationReason(intelligence, variant.key);
+    const title = variant.title || ARCHITECT_PLAN_FALLBACK_TITLES[index];
+    const why = variant.key === recommendedVariantKey
+      ? `Recommended: ${recommendationReason}`
+      : recommendationReason;
+    return {
+      variantKey: variant.key,
+      title,
+      promptTile: variant.promptTile,
+      promptText: `${intelligence.campaign.productFamily.displayLabel} brief mapped to ${intelligence.uniqueHouseholds.toLocaleString()} deduplicated households across ${topState} and adjacent high-fit markets.`,
+      strategy: `${variant.strategy} Primary audience signals: ${topTag}, average age ${intelligence.avgAge}, and ${intelligence.streamingHeavyShare}% streaming-heavy versus ${intelligence.linearHeavyShare}% linear-heavy matched viewers.`,
+      why,
+      allocation,
+      allocationStrategy: `Recommended mix: ${allocation.streamingPct}% streaming across ${networks.filter((item) => ["Max", "discovery+"].includes(item.name)).map((item) => item.name).join(" and ") || "Max"}, ${allocation.linearPct}% linear across ${networks.filter((item) => !["Max", "discovery+"].includes(item.name)).map((item) => item.name).join(" and ") || "CNN"}, and ${allocation.reservePct}% held as an optimization reserve.`,
+      deliveryTiming: buildDeliveryTiming(intelligence, variant.key),
+      roiReasoning: `${networks[0]?.name || "Max"} is the lead network for this scenario, with matched viewers showing ${roundToTwo(networks[0]?.lift || 1, 1)}x fit versus the full synthetic viewer pool. This keeps budget concentrated where the campaign should earn the strongest sales or reach efficiency.`,
+      recommendationReason,
+      recommended: variant.key === recommendedVariantKey,
+      scenarioIntelligence: {
+        ...intelligence,
+        allocation,
+        rankedNetworks: networks,
+        scenarioScore: scenarioScores[variant.key],
+        recommendationReason
+      }
+    };
+  });
+
+  return {
+    campaignPrompt,
+    intelligence,
+    recommendedVariantKey,
+    options
+  };
+}
+
+function buildScenarioDatasetInput(campaignPrompt = "", selectedPlan = null) {
+  const catalog = buildScenarioBlueprints(campaignPrompt || state.campaignPrompt || "");
+  const picked = selectedPlan?.scenarioIntelligence
+    ? selectedPlan
+    : catalog.options.find((option) => option.variantKey === (selectedPlan?.variantKey || catalog.recommendedVariantKey));
+  if (!picked) return null;
+
+  return {
+    title: "Scenario Intelligence Snapshot",
+    type: "text",
+    content: JSON.stringify({
+      prompt: catalog.campaignPrompt,
+      product_family: catalog.intelligence.campaign.productFamily.displayLabel,
+      recommended_variant: catalog.recommendedVariantKey,
+      top_tags: catalog.intelligence.topTags.slice(0, 3),
+      top_segments: catalog.intelligence.topSegments.slice(0, 3),
+      top_states: catalog.intelligence.topStates.slice(0, 3),
+      top_platforms: catalog.intelligence.topPlatforms.slice(0, 3),
+      audience_summary: {
+        unique_households: catalog.intelligence.uniqueHouseholds,
+        average_age: catalog.intelligence.avgAge,
+        streaming_heavy_share_pct: catalog.intelligence.streamingHeavyShare,
+        linear_heavy_share_pct: catalog.intelligence.linearHeavyShare,
+        overlap_pct: catalog.intelligence.overlapPct
+      },
+      selected_scenario: {
+        variant_key: picked.variantKey,
+        allocation: picked.allocation || picked.scenarioIntelligence?.allocation,
+        recommendation_reason: picked.recommendationReason || picked.scenarioIntelligence?.recommendationReason
+      }
+    }, null, 2)
+  };
+}
+
 function formatPlanOutputDetails(variant, campaignPrompt, existing = {}) {
+  const catalog = buildScenarioBlueprints(campaignPrompt);
+  const blueprint = catalog.options.find((option) => option.variantKey === (existing.variantKey || variant.key)) || {};
   const budget = extractBudgetUsd(campaignPrompt);
-  const allocationStrategy = (existing.allocationStrategy || variant.allocationStrategy || "")
+  const allocationStrategy = (existing.allocationStrategy || blueprint.allocationStrategy || variant.allocationStrategy || "")
     .replace(/\$BUDGET_USD/g, budget.toLocaleString());
-  const deliveryTiming = (existing.deliveryTiming || variant.deliveryTiming || "").trim();
-  const roiReasoning = (existing.roiReasoning || variant.roiReasoning || "").trim();
+  const deliveryTiming = (existing.deliveryTiming || blueprint.deliveryTiming || variant.deliveryTiming || "").trim();
+  const roiReasoning = (existing.roiReasoning || blueprint.roiReasoning || variant.roiReasoning || "").trim();
   const complianceValidation = evaluatePlanCompliance({
     campaignPrompt,
     allocationStrategy,
@@ -1028,7 +1583,14 @@ function formatPlanOutputDetails(variant, campaignPrompt, existing = {}) {
     allocationStrategy,
     deliveryTiming,
     roiReasoning,
-    complianceValidation
+    complianceValidation,
+    strategy: (existing.strategy || blueprint.strategy || variant.strategy || "").trim(),
+    why: (existing.why || blueprint.why || variant.why || "").trim(),
+    promptTile: existing.promptTile || blueprint.promptTile || variant.promptTile,
+    promptText: existing.promptText || blueprint.promptText || variant.promptText,
+    recommended: existing.recommended ?? blueprint.recommended ?? false,
+    recommendationReason: existing.recommendationReason || blueprint.recommendationReason || "",
+    scenarioIntelligence: existing.scenarioIntelligence || blueprint.scenarioIntelligence || null
   };
 }
 
@@ -1046,22 +1608,26 @@ function normalizeArchitectPlans(rawPlans, demo, maxAgents) {
       const variantIndex = PLAN_VARIANTS.findIndex((item) => item.key === variantKey);
       const optionIndex = variantIndex >= 0 ? variantIndex : index;
       const fallbackTitle = buildArchitectPlanTitle(demo, optionIndex);
-      const enrichedPlan = expandAndEnrichPlan(normalizedPlan, maxAgents, campaignPrompt, variantKey);
+      const enrichedPlan = expandAndEnrichPlan(normalizedPlan, maxAgents, campaignPrompt, variantKey, entry);
       const details = formatPlanOutputDetails(variant, campaignPrompt, entry);
       return {
         id: Utils.uniqueId("architect-plan"),
         title: fallbackTitle,
-        strategy: (entry.strategy || entry.summary || variant.strategy).toString().trim(),
-        why: (entry.why || entry.rationale || variant.why).toString().trim(),
-        promptTile: entry.promptTile || variant.promptTile,
-        promptText: entry.promptText || variant.promptText,
+        strategy: (details.strategy || entry.summary || variant.strategy).toString().trim(),
+        why: (details.why || entry.rationale || variant.why).toString().trim(),
+        promptTile: details.promptTile || variant.promptTile,
+        promptText: details.promptText || variant.promptText,
         variantKey,
         plan: enrichedPlan,
         allocationStrategy: details.allocationStrategy,
+        allocation: details.scenarioIntelligence?.allocation || entry.allocation || null,
         deliveryTiming: details.deliveryTiming,
         roiReasoning: details.roiReasoning,
         complianceValidation: details.complianceValidation,
-        inputs: buildDatasetInputs()
+        inputs: buildDatasetInputs({ campaignPrompt, selectedPlan: entry }),
+        recommended: details.recommended,
+        recommendationReason: details.recommendationReason,
+        scenarioIntelligence: details.scenarioIntelligence
       };
     })
     .filter(Boolean)
@@ -1077,7 +1643,9 @@ function normalizeArchitectPlans(rawPlans, demo, maxAgents) {
 
 function buildFallbackArchitectPlans(demo, maxAgents) {
   const campaign = (demo?.problem || demo?.body || "Launch a converged campaign").toString().trim();
+  const catalog = buildScenarioBlueprints(campaign);
   return PLAN_VARIANTS.map((variant, index) => {
+    const blueprint = catalog.options.find((option) => option.variantKey === variant.key) || {};
     const variantLibrary = getVariantAgentLibrary(variant.key);
     const seedPlan = variantLibrary.slice(0, TARGET_ARCHITECT_AGENTS).map((node, idx) => ({
       agentName: node.agentName,
@@ -1086,26 +1654,30 @@ function buildFallbackArchitectPlans(demo, maxAgents) {
       systemInstruction: `Execute ${node.focus} and provide one explicit Why this matters statement.`,
       stage: idx + 1
     }));
-    const details = formatPlanOutputDetails(variant, campaign, {});
+    const details = formatPlanOutputDetails(variant, campaign, blueprint);
     return {
       id: Utils.uniqueId("architect-plan"),
-      title: buildArchitectPlanTitle(demo, index),
-      strategy: variant.strategy,
-      why: variant.why,
-      promptTile: variant.promptTile,
-      promptText: variant.promptText,
+      title: blueprint.title || buildArchitectPlanTitle(demo, index),
+      strategy: details.strategy || variant.strategy,
+      why: details.why || variant.why,
+      promptTile: details.promptTile || variant.promptTile,
+      promptText: details.promptText || variant.promptText,
       variantKey: variant.key,
-      plan: expandAndEnrichPlan(Utils.normalizePlan(seedPlan, maxAgents), maxAgents, campaign, variant.key),
+      plan: expandAndEnrichPlan(Utils.normalizePlan(seedPlan, maxAgents), maxAgents, campaign, variant.key, blueprint),
       allocationStrategy: details.allocationStrategy,
+      allocation: details.scenarioIntelligence?.allocation || blueprint.allocation || null,
       deliveryTiming: details.deliveryTiming,
       roiReasoning: details.roiReasoning,
       complianceValidation: details.complianceValidation,
-      inputs: buildDatasetInputs()
+      inputs: buildDatasetInputs({ campaignPrompt: campaign, selectedPlan: blueprint }),
+      recommended: details.recommended,
+      recommendationReason: details.recommendationReason,
+      scenarioIntelligence: details.scenarioIntelligence
     };
   });
 }
 
-function expandAndEnrichPlan(plan = [], maxAgents = TARGET_ARCHITECT_AGENTS, campaign = "", variantKey = PLAN_VARIANTS[0].key) {
+function expandAndEnrichPlan(plan = [], maxAgents = TARGET_ARCHITECT_AGENTS, campaign = "", variantKey = PLAN_VARIANTS[0].key, scenarioBlueprint = null) {
   const targetCount = TARGET_ARCHITECT_AGENTS;
   const agentLibrary = getVariantAgentLibrary(variantKey);
   const existing = Array.isArray(plan) ? [...plan] : [];
@@ -1138,8 +1710,8 @@ function expandAndEnrichPlan(plan = [], maxAgents = TARGET_ARCHITECT_AGENTS, cam
       const phase = index + 1;
       const nodeId = template?.nodeId || agent.nodeId || `agent-${phase}`;
       const agentName = template?.agentName || agent.agentName || `Agent ${phase}`;
-      const detailedInstruction = buildDetailedSystemInstruction(agent, template, campaign, phase);
-      const detailedTask = buildDetailedInitialTask(agent, template, campaign, phase);
+      const detailedInstruction = buildDetailedSystemInstruction(agent, template, campaign, phase, scenarioBlueprint);
+      const detailedTask = buildDetailedInitialTask(agent, template, campaign, phase, scenarioBlueprint);
 
       return {
         ...agent,
@@ -1184,16 +1756,21 @@ function trimToWords(text, maxWords) {
   return `${words.slice(0, maxWords).join(" ")}.`;
 }
 
-function buildDetailedSystemInstruction(agent, template, campaign, phase) {
+function buildDetailedSystemInstruction(agent, template, campaign, phase, scenarioBlueprint = null) {
   const role = agent.agentName || template.agentName;
   const focus = template.focus;
-  return `You are ${role} in stage ${phase} of a fixed six-stage converged campaign workflow. Focus on ${focus}. Use the unified audience base dataset as the core input and reference additional datasets only when needed for this stage. Treat the campaign brief "${campaign}" as a total budget objective and derive channel allocation based on state-level demand and compliance context rather than fixed pre-specified splits. Explain your reasoning clearly, include one explicit sentence that starts with "Why this matters:", and show how your output supports return on investment optimization for the next stage. Keep language clear for business and technical reviewers. Define abbreviations when they first appear and include key risks, assumptions, and validation checks.`;
+  const scenarioTitle = scenarioBlueprint?.title || "selected scenario";
+  const allocation = scenarioBlueprint?.allocationStrategy || "Follow the recommended cross-platform allocation.";
+  const subAgents = (MASTER_AGENT_SUBAGENTS[template?.nodeId] || []).map((item) => item.name).join(", ");
+  return `You are ${role} in stage ${phase} of a hierarchical six-stage workflow. Manage these sub-agents: ${subAgents}. Focus on ${focus}. Use the shared Campaign_State_Object, not isolated stage logic, and keep all recommendations aligned to scenario "${scenarioTitle}" with allocation guidance "${allocation}". Explain evidence, risks, and handoff clearly, and include one explicit sentence that starts with "Why this matters:".`;
 }
 
-function buildDetailedInitialTask(agent, template, campaign, phase) {
+function buildDetailedInitialTask(agent, template, campaign, phase, scenarioBlueprint = null) {
   const role = agent.agentName || template.agentName;
   const focus = template.focus;
-  return `Complete stage ${phase} for ${role} using campaign brief "${campaign}". Prioritize ${focus}. Use the full campaign budget objective and determine recommendations according to state-level conditions, demand signals, and compliance constraints instead of assuming fixed channel splits. Deliver one section for objective, one for evidence from the unified audience base dataset, one for decisions taken, and one for handoff. Include a clear sentence that starts with "Why this matters:" and name at least one risk with mitigation. Keep the explanation specific but concise so the next stage can execute without ambiguity.`;
+  const scenarioTitle = scenarioBlueprint?.title || "selected scenario";
+  const recommendation = scenarioBlueprint?.recommendationReason || "Use the audience evidence to justify the path.";
+  return `Complete stage ${phase} for ${role} using campaign brief "${campaign}". Prioritize ${focus}. Coordinate the stage sub-agents, update the Campaign_State_Object, and keep decisions consistent with "${scenarioTitle}". Show the data used, the master decision, the sub-agent outcomes, and the handoff. Include one sentence that starts with "Why this matters:" and mention at least one risk and mitigation. Recommendation context: ${recommendation}`;
 }
 
 async function runArchitect() {
@@ -1217,8 +1794,15 @@ async function runArchitect() {
     }
 
     const maxAgents = clampAgentCount($("#max-agents")?.value, TARGET_ARCHITECT_AGENTS);
-    const model = $("#model")?.value || "gpt-5-mini";
-    const customArchitectPrompt = ($("#architect-prompt")?.value || "").toString().trim();
+    const scenarioCatalog = buildScenarioBlueprints(problemText);
+    const fallbackPlans = buildFallbackArchitectPlans(demo, maxAgents);
+    const summaryLines = [
+      "Architecting scenarios from the natural-language brief.",
+      `Detected product family: ${scenarioCatalog.intelligence.campaign.productFamily.displayLabel}.`,
+      `Matched ${scenarioCatalog.intelligence.uniqueHouseholds.toLocaleString()} deduplicated households across ${scenarioCatalog.intelligence.topStates.map((item) => item.label).slice(0, 3).join(", ")}.`,
+      `Top behavioral tags: ${scenarioCatalog.intelligence.topTags.map((item) => item.label).slice(0, 3).join(", ")}.`,
+      `Recommended scenario: ${scenarioCatalog.options.find((option) => option.recommended)?.title || ARCHITECT_PLAN_FALLBACK_TITLES[0]}.`
+    ];
 
     setState({
       stage: "architect",
@@ -1233,198 +1817,818 @@ async function runArchitect() {
       selectedPlanCompliance: null,
       visualizationLoading: false,
       visualizationNarrative: "",
-      runToken: 0
+      runToken: 0,
+      campaignStateObject: null,
+      architectBuffer: summaryLines.join("\n")
     });
+    const orderedPlans = normalizeArchitectPlans(fallbackPlans, demo, maxAgents);
+    const recommendedPlan = orderedPlans.find((plan) => plan.recommended)
+      || orderedPlans.find((plan) => plan.variantKey === scenarioCatalog.recommendedVariantKey)
+      || orderedPlans[0];
 
-    let buffer = "";
-    let usedFallback = false;
-    let rawCandidates = [];
-    let creds = null;
-
-    try {
-      creds = await ensureCreds();
-    } catch (credsError) {
-      usedFallback = true;
-      buffer = "Architect connection unavailable. Synthetic architect plans will be loaded for all three variants.";
-      setState({ architectBuffer: buffer });
-      console.warn("Architect credential fallback activated:", credsError?.message || credsError);
-    }
-
-    if (creds) {
-      for (const [variantIndex, variant] of PLAN_VARIANTS.entries()) {
-        const variantTitle = buildArchitectPlanTitle(demo, variantIndex);
-        const variantLibrary = getVariantAgentLibrary(variant.key);
-        const header = [
-          `Generating ${variantTitle}`,
-          `Prompt Tile: ${variant.promptTile}`,
-          `Variant Objective: ${variant.promptText}`
-        ].join("\n");
-        buffer = `${buffer}${buffer ? "\n\n" : ""}${header}\n`;
-        setState({ architectBuffer: buffer });
-
-        const agentCatalog = variantLibrary
-          .map((agent) => `- ${agent.agentName} (${agent.nodeId}), stage ${agent.phase}: ${agent.focus}`)
-          .join("\n");
-
-        const systemContent = `${customArchitectPrompt ? `${customArchitectPrompt}\n\n` : ""}You are the architect for one converged advertising campaign workflow variant. Return valid JSON only using this schema:
-{
-  "title": "${variantTitle}",
-  "strategy": "Detailed strategy summary",
-  "why": "Detailed rationale",
-  "promptTile": "${variant.promptTile}",
-  "promptText": "${variant.promptText}",
-  "variantKey": "${variant.key}",
-  "allocationStrategy": "Detailed channel allocation recommendation",
-  "deliveryTiming": "Detailed timing recommendation",
-  "roiReasoning": "Detailed explanation of how this strategy improves return on investment",
-  "plan": [
-    {
-      "agentName": "Agent role",
-      "nodeId": "agent-node-id",
-      "systemInstruction": "...",
-      "initialTask": "...",
-      "stage": 1
-    }
-  ],
-  "inputs": []
-}
-Rules:
-- Build exactly one architect plan for variant key "${variant.key}".
-- Use exactly ${TARGET_ARCHITECT_AGENTS} agents in this strict fixed order:
-${variantLibrary.map((agent) => `  ${agent.phase}. ${agent.agentName} (${agent.nodeId})`).join("\n")}
-- Do not add, remove, rename, or reorder these six workflow stages.
-- Keep the workflow aligned with this strategy: "${variant.strategy}".
-- Every agent systemInstruction must be 45 to 90 words.
-- Every agent initialTask must be 45 to 90 words.
-- Every agent text must include one sentence that starts with "Why this matters:".
-- Use full terminology and define abbreviations at first use.
-- Include Yield Intelligence guidance in stage 2 using Twitter trends, news signals, and external feeds.
-- Ensure plan-level compliance can pass via a parallel compliance check against the rules dataset.
-- Prefer these agent archetypes when relevant:
-${agentCatalog}
-- Return JSON only, without Markdown fences or commentary.`;
-
-        let variantBuffer = "";
-
-        try {
-          await Utils.streamChatCompletion({
-            llm: creds,
-            body: {
-              model,
-              stream: true,
-              messages: [
-                { role: "system", content: systemContent },
-                {
-                  role: "user",
-                  content: `Campaign brief:\n${problemText}\n\nVariant rationale:\n${variant.why}`
-                }
-              ]
-            },
-            onChunk: (text) => {
-              variantBuffer += text;
-              buffer += text;
-              setState({ architectBuffer: buffer });
-            }
-          });
-
-          const parsed = parseArchitectJson(variantBuffer);
-          const extracted = extractArchitectPlanCandidates(parsed);
-          const candidate = (Array.isArray(extracted) && extracted.length)
-            ? extracted[0]
-            : parsed;
-
-          const planList = candidate?.plan || candidate?.agents || candidate?.workflow || candidate?.steps || [];
-          if (!Array.isArray(planList) || !planList.length) {
-            throw new Error("Architect output missing a plan list.");
-          }
-
-          rawCandidates.push({
-            ...candidate,
-            title: variantTitle,
-            strategy: (candidate.strategy || candidate.summary || variant.strategy).toString().trim(),
-            why: (candidate.why || candidate.rationale || variant.why).toString().trim(),
-            promptTile: variant.promptTile,
-            promptText: variant.promptText,
-            allocationStrategy: (candidate.allocationStrategy || candidate.channelAllocation || variant.allocationStrategy || "").toString().trim(),
-            deliveryTiming: (candidate.deliveryTiming || candidate.timingRecommendation || variant.deliveryTiming || "").toString().trim(),
-            roiReasoning: (candidate.roiReasoning || candidate.roiRationale || variant.roiReasoning || "").toString().trim(),
-            variantKey: variant.key
-          });
-          buffer += `\n[Completed ${variantTitle}]`;
-          setState({ architectBuffer: buffer });
-        } catch (variantError) {
-          usedFallback = true;
-          rawCandidates.push(buildFallbackArchitectPlanForVariant(demo, maxAgents, variant));
-          buffer += `\n[Fallback ${variantTitle}] Synthetic plan loaded for this variant due to an architect response issue.`;
-          setState({ architectBuffer: buffer });
-          console.warn(`Architect fallback activated for variant ${variant.key}:`, variantError?.message || variantError);
-        }
-      }
-    }
-
-    if (!rawCandidates.length) {
-      usedFallback = true;
-      rawCandidates = buildFallbackArchitectPlans(demo, maxAgents);
-      if (!buffer) {
-        buffer = "Architect streaming unavailable. Loaded synthetic architect plans for this demo run.";
-        setState({ architectBuffer: buffer });
-      }
-    }
-
-    const architectPlans = normalizeArchitectPlans(rawCandidates, demo, maxAgents);
-    const byVariant = new Map();
-    architectPlans.forEach((plan) => {
-      if (plan?.variantKey && !byVariant.has(plan.variantKey)) {
-        byVariant.set(plan.variantKey, plan);
-      }
+    const selectedPlan = expandAndEnrichPlan(
+      recommendedPlan.plan || [],
+      maxAgents,
+      problemText,
+      recommendedPlan.variantKey || PLAN_VARIANTS[0].key,
+      recommendedPlan
+    );
+    const normalizedInputs = buildDatasetInputs({
+      campaignPrompt: problemText,
+      selectedPlan: recommendedPlan
+    }).map((input) => ({ ...input, id: Utils.uniqueId("input") }));
+    const complianceValidation = recommendedPlan.complianceValidation || evaluatePlanCompliance({
+      campaignPrompt: problemText,
+      allocationStrategy: recommendedPlan.allocationStrategy || "",
+      variantKey: recommendedPlan.variantKey || ""
     });
-    PLAN_VARIANTS.forEach((variant) => {
-      if (!byVariant.has(variant.key)) {
-        byVariant.set(variant.key, buildFallbackArchitectPlanForVariant(demo, maxAgents, variant));
-      }
-    });
-    const orderedPlans = PLAN_VARIANTS.map((variant) => byVariant.get(variant.key)).filter(Boolean).slice(0, 3);
-
-    if (!orderedPlans.length) {
-      const fallbackPlans = buildFallbackArchitectPlans(demo, maxAgents);
-      setState({
-        architectPlans: fallbackPlans,
-        stage: "plan-select",
-        error: usedFallback ? "" : "Architect output was empty. Synthetic plans loaded."
-      });
-      return;
-    }
 
     setState({
-      stage: "plan-select",
+      stage: "data",
       architectPlans: orderedPlans,
-      plan: [],
-      suggestedInputs: [],
-      selectedInputs: new Set(),
-      rawDataByAgent: RAW_DATA_BY_AGENT,
+      selectedArchitectPlanId: recommendedPlan.id,
+      plan: selectedPlan,
+      suggestedInputs: normalizedInputs,
+      selectedInputs: new Set(normalizedInputs.map((item) => item.id)),
+      rawDataByAgent: buildRawDataByPlan(selectedPlan, null, recommendedPlan),
       error: "",
-      complianceDetails: null,
-      selectedPlanCompliance: null,
+      selectedPlanCompliance: complianceValidation,
+      complianceDetails: buildComplianceDetails(complianceValidation),
       visualizationLoading: false,
       visualizationNarrative: "",
-      runToken: 0
+      runToken: 0,
+      campaignStateObject: null
     });
   } catch (e) {
     const fallbackDemo = getSelectedDemo();
     const maxAgents = clampAgentCount($("#max-agents")?.value, TARGET_ARCHITECT_AGENTS);
     const fallbackPlans = buildFallbackArchitectPlans(fallbackDemo, maxAgents);
+    const recommendedPlan = fallbackPlans.find((plan) => plan.recommended) || fallbackPlans[0];
+    const selectedPlan = expandAndEnrichPlan(
+      recommendedPlan?.plan || [],
+      maxAgents,
+      fallbackDemo?.problem || fallbackDemo?.body || "",
+      recommendedPlan?.variantKey || PLAN_VARIANTS[0].key,
+      recommendedPlan
+    );
+    const normalizedInputs = buildDatasetInputs({
+      campaignPrompt: fallbackDemo?.problem || fallbackDemo?.body || "",
+      selectedPlan: recommendedPlan
+    }).map((input) => ({ ...input, id: Utils.uniqueId("input") }));
+    const savedCompliance = recommendedPlan?.complianceValidation || evaluatePlanCompliance({
+      campaignPrompt: fallbackDemo?.problem || fallbackDemo?.body || "",
+      allocationStrategy: recommendedPlan?.allocationStrategy || "",
+      variantKey: recommendedPlan?.variantKey || ""
+    });
     setState({
-      stage: "plan-select",
+      stage: "data",
       architectPlans: fallbackPlans,
-      plan: [],
+      selectedArchitectPlanId: recommendedPlan?.id || null,
+      plan: selectedPlan,
+      suggestedInputs: normalizedInputs,
+      selectedInputs: new Set(normalizedInputs.map((item) => item.id)),
       error: "Loaded synthetic architect plans after an orchestration error.",
-      complianceDetails: null,
-      selectedPlanCompliance: null,
+      rawDataByAgent: buildRawDataByPlan(selectedPlan, null, recommendedPlan),
+      complianceDetails: buildComplianceDetails(savedCompliance),
+      selectedPlanCompliance: savedCompliance,
       visualizationLoading: false,
-      visualizationNarrative: ""
+      visualizationNarrative: "",
+      campaignStateObject: null
     });
     console.error(e);
   }
+}
+
+function wait(ms = 120) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function escapeHtml(value = "") {
+  return (value || "")
+    .toString()
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function formatExecutionLabel(value = "") {
+  return String(value)
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b[a-z]/g, (char) => char.toUpperCase())
+    .replace(/\bId\b/g, "ID")
+    .replace(/\bUsd\b/g, "USD")
+    .replace(/\bPct\b/g, "%")
+    .replace(/\bCpm\b/g, "CPM")
+    .replace(/\bRoi\b/g, "ROI")
+    .replace(/\bScte35\b/gi, "SCTE-35");
+}
+
+function formatExecutionScalar(value) {
+  if (typeof value === "number") {
+    return Number.isInteger(value)
+      ? value.toLocaleString()
+      : value.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  }
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  return String(value ?? "");
+}
+
+function isPlainExecutionObject(value) {
+  return !!value && typeof value === "object" && !Array.isArray(value);
+}
+
+function getExecutionCardTitle(item, index) {
+  if (!isPlainExecutionObject(item)) return `Item ${index + 1}`;
+  return item.name
+    || item.label
+    || item.network
+    || item.surface
+    || item.topic
+    || item.daypart
+    || item.policy
+    || item.country_code
+    || `Item ${index + 1}`;
+}
+
+function getExecutionCardBody(item, title) {
+  if (!isPlainExecutionObject(item)) return item;
+  const next = { ...item };
+  if (next.name === title) delete next.name;
+  if (next.label === title) delete next.label;
+  return next;
+}
+
+function renderExecutionValue(value) {
+  if (value === null || value === undefined || value === "") {
+    return '<span class="detail-null">Not available</span>';
+  }
+
+  if (typeof value === "string") {
+    const text = value.trim();
+    return (text.includes("\n") || text.length > 96)
+      ? `<div class="detail-text-panel">${escapeHtml(text)}</div>`
+      : `<span>${escapeHtml(text)}</span>`;
+  }
+
+  if (typeof value === "number" || typeof value === "boolean") {
+    return `<span>${escapeHtml(formatExecutionScalar(value))}</span>`;
+  }
+
+  if (Array.isArray(value)) {
+    if (!value.length) return '<span class="detail-null">No items</span>';
+    if (value.every((item) => item === null || item === undefined || typeof item !== "object")) {
+      return `<div class="detail-pill-row">${value.map((item) => `<span class="detail-pill">${escapeHtml(formatExecutionScalar(item))}</span>`).join("")}</div>`;
+    }
+    return `<div class="detail-card-grid">${value.map((item, index) => {
+      const title = getExecutionCardTitle(item, index);
+      const body = getExecutionCardBody(item, title);
+      return `
+        <div class="detail-card">
+          <div class="detail-card-title">${escapeHtml(title)}</div>
+          ${renderExecutionValue(body)}
+        </div>
+      `;
+    }).join("")}</div>`;
+  }
+
+  if (isPlainExecutionObject(value)) {
+    const entries = Object.entries(value);
+    if (!entries.length) return '<span class="detail-null">No fields</span>';
+    return `<div class="detail-kv">${entries.map(([key, itemValue]) => `
+      <div class="detail-kv-row">
+        <div class="detail-kv-key">${escapeHtml(formatExecutionLabel(key))}</div>
+        <div class="detail-kv-value">${renderExecutionValue(itemValue)}</div>
+      </div>
+    `).join("")}</div>`;
+  }
+
+  return `<pre class="raw-data mb-0">${escapeHtml(String(value))}</pre>`;
+}
+
+function renderExecutionSection(title, value) {
+  if (value === undefined || value === null) return "";
+  return `
+    <div class="detail-section">
+      <div class="detail-section-label">${escapeHtml(title)}</div>
+      ${renderExecutionValue(value)}
+    </div>
+  `;
+}
+
+function renderExecutionSubAgents(items = []) {
+  if (!items.length) return '<span class="detail-null">No sub-agent results recorded.</span>';
+  return `<div class="detail-card-grid">${items.map((item) => `
+    <div class="detail-card">
+      <div class="detail-card-title">${escapeHtml(item.name || "Sub-Agent")}</div>
+      ${(item.details || []).length
+        ? `<ul class="detail-list mb-0">${(item.details || []).map((detail) => `<li>${escapeHtml(detail)}</li>`).join("")}</ul>`
+        : '<span class="detail-null">No notes recorded.</span>'}
+    </div>
+  `).join("")}</div>`;
+}
+
+function networkToInventoryName(name = "") {
+  if (name === "Max") return "Max ad-lite";
+  if (name === "discovery+") return "Discovery+";
+  return name;
+}
+
+function getSelectedScenarioRecord() {
+  return state.architectPlans.find((plan) => plan.id === state.selectedArchitectPlanId)
+    || state.architectPlans.find((plan) => plan.recommended)
+    || state.architectPlans[0]
+    || null;
+}
+
+function buildInitialCampaignState({ campaignPrompt = "", selectedPlan = null, entries = [] } = {}) {
+  const fallbackCatalog = buildScenarioBlueprints(campaignPrompt);
+  const scenario = selectedPlan || fallbackCatalog.options.find((option) => option.recommended) || fallbackCatalog.options[0];
+  const intelligence = scenario?.scenarioIntelligence || fallbackCatalog.intelligence;
+  return {
+    id: Utils.uniqueId("campaign"),
+    createdAt: Date.now(),
+    prompt: campaignPrompt,
+    budgetUsd: intelligence?.campaign?.budgetUsd || extractBudgetUsd(campaignPrompt),
+    countries: intelligence?.campaign?.countries || detectCampaignCountries(campaignPrompt),
+    productFamily: intelligence?.campaign?.productFamily || deriveProductFamily(campaignPrompt),
+    selectedScenario: {
+      id: selectedPlan?.id || null,
+      title: scenario?.title || "Recommended scenario",
+      variantKey: scenario?.variantKey || PLAN_VARIANTS[0].key,
+      allocationStrategy: scenario?.allocationStrategy || "",
+      allocation: scenario?.allocation || intelligence?.allocation || { streamingPct: 50, linearPct: 40, reservePct: 10 },
+      recommendationReason: scenario?.recommendationReason || intelligence?.recommendationReason || "",
+      rankedNetworks: intelligence?.rankedNetworks || []
+    },
+    intelligence,
+    supplementalInputs: entries.map((entry) => ({
+      title: entry.title,
+      type: entry.type,
+      preview: Utils.truncate(entry.content || "", 220)
+    })),
+    stageOutputs: {},
+    executionDetails: {},
+    actionLog: []
+  };
+}
+
+function selectRelevantYieldSignals(campaignState, limit = 3) {
+  const vertical = campaignState.productFamily?.key || "general_brand";
+  const signals = (datasets.yieldIntelligenceFeed || [])
+    .filter((item) => item.vertical_tag === vertical || (vertical === "general_brand" && item.expected_roi_lift_pct >= 10))
+    .sort((a, b) => (Number(b.expected_roi_lift_pct || 0) - Number(a.expected_roi_lift_pct || 0)) || (Number(b.signal_strength || 0) - Number(a.signal_strength || 0)));
+  return (signals.length ? signals : (datasets.yieldIntelligenceFeed || [])).slice(0, limit);
+}
+
+function selectRelevantInventoryRows(campaignState, limit = 8) {
+  const countries = new Set(campaignState.countries || ["US"]);
+  const networkNames = new Set((campaignState.selectedScenario?.rankedNetworks || []).map((item) => networkToInventoryName(item.name)));
+  const allRows = datasets.inventoryMatrix || [];
+  const filtered = allRows
+    .filter((row) => countries.has(row.country_code) && (!networkNames.size || networkNames.has(row.network)))
+    .sort((a, b) => ((Number(b.fill_rate_pct || 0) * Number(b.avail_impressions_30s || 0)) - (Number(a.fill_rate_pct || 0) * Number(a.avail_impressions_30s || 0))));
+  return (filtered.length ? filtered : allRows.slice()).slice(0, limit);
+}
+
+function buildBookingLineItems(campaignState, inventoryRows = []) {
+  const budgetUsd = Number(campaignState.budgetUsd || 50000);
+  const allocation = campaignState.selectedScenario?.allocation || { streamingPct: 50, linearPct: 40, reservePct: 10 };
+  const streamingBudget = Math.round(budgetUsd * (allocation.streamingPct / 100));
+  const linearBudget = Math.round(budgetUsd * (allocation.linearPct / 100));
+  const reserveBudget = budgetUsd - streamingBudget - linearBudget;
+  const streamingRows = inventoryRows.filter((row) => row.platform_type === "digital").slice(0, 3);
+  const linearRows = inventoryRows.filter((row) => row.platform_type === "linear").slice(0, 3);
+  const lineItems = [];
+
+  function pushRows(rows, totalBudget, label) {
+    if (!rows.length || totalBudget <= 0) return;
+    const totalWeight = rows.reduce((sum, row) => sum + Math.max(1, Number(row.fill_rate_pct || 0)), 0);
+    rows.forEach((row, index) => {
+      const share = index === rows.length - 1
+        ? totalBudget - lineItems.filter((item) => item._lane === label).reduce((sum, item) => sum + item.spend_usd, 0)
+        : Math.round(totalBudget * (Math.max(1, Number(row.fill_rate_pct || 0)) / totalWeight));
+      const spend = Math.max(0, share);
+      const impressions = Math.min(
+        Math.round((spend / Math.max(Number(row.cpm_30s || 1), 1)) * 1000),
+        Math.round(Number(row.avail_impressions_30s || 0) * 0.78)
+      );
+      lineItems.push({
+        line_item_id: `LINE-${String(lineItems.length + 1).padStart(3, "0")}`,
+        network: row.network,
+        platform_type: row.platform_type,
+        country_code: row.country_code,
+        daypart: row.daypart,
+        impressions,
+        spend_usd: spend,
+        cpm_30s: row.cpm_30s,
+        status: "approved",
+        _lane: label
+      });
+    });
+  }
+
+  pushRows(streamingRows, streamingBudget, "streaming");
+  pushRows(linearRows, linearBudget, "linear");
+
+  if (reserveBudget > 0 && lineItems.length) {
+    const bestItem = [...lineItems].sort((a, b) => b.impressions - a.impressions)[0];
+    lineItems.push({
+      line_item_id: `LINE-${String(lineItems.length + 1).padStart(3, "0")}`,
+      network: bestItem.network,
+      platform_type: bestItem.platform_type,
+      country_code: bestItem.country_code,
+      daypart: bestItem.daypart,
+      impressions: Math.round((reserveBudget / Math.max(Number(bestItem.cpm_30s || 1), 1)) * 1000),
+      spend_usd: reserveBudget,
+      cpm_30s: bestItem.cpm_30s,
+      status: "approved",
+      _lane: "reserve"
+    });
+  }
+
+  return lineItems.map(({ _lane, ...item }) => item);
+}
+
+function productRoiBaseline(productKey = "") {
+  if (productKey === "toddler_snacks") return 1.68;
+  if (productKey === "insurance") return 1.42;
+  if (productKey === "automotive") return 1.54;
+  if (productKey === "financial_services") return 1.38;
+  if (productKey === "retail") return 1.58;
+  if (productKey === "entertainment") return 1.48;
+  if (productKey === "sports") return 1.46;
+  return 1.44;
+}
+
+function runPlanningIdentityStage(agent, campaignState) {
+  const intelligence = campaignState.intelligence || analyzeAudienceAgainstCampaign(campaignState.prompt);
+  const subAgents = MASTER_AGENT_SUBAGENTS[agent.nodeId] || [];
+  const subAgentResults = [
+    {
+      id: subAgents[0]?.id || `${agent.nodeId}__audience-segmentation`,
+      name: "Audience Segmentation",
+      details: [
+        `Matched ${intelligence.matchedRows.length.toLocaleString()} viewer profiles into ${intelligence.uniqueHouseholds.toLocaleString()} deduplicated households.`,
+        `Top cohort: ${intelligence.topSegments[0]?.label || "High-fit audience"} with leading tag ${intelligence.topTags[0]?.label || "n/a"}.`,
+        `Audience center of gravity: average age ${intelligence.avgAge}, ${intelligence.streamingHeavyShare}% streaming-heavy, ${intelligence.linearHeavyShare}% linear-heavy.`
+      ]
+    },
+    {
+      id: subAgents[1]?.id || `${agent.nodeId}__cross-platform-id-resolver`,
+      name: "Cross-Platform ID Resolver",
+      details: [
+        `${intelligence.overlapPct}% of matched viewers are connected to more than two household platforms, so duplicate suppression matters immediately.`,
+        `Top platforms: ${intelligence.topPlatforms.map((item) => `${item.label} (${item.pct}%)`).slice(0, 3).join(", ")}.`,
+        `Top states: ${intelligence.topStates.map((item) => `${item.label} (${item.pct}%)`).slice(0, 3).join(", ")}.`
+      ]
+    },
+    {
+      id: subAgents[2]?.id || `${agent.nodeId}__behavioral-indexer`,
+      name: "Behavioral Indexer",
+      details: [
+        `Highest-fit networks: ${(intelligence.rankedNetworks || []).map((item) => `${item.name} (${roundToTwo(item.lift || 1, 1)}x fit)`).slice(0, 3).join(", ")}.`,
+        `Behavioral leaders: ${intelligence.topTags.map((item) => item.label).slice(0, 4).join(", ")}.`,
+        `Recommendation anchor: ${campaignState.selectedScenario.recommendationReason || "Follow the selected scenario fit signal."}`
+      ]
+    }
+  ];
+  const stateUpdate = {
+    audience_summary: {
+      matched_profiles: intelligence.matchedRows.length,
+      unique_households: intelligence.uniqueHouseholds,
+      average_age: intelligence.avgAge,
+      top_segments: intelligence.topSegments.slice(0, 3),
+      top_tags: intelligence.topTags.slice(0, 4),
+      top_states: intelligence.topStates.slice(0, 3),
+      overlap_pct: intelligence.overlapPct
+    }
+  };
+  campaignState.stageOutputs[agent.nodeId] = stateUpdate;
+  return {
+    inputData: {
+      prompt: campaignState.prompt,
+      scenario: campaignState.selectedScenario,
+      sample_profiles: intelligence.sampleRows.slice(0, 6)
+    },
+    summaryLines: [
+      `Matched ${intelligence.uniqueHouseholds.toLocaleString()} deduplicated households, led by ${intelligence.topSegments[0]?.label || "the top cohort"} in ${intelligence.topStates[0]?.label || "core markets"}.`,
+      `${intelligence.topTags[0]?.label || "High-fit viewers"} and ${intelligence.topTags[1]?.label || "multi-platform users"} are pulling the scenario toward ${campaignState.selectedScenario.title}.`
+    ],
+    subAgentResults,
+    whyMatters: "Stage 1 determines who the system should actually reach. Every later decision, from yield pricing to measurement, depends on whether this audience definition is behaviorally right and de-duplicated correctly.",
+    handoff: "Pass the validated audience profile, ranked networks, and overlap signals to Inventory and Yield so capacity and pricing are grounded in the same households.",
+    stateUpdate
+  };
+}
+
+function runInventoryYieldStage(agent, campaignState) {
+  const intelligence = campaignState.intelligence;
+  const subAgents = MASTER_AGENT_SUBAGENTS[agent.nodeId] || [];
+  const inventoryRows = selectRelevantInventoryRows(campaignState, 8);
+  const yieldSignals = selectRelevantYieldSignals(campaignState, 3);
+  const budgetUsd = Number(campaignState.budgetUsd || 50000);
+  const capacityImpressions = inventoryRows.reduce((sum, row) => sum + Math.round(Number(row.avail_impressions_30s || 0) * 0.72), 0);
+  const capacitySpend = inventoryRows.reduce((sum, row) => sum + Math.round((Number(row.avail_impressions_30s || 0) * 0.72 / 1000) * Number(row.cpm_30s || 0)), 0);
+  const streamingRows = inventoryRows.filter((row) => row.platform_type === "digital");
+  const linearRows = inventoryRows.filter((row) => row.platform_type === "linear");
+  const premiumStreamingCpm = roundToTwo(average(streamingRows, "cpm_30s") * (1 + (intelligence.streamingHeavyShare / 400)));
+  const blendedLinearCpm = roundToTwo(average(linearRows, "cpm_30s") * (1 + (intelligence.linearHeavyShare / 700)));
+  const stateUpdate = {
+    inventory_summary: {
+      capacity_impressions: capacityImpressions,
+      capacity_spend_usd: capacitySpend,
+      budget_fit: capacitySpend >= budgetUsd ? "Capacity available" : "Capacity tight",
+      premium_streaming_cpm: premiumStreamingCpm,
+      blended_linear_cpm: blendedLinearCpm,
+      yield_signals: yieldSignals.map((item) => ({
+        topic: item.topic,
+        channel: item.recommended_channel,
+        expected_roi_lift_pct: item.expected_roi_lift_pct
+      }))
+    }
+  };
+  campaignState.stageOutputs[agent.nodeId] = stateUpdate;
+  return {
+    inputData: {
+      scenario: campaignState.selectedScenario,
+      audience_summary: campaignState.stageOutputs["planning-identity-agent"],
+      inventory_rows: inventoryRows.slice(0, 6),
+      yield_signals: yieldSignals
+    },
+    summaryLines: [
+      `Capacity check shows ${capacityImpressions.toLocaleString()} fulfillable impressions and ${capacitySpend.toLocaleString()} dollars of workable supply against a ${budgetUsd.toLocaleString()} dollar brief.`,
+      `Streaming is priced at roughly ${premiumStreamingCpm} CPM versus ${blendedLinearCpm} CPM on linear, with yield spikes led by ${yieldSignals[0]?.topic || "the strongest signal"}.`
+    ],
+    subAgentResults: [
+      {
+        id: subAgents[0]?.id || `${agent.nodeId}__predictive-capacity`,
+        name: "Predictive Capacity",
+        details: [
+          `${capacitySpend >= budgetUsd ? "Available supply covers the brief without forcing low-quality avails." : "Available supply is tight, so the reserve lane matters."}`,
+          `Top avails: ${inventoryRows.slice(0, 3).map((row) => `${row.network} ${row.daypart}`).join(", ")}.`,
+          `Highest-fill inventory is concentrated in ${inventoryRows[0]?.network || "the lead network"}.`
+        ]
+      },
+      {
+        id: subAgents[1]?.id || `${agent.nodeId}__yield-optimizer`,
+        name: "Yield Optimizer",
+        details: [
+          `Premium CPM guidance for targeted streaming impressions: ${premiumStreamingCpm}.`,
+          `Blended CPM guidance for linear coverage: ${blendedLinearCpm}.`,
+          `The pricing split mirrors the selected scenario mix of ${campaignState.selectedScenario.allocation.streamingPct}% streaming and ${campaignState.selectedScenario.allocation.linearPct}% linear.`
+        ]
+      },
+      {
+        id: subAgents[2]?.id || `${agent.nodeId}__signal-forecaster`,
+        name: "Signal Forecaster",
+        details: yieldSignals.map((item) => `${item.topic} suggests ${item.expected_roi_lift_pct}% lift with ${item.recommended_channel} during ${item.spike_window}.`)
+      }
+    ],
+    whyMatters: "Stage 2 translates audience fit into inventory reality. If the system cannot fulfill the brief at the right price, every downstream recommendation becomes decorative instead of executable.",
+    handoff: "Pass capacity, pricing, and timing guidance into Booking and Proposal so the contract structure reflects what can truly be delivered.",
+    stateUpdate
+  };
+}
+
+function runBookingProposalStage(agent, campaignState) {
+  const subAgents = MASTER_AGENT_SUBAGENTS[agent.nodeId] || [];
+  const inventoryRows = selectRelevantInventoryRows(campaignState, 6);
+  const lineItems = buildBookingLineItems(campaignState, inventoryRows);
+  const compliance = evaluatePlanCompliance({
+    campaignPrompt: campaignState.prompt,
+    allocationStrategy: campaignState.selectedScenario.allocationStrategy,
+    variantKey: campaignState.selectedScenario.variantKey
+  });
+  const guaranteeImpressions = lineItems.reduce((sum, row) => sum + Number(row.impressions || 0), 0);
+  const stateUpdate = {
+    booking_summary: {
+      line_items: lineItems,
+      guarantee_impressions: guaranteeImpressions,
+      compliance_status: compliance.status,
+      compliance_findings: compliance.findings.slice(0, 4)
+    }
+  };
+  campaignState.stageOutputs[agent.nodeId] = stateUpdate;
+  return {
+    inputData: {
+      scenario: campaignState.selectedScenario,
+      inventory_summary: campaignState.stageOutputs["inventory-yield-agent"],
+      compliance_context: compliance
+    },
+    summaryLines: [
+      `NEO proposal assembled ${lineItems.length} converged line items and ${guaranteeImpressions.toLocaleString()} guaranteed impressions around the selected scenario.`,
+      `${compliance.status === "Passed" ? "Compliance cleared the structure without blockers." : `Compliance returned ${compliance.findings.length} adjustments before launch.`}`
+    ],
+    subAgentResults: [
+      {
+        id: subAgents[0]?.id || `${agent.nodeId}__deal-structurer`,
+        name: "Deal Structurer (NEO)",
+        details: [
+          `Primary networks: ${lineItems.map((item) => item.network).slice(0, 4).join(", ")}.`,
+          `Streaming spend: ${lineItems.filter((item) => item.platform_type === "digital").reduce((sum, item) => sum + item.spend_usd, 0).toLocaleString()} dollars.`,
+          `Linear spend: ${lineItems.filter((item) => item.platform_type === "linear").reduce((sum, item) => sum + item.spend_usd, 0).toLocaleString()} dollars.`
+        ]
+      },
+      {
+        id: subAgents[1]?.id || `${agent.nodeId}__global-compliance-bot`,
+        name: "Global Compliance Bot",
+        details: [
+          compliance.summary,
+          ...(compliance.findings.slice(0, 3).length ? compliance.findings.slice(0, 3) : ["No blocking policy findings were triggered by the current prompt and scenario mix."])
+        ]
+      },
+      {
+        id: subAgents[2]?.id || `${agent.nodeId}__proposal-assembler`,
+        name: "Proposal Assembler",
+        details: [
+          `Guaranteed impression target: ${guaranteeImpressions.toLocaleString()}.`,
+          `Proposal language follows the recommended scenario: ${campaignState.selectedScenario.title}.`,
+          `Optimization reserve stays available for later make-good use.`
+        ]
+      }
+    ],
+    whyMatters: "Stage 3 turns analysis into a commercial package. This is where the audience theory becomes a real contract and where regulatory risk is either absorbed early or pushed dangerously downstream.",
+    handoff: "Pass approved line items, guarantee logic, and any compliance adjustments into Trafficking and Signals for activation readiness.",
+    stateUpdate
+  };
+}
+
+function runTraffickingSignalsStage(agent, campaignState) {
+  const subAgents = MASTER_AGENT_SUBAGENTS[agent.nodeId] || [];
+  const booking = campaignState.stageOutputs["booking-proposals-agent"]?.booking_summary || {};
+  const lineItems = booking.line_items || [];
+  const signalRiskRows = selectRelevantInventoryRows(campaignState, 8).filter((row) => (row.scte35_signal_status || "").toLowerCase() !== "active");
+  const readinessScore = Math.max(72, 96 - (signalRiskRows.length * 4) - ((booking.compliance_findings || []).length * 2));
+  const stateUpdate = {
+    trafficking_summary: {
+      readiness_score: readinessScore,
+      signal_risks: signalRiskRows.slice(0, 3).map((row) => ({
+        network: row.network,
+        daypart: row.daypart,
+        status: row.scte35_signal_status
+      })),
+      asset_checks: [
+        { surface: "CTV 16:9 master", status: "pass" },
+        { surface: "Mobile video audio normalization", status: "pass" },
+        { surface: "Trafficking metadata and advertiser identifiers", status: "pass" }
+      ]
+    }
+  };
+  campaignState.stageOutputs[agent.nodeId] = stateUpdate;
+  return {
+    inputData: {
+      proposal_lines: lineItems,
+      signal_inventory: signalRiskRows.slice(0, 4)
+    },
+    summaryLines: [
+      `Launch readiness scored ${readinessScore}/100 after asset QA, metadata review, and StreamX routing checks.`,
+      `${signalRiskRows.length ? `Signal attention is needed on ${signalRiskRows[0]?.network || "one network"} before activation.` : "No critical signal blockers were found in the selected inventory path."}`
+    ],
+    subAgentResults: [
+      {
+        id: subAgents[0]?.id || `${agent.nodeId}__asset-qa`,
+        name: "Asset QA",
+        details: [
+          "CTV master, mobile audio, and metadata checks passed for the simulated launch package.",
+          `The current plan contains ${lineItems.length} traffickable line items.`,
+          "No cross-screen format conflicts were introduced by the selected scenario."
+        ]
+      },
+      {
+        id: subAgents[1]?.id || `${agent.nodeId}__streamx-router`,
+        name: "StreamX Signal Router",
+        details: signalRiskRows.length
+          ? signalRiskRows.slice(0, 3).map((row) => `${row.network} ${row.daypart} shows ${row.scte35_signal_status} SCTE-35 status and needs monitored routing.`)
+          : ["All inspected inventory rows showed active SCTE-35 status for the selected path."]
+      },
+      {
+        id: subAgents[2]?.id || `${agent.nodeId}__launch-readiness`,
+        name: "Launch Readiness",
+        details: [
+          `Readiness score: ${readinessScore}/100.`,
+          `${readinessScore >= 85 ? "Launch can proceed with standard monitoring." : "Launch should proceed with elevated operational watchlists."}`,
+          "Escalation instructions are attached to the Campaign_State_Object for the operations team."
+        ]
+      }
+    ],
+    whyMatters: "Stage 4 is the last chance to prevent a technically elegant plan from failing in execution. Clean routing and launch readiness are what let the later pacing and measurement stages behave predictably.",
+    handoff: "Pass readiness status, signal watchlists, and the trafficked line items into In-Flight Operations for live pacing simulation.",
+    stateUpdate
+  };
+}
+
+function runInFlightOperationsStage(agent, campaignState) {
+  const subAgents = MASTER_AGENT_SUBAGENTS[agent.nodeId] || [];
+  const booking = campaignState.stageOutputs["booking-proposals-agent"]?.booking_summary || {};
+  const trafficking = campaignState.stageOutputs["trafficking-signals-agent"]?.trafficking_summary || {};
+  const allocation = campaignState.selectedScenario.allocation || { streamingPct: 50, linearPct: 40, reservePct: 10 };
+  const riskPenalty = (trafficking.signal_risks || []).length * 0.03;
+  const linearDeliveryRate = clampNumber(0.95 - (allocation.linearPct > 55 ? 0.08 : 0.03) - riskPenalty, 0.72, 0.98);
+  const digitalDeliveryRate = clampNumber(0.97 + (allocation.streamingPct > 60 ? 0.02 : 0.01), 0.9, 1.04);
+  const makeGoodTriggered = linearDeliveryRate < 0.9;
+  const shiftBudget = makeGoodTriggered
+    ? Math.round(Math.min(campaignState.budgetUsd * 0.08, campaignState.budgetUsd * ((allocation.reservePct || 10) / 100)))
+    : 0;
+  const beforeRoi = roundToTwo(productRoiBaseline(campaignState.productFamily.key) + (campaignState.intelligence.streamingScore - campaignState.intelligence.linearScore) / 1000, 2);
+  const afterRoi = roundToTwo(beforeRoi + (makeGoodTriggered ? 0.17 : 0.06), 2);
+  const finalAllocation = {
+    streamingPct: allocation.streamingPct + (makeGoodTriggered ? Math.round((shiftBudget / campaignState.budgetUsd) * 100) : 0),
+    linearPct: Math.max(0, allocation.linearPct - (makeGoodTriggered ? Math.round((shiftBudget / campaignState.budgetUsd) * 100) : 0)),
+    reservePct: Math.max(0, allocation.reservePct - (makeGoodTriggered ? Math.round((shiftBudget / campaignState.budgetUsd) * 100) : 0))
+  };
+  const stateUpdate = {
+    inflight_summary: {
+      linear_delivery_rate_pct: roundToTwo(linearDeliveryRate * 100, 1),
+      digital_delivery_rate_pct: roundToTwo(digitalDeliveryRate * 100, 1),
+      make_good_triggered: makeGoodTriggered,
+      shift_budget_usd: shiftBudget,
+      before_roi: beforeRoi,
+      after_roi: afterRoi,
+      final_allocation: finalAllocation,
+      trafficked_line_items: booking.line_items || []
+    }
+  };
+  campaignState.stageOutputs[agent.nodeId] = stateUpdate;
+  return {
+    inputData: {
+      trafficked_plan: booking.line_items || [],
+      trafficking_summary: trafficking,
+      scenario_allocation: allocation
+    },
+    summaryLines: [
+      `Linear pacing is projected at ${roundToTwo(linearDeliveryRate * 100, 1)}% versus ${roundToTwo(digitalDeliveryRate * 100, 1)}% on streaming.`,
+      `${makeGoodTriggered ? `The autonomous make-good shifted ${shiftBudget.toLocaleString()} dollars into streaming to protect the guarantee.` : "No make-good was required because both channels stayed within tolerance."}`
+    ],
+    subAgentResults: [
+      {
+        id: subAgents[0]?.id || `${agent.nodeId}__real-time-pacing`,
+        name: "Real-Time Pacing",
+        details: [
+          `Linear delivery risk: ${roundToTwo(linearDeliveryRate * 100, 1)}%.`,
+          `Digital delivery risk: ${roundToTwo(digitalDeliveryRate * 100, 1)}%.`,
+          `${(trafficking.signal_risks || []).length ? "Signal watchlist increased linear risk." : "Signal health remained stable through the pacing simulation."}`
+        ]
+      },
+      {
+        id: subAgents[1]?.id || `${agent.nodeId}__autonomous-make-good`,
+        name: "Autonomous Make-Good",
+        details: makeGoodTriggered
+          ? [
+            `Shifted ${shiftBudget.toLocaleString()} dollars from the reserve or weak linear lane into Max ad-lite and discovery+ coverage.`,
+            `Final allocation moved to ${finalAllocation.streamingPct}% streaming and ${finalAllocation.linearPct}% linear.`,
+            `Projected ROI improved from ${beforeRoi} to ${afterRoi}.`
+          ]
+          : [
+            "No autonomous budget shift was required.",
+            `Projected ROI still improved from ${beforeRoi} to ${afterRoi} through stable pacing and scenario fit.`,
+            "Reserve budget remains available for live intervention if needed."
+          ]
+      },
+      {
+        id: subAgents[2]?.id || `${agent.nodeId}__ops-alerting`,
+        name: "Ops Alerting",
+        details: [
+          makeGoodTriggered ? "An alert was logged for linear under-delivery and routed to the ops watchlist." : "No red-alert condition was logged for pacing.",
+          "The Campaign_State_Object now carries the final allocation and intervention trace.",
+          "Measurement will use these final allocations rather than the original scenario split."
+        ]
+      }
+    ],
+    whyMatters: "Stage 5 is where the system proves it can act, not just describe. The demo feels like a multi-agent operating system when the scenario can autonomously recover from delivery risk instead of watching the shortfall happen.",
+    handoff: "Pass final allocation, pacing outcomes, and make-good traces into Measurement and Attribution for outcome calculation.",
+    stateUpdate
+  };
+}
+
+function runMeasurementStage(agent, campaignState) {
+  const subAgents = MASTER_AGENT_SUBAGENTS[agent.nodeId] || [];
+  const planning = campaignState.stageOutputs["planning-identity-agent"]?.audience_summary || {};
+  const inflight = campaignState.stageOutputs["inflight-operations-agent"]?.inflight_summary || {};
+  const matchedHouseholds = Math.round((planning.unique_households || campaignState.intelligence.uniqueHouseholds || 0) * 0.72);
+  const cleanRoomMatchRate = roundToTwo(74 + (campaignState.intelligence.overlapPct / 4), 1);
+  const salesLiftPct = roundToTwo(4.2 + ((inflight.after_roi || 1.4) - 1.3) * 6, 1);
+  const incrementalRevenue = Math.round((campaignState.budgetUsd || 50000) * (inflight.after_roi || 1.5));
+  const nextBestAction = campaignState.selectedScenario.variantKey === "plan-a-streaming"
+    ? "Keep the next flight streaming-led but widen the linear support network only if parent reach begins to plateau."
+    : campaignState.selectedScenario.variantKey === "plan-b-linear"
+      ? "Preserve linear scale for the next flight and use streaming only for incremental younger household lift."
+      : "Keep the balanced structure and let in-flight pacing decide which channel earns the extra dollars next time.";
+  const stateUpdate = {
+    measurement_summary: {
+      matched_households: matchedHouseholds,
+      clean_room_match_rate_pct: cleanRoomMatchRate,
+      sales_lift_pct: salesLiftPct,
+      deterministic_roi: inflight.after_roi || productRoiBaseline(campaignState.productFamily.key),
+      incremental_revenue_usd: incrementalRevenue,
+      next_best_action: nextBestAction
+    }
+  };
+  campaignState.stageOutputs[agent.nodeId] = stateUpdate;
+  return {
+    inputData: {
+      audience_summary: planning,
+      final_allocation: inflight.final_allocation,
+      pacing_outcome: inflight
+    },
+    summaryLines: [
+      `The synthetic clean room matched ${matchedHouseholds.toLocaleString()} households at a ${cleanRoomMatchRate}% match rate and estimated ${salesLiftPct}% sales lift.`,
+      `Deterministic ROI landed at ${inflight.after_roi || productRoiBaseline(campaignState.productFamily.key)}, with ${incrementalRevenue.toLocaleString()} dollars of modeled incremental revenue.`
+    ],
+    subAgentResults: [
+      {
+        id: subAgents[0]?.id || `${agent.nodeId}__clean-room-matcher`,
+        name: "Clean Room Matcher",
+        details: [
+          `${matchedHouseholds.toLocaleString()} households were matched through the privacy-safe exposure workflow.`,
+          `Cross-platform match rate: ${cleanRoomMatchRate}%.`,
+          "Exposure logs were matched against synthetic sales outcomes without re-identifying households."
+        ]
+      },
+      {
+        id: subAgents[1]?.id || `${agent.nodeId}__deterministic-roi`,
+        name: "Deterministic ROI Calculator",
+        details: [
+          `Sales lift: ${salesLiftPct}%.`,
+          `Deterministic ROI: ${inflight.after_roi || productRoiBaseline(campaignState.productFamily.key)}.`,
+          `Modeled incremental revenue: ${incrementalRevenue.toLocaleString()} dollars.`
+        ]
+      },
+      {
+        id: subAgents[2]?.id || `${agent.nodeId}__learning-agenda`,
+        name: "Learning Agenda",
+        details: [
+          nextBestAction,
+          `Best-performing scenario signal: ${campaignState.selectedScenario.recommendationReason || "Use the selected scenario again until audience behavior shifts."}`,
+          "Stage 1 audience definitions are now available to seed the next campaign without starting from scratch."
+        ]
+      }
+    ],
+    whyMatters: "Stage 6 closes the loop. It proves the audience selected in Stage 1 and the intervention taken in Stage 5 actually matter to a business outcome, which is the core promise of the shared Campaign_State_Object design.",
+    handoff: "Measurement writes the final learning package back into the Campaign_State_Object so the next run can start with evidence instead of assumptions.",
+    stateUpdate
+  };
+}
+
+function executeMasterStage(agent, campaignState) {
+  const role = inferAgentRole(agent);
+  if (role === "planning-identity") return runPlanningIdentityStage(agent, campaignState);
+  if (role === "inventory-yield") return runInventoryYieldStage(agent, campaignState);
+  if (role === "booking-proposals") return runBookingProposalStage(agent, campaignState);
+  if (role === "trafficking-signals") return runTraffickingSignalsStage(agent, campaignState);
+  if (role === "inflight-operations") return runInFlightOperationsStage(agent, campaignState);
+  if (role === "measurement") return runMeasurementStage(agent, campaignState);
+  return {
+    inputData: { prompt: campaignState.prompt },
+    summaryLines: ["No master-stage implementation was matched for this node.", "The orchestrator kept the pipeline moving with a generic fallback."],
+    subAgentResults: [],
+    whyMatters: "The orchestration layer needs each stage to produce structured output for the next stage.",
+    handoff: "Continue with the current shared campaign state.",
+    stateUpdate: {}
+  };
+}
+
+function buildMasterAgentNarrative(result) {
+  const summaryLines = (result.summaryLines || []).slice(0, 2).map((line) => `- ${line}`).join("\n");
+
+  return `### Summary
+${summaryLines}
+
+### Why this matters
+${escapeHtml(result.whyMatters || "")}
+
+_Open the Detailed execution panel below to inspect input data, sub-agent results, state updates, and handoff details._`;
+}
+
+async function runMasterAgentStage(out, campaignState, selectedPlan) {
+  updateAgent(out.id, "Orchestrator is dispatching sub-agents and assembling the shared Campaign_State_Object update.", "running");
+  await wait(160);
+  const result = executeMasterStage(out, campaignState);
+  const narrative = buildMasterAgentNarrative(result);
+  campaignState.executionDetails[out.nodeId] = result;
+  campaignState.actionLog.push({
+    nodeId: out.nodeId,
+    agent: out.name,
+    summary: result.summaryLines?.[0] || "",
+    time: Date.now()
+  });
+  patchAgent(out.id, {
+    summaryLines: result.summaryLines || [],
+    subAgentResults: result.subAgentResults || [],
+    inputData: result.inputData || {},
+    stateUpdate: result.stateUpdate || {},
+    handoff: result.handoff || "",
+    whyMatters: result.whyMatters || ""
+  });
+  setState({
+    campaignStateObject: campaignState,
+    rawDataByAgent: buildRawDataByPlan(state.plan, campaignState, selectedPlan)
+  });
+  updateAgent(out.id, narrative, "done");
+  return narrative;
 }
 
 async function startAgents() {
@@ -1438,19 +2642,54 @@ async function startAgents() {
   if (!entries.length) return setState({ error: "No data." });
 
   try {
-    const creds = await ensureCreds();
+    let creds = null;
+    try {
+      creds = await ensureCreds();
+    } catch (credsError) {
+      console.warn("Proceeding without live LLM credentials for execution:", credsError?.message || credsError);
+    }
     const model = $("#model")?.value || "gpt-5-mini";
     const demo = getSelectedDemo();
-    const agentStyle = demo?.agentStyle || $("#agent-style")?.value || "";
     const campaignPrompt = (state.campaignPrompt || demo?.problem || "Launch a converged ad campaign.").trim();
-    const inputBlob = `Campaign Brief:\n${campaignPrompt}\n\nSupplemental Inputs:\n${Utils.formatDataEntries(entries)}`;
     const runToken = Date.now();
-    const selectedPlanRecord = state.architectPlans.find((plan) => plan.id === state.selectedArchitectPlanId);
+    const selectedPlanRecord = getSelectedScenarioRecord();
     const baselineCompliance = state.selectedPlanCompliance || selectedPlanRecord?.complianceValidation || evaluatePlanCompliance({
       campaignPrompt,
       allocationStrategy: selectedPlanRecord?.allocationStrategy || "",
       variantKey: selectedPlanRecord?.variantKey || ""
     });
+    const campaignState = buildInitialCampaignState({
+      campaignPrompt,
+      selectedPlan: selectedPlanRecord,
+      entries
+    });
+    campaignState.executionDetails[ORCHESTRATOR_NODE_ID] = {
+      summaryLines: [
+        `The orchestrator selected ${campaignState.selectedScenario.title} for ${campaignState.productFamily.displayLabel}.`,
+        "It owns the shared Campaign_State_Object and dispatches each master agent in sequence while keeping context intact."
+      ],
+      subAgentResults: state.plan.map((item) => ({
+        id: item.nodeId,
+        name: item.agentName,
+        details: [
+          `Stage ${item.phase} owner.`,
+          `${MASTER_AGENT_SUBAGENTS[item.nodeId]?.length || 0} sub-agents attached.`,
+          item.initialTask
+        ]
+      })),
+      inputData: {
+        prompt: campaignPrompt,
+        selectedScenario: campaignState.selectedScenario,
+        sharedStateKeys: ["prompt", "budgetUsd", "productFamily", "selectedScenario", "intelligence", "stageOutputs"]
+      },
+      stateUpdate: {
+        selectedScenario: campaignState.selectedScenario,
+        stageCount: state.plan.length,
+        complianceRunsInParallel: true
+      },
+      handoff: "The orchestrator passes the same Campaign_State_Object through all six stages so earlier decisions affect later actions.",
+      whyMatters: "This is the manager layer that makes the demo feel like a hierarchical system rather than a set of disconnected calls."
+    };
     const complianceOutput = {
       id: Utils.uniqueId("out"),
       nodeId: PARALLEL_COMPLIANCE_NODE_ID,
@@ -1484,14 +2723,17 @@ async function startAgents() {
       visualizationExplanationOpen: false,
       visualizationLoading: false,
       visualizationNarrative: "",
-      runToken
+      runToken,
+      campaignStateObject: campaignState,
+      rawDataByAgent: buildRawDataByPlan(state.plan, campaignState, selectedPlanRecord)
     });
 
     const compliancePromise = runParallelComplianceAgent(complianceOutput, {
       creds,
       model,
       campaignPrompt,
-      selectedPlan: selectedPlanRecord
+      selectedPlan: selectedPlanRecord,
+      campaignState
     });
 
     const phases = new Map();
@@ -1502,7 +2744,6 @@ async function startAgents() {
     });
     const sortedPhases = [...phases.keys()].sort((a, b) => (typeof a === "number" && typeof b === "number") ? a - b : String(a).localeCompare(String(b)));
 
-    let context = inputBlob;
     for (const phase of sortedPhases) {
       const agents = phases.get(phase) || [];
       const outputs = agents.map((a) => ({
@@ -1524,19 +2765,7 @@ async function startAgents() {
         latestNodeId: outputs[0]?.nodeId
       });
 
-      const results = await Promise.all(
-        outputs.map((out) =>
-          runSyntheticAgent(out, {
-            creds,
-            model,
-            agentStyle,
-            campaignPrompt,
-            inputBlob,
-            context
-          })
-        )
-      );
-      context += `\n\n--- Stage ${phase} ---\n${results.map((r, i) => `Output ${agents[i].agentName}:\n${r}`).join("\n")}`;
+      await Promise.all(outputs.map((out) => runMasterAgentStage(out, campaignState, selectedPlanRecord)));
     }
 
     const complianceResult = await compliancePromise;
@@ -1544,7 +2773,8 @@ async function startAgents() {
     const nextDashboard = buildDashboard(state.agentOutputs, {
       campaignPrompt,
       selectedPlanId: state.selectedArchitectPlanId || "",
-      runToken
+      runToken,
+      campaignStateObject: campaignState
     });
     setState({
       visualizationLoading: true,
@@ -1555,22 +2785,24 @@ async function startAgents() {
       model,
       campaignPrompt,
       dashboard: nextDashboard,
-      agentOutputs: state.agentOutputs
+      agentOutputs: state.agentOutputs,
+      campaignStateObject: campaignState
     });
 
     setState({
       stage: "idle",
       dashboard: nextDashboard,
-      approvedPlanCsv: buildApprovedPlanCsv(),
-      rawDataByAgent: buildRawDataByPlan(state.plan),
+      approvedPlanCsv: buildApprovedPlanCsv(campaignState),
+      rawDataByAgent: buildRawDataByPlan(state.plan, campaignState, selectedPlanRecord),
       selectedPlanCompliance: complianceResult || baselineCompliance,
       complianceDetails: buildComplianceDetails(complianceResult || baselineCompliance),
       visualizationLoading: false,
       visualizationNarrative,
-      visualizationExplanationOpen: true
+      visualizationExplanationOpen: true,
+      campaignStateObject: campaignState
     });
   } catch (e) {
-    setState({ error: e.message, stage: "idle", visualizationLoading: false });
+    setState({ error: e.message, stage: "idle", visualizationLoading: false, campaignStateObject: null });
   }
 }
 
@@ -1621,14 +2853,21 @@ async function runParallelComplianceAgent(out, opts) {
   });
   const context = `Parallel compliance context\nPlan strategy: ${selectedPlan?.strategy || "N/A"}\nAllocation strategy: ${selectedPlan?.allocationStrategy || "N/A"}\nDelivery timing: ${selectedPlan?.deliveryTiming || "N/A"}`;
   const inputBlob = `Compliance dataset focus:\n${buildDatasetContext("complianceRulebook")}`;
-  const llmNarrative = await runSyntheticAgent(out, {
-    creds,
-    model,
-    agentStyle: "",
-    campaignPrompt,
-    inputBlob,
-    context
-  });
+  let llmNarrative = "";
+  if (creds) {
+    try {
+      llmNarrative = await runSyntheticAgent(out, {
+        creds,
+        model,
+        agentStyle: "",
+        campaignPrompt,
+        inputBlob,
+        context
+      });
+    } catch (err) {
+      console.warn("Parallel compliance LLM refinement failed, using deterministic narrative only:", err?.message || err);
+    }
+  }
   const deterministicNarrative = buildComplianceNarrative(baseline, selectedPlan);
   const merged = [llmNarrative?.trim(), deterministicNarrative].filter(Boolean).join("\n\n");
   updateAgent(out.id, merged, "done");
@@ -1689,11 +2928,13 @@ async function runSyntheticAgent(out, opts) {
   }
 }
 
-async function buildVisualizationNarrative({ creds, model, campaignPrompt, dashboard, agentOutputs }) {
+async function buildVisualizationNarrative({ creds, model, campaignPrompt, dashboard, agentOutputs, campaignStateObject = null }) {
   try {
+    if (!creds) throw new Error("No live credentials available.");
     let buffer = "";
     const summaryPayload = {
       campaignPrompt,
+      selectedScenario: campaignStateObject?.selectedScenario || null,
       pacing: dashboard?.pacing
         ? {
           linearPeakDeliveryRate: Math.max(...(dashboard.pacing.linearPct || [0])),
@@ -1703,6 +2944,7 @@ async function buildVisualizationNarrative({ creds, model, campaignPrompt, dashb
         : {},
       reach: dashboard?.reach || {},
       makeGood: dashboard?.makeGood || {},
+      measurement: campaignStateObject?.stageOutputs?.["measurement-agent"]?.measurement_summary || null,
       actions: buildActionRows(agentOutputs, state.issueNodeIds || new Set())
     };
 
@@ -1852,7 +3094,7 @@ function inferAgentRole(agent) {
   if (text.includes("parallel-compliance") || text.includes("compliance agent")) return "compliance-agent";
   if (text.includes("compliance")) return "compliance-agent";
   if (text.includes("planning-identity") || text.includes("planning and identity")) return "planning-identity";
-  if (text.includes("inventory-yield") || text.includes("inventory yield")) return "inventory-yield";
+  if (text.includes("inventory-yield") || text.includes("inventory yield") || text.includes("inventory and yield")) return "inventory-yield";
   if (text.includes("booking-proposals") || text.includes("booking and proposals")) return "booking-proposals";
   if (text.includes("trafficking-signals") || text.includes("trafficking and signals")) return "trafficking-signals";
   if (text.includes("inflight-operations") || text.includes("in-flight operations")) return "inflight-operations";
@@ -1886,13 +3128,109 @@ function hasComplianceRole(plan = []) {
   return Array.isArray(plan) && plan.length > 0;
 }
 
-function buildRawDataByPlan(plan = []) {
+function buildStageRawDataEntry(agent, campaignState = null, selectedPlan = null) {
+  const role = inferAgentRole(agent);
+  const scenario = selectedPlan?.scenarioIntelligence || campaignState?.intelligence || null;
+  if (!campaignState && !scenario) return null;
+
+  if (role === "planning-identity") {
+    return {
+      title: "Planning and Identity Inputs",
+      type: "json",
+      content: JSON.stringify({
+        prompt: campaignState?.prompt || state.campaignPrompt || "",
+        selected_scenario: selectedPlan?.title || campaignState?.selectedScenario?.title || "",
+        top_tags: scenario?.topTags?.slice(0, 4) || [],
+        top_segments: scenario?.topSegments?.slice(0, 3) || [],
+        sample_profiles: scenario?.sampleRows?.slice(0, 6) || []
+      }, null, 2)
+    };
+  }
+
+  if (role === "inventory-yield") {
+    return {
+      title: "Inventory and Yield Inputs",
+      type: "json",
+      content: JSON.stringify({
+        audience_summary: campaignState?.stageOutputs?.["planning-identity-agent"] || null,
+        selected_networks: scenario?.rankedNetworks?.slice(0, 4) || [],
+        inventory_rows: selectRelevantInventoryRows(campaignState || buildInitialCampaignState({
+          campaignPrompt: state.campaignPrompt || "",
+          selectedPlan
+        }), 6),
+        yield_signals: selectRelevantYieldSignals(campaignState || buildInitialCampaignState({
+          campaignPrompt: state.campaignPrompt || "",
+          selectedPlan
+        }), 3)
+      }, null, 2)
+    };
+  }
+
+  if (role === "booking-proposals") {
+    return {
+      title: "Booking and Proposal Inputs",
+      type: "json",
+      content: JSON.stringify({
+        scenario: campaignState?.selectedScenario || selectedPlan || null,
+        inventory_summary: campaignState?.stageOutputs?.["inventory-yield-agent"] || null,
+        compliance_preview: evaluatePlanCompliance({
+          campaignPrompt: campaignState?.prompt || state.campaignPrompt || "",
+          allocationStrategy: selectedPlan?.allocationStrategy || campaignState?.selectedScenario?.allocationStrategy || "",
+          variantKey: selectedPlan?.variantKey || campaignState?.selectedScenario?.variantKey || ""
+        })
+      }, null, 2)
+    };
+  }
+
+  if (role === "trafficking-signals") {
+    return {
+      title: "Trafficking and Signals Inputs",
+      type: "json",
+      content: JSON.stringify({
+        line_items: campaignState?.stageOutputs?.["booking-proposals-agent"]?.booking_summary?.line_items || [],
+        signal_watchlist: selectRelevantInventoryRows(campaignState || buildInitialCampaignState({
+          campaignPrompt: state.campaignPrompt || "",
+          selectedPlan
+        }), 6).filter((row) => (row.scte35_signal_status || "").toLowerCase() !== "active")
+      }, null, 2)
+    };
+  }
+
+  if (role === "inflight-operations") {
+    return {
+      title: "In-Flight Operations Inputs",
+      type: "json",
+      content: JSON.stringify({
+        trafficked_plan: campaignState?.stageOutputs?.["booking-proposals-agent"]?.booking_summary?.line_items || [],
+        trafficking_summary: campaignState?.stageOutputs?.["trafficking-signals-agent"] || null,
+        scenario_allocation: campaignState?.selectedScenario?.allocation || selectedPlan?.allocation || null
+      }, null, 2)
+    };
+  }
+
+  if (role === "measurement") {
+    return {
+      title: "Measurement and Attribution Inputs",
+      type: "json",
+      content: JSON.stringify({
+        audience_summary: campaignState?.stageOutputs?.["planning-identity-agent"] || null,
+        inflight_summary: campaignState?.stageOutputs?.["inflight-operations-agent"] || null,
+        selected_scenario: campaignState?.selectedScenario || selectedPlan || null
+      }, null, 2)
+    };
+  }
+
+  return null;
+}
+
+function buildRawDataByPlan(plan = [], campaignState = null, selectedPlan = null) {
   if (!Array.isArray(plan) || !plan.length) return RAW_DATA_BY_AGENT;
   const map = {};
   plan.forEach((agent) => {
+    const stageEntry = buildStageRawDataEntry(agent, campaignState, selectedPlan);
     const role = inferAgentRole(agent);
-    const dataKey = role === "inventory-yield" ? "yieldIntelligenceFeed" : resolveDatasetKey(agent);
-    const entry = RAW_DATA_BY_KEY[dataKey];
+    const dataKey = role === "inventory-yield" ? "inventoryMatrix" : resolveDatasetKey(agent);
+    const entry = stageEntry || RAW_DATA_BY_KEY[dataKey];
     if (!entry) return;
     map[agent.nodeId] = entry;
     map[agent.agentName] = entry;
@@ -1935,7 +3273,7 @@ function detectCampaignCategories(prompt = "") {
   if (/\b(crypto|cryptocurrency)\b/i.test(text)) categories.add("cryptocurrency");
   if (/\b(political|election|party)\b/i.test(text)) categories.add("political");
   if (/\b(adult)\b/i.test(text)) categories.add("adult_content");
-  if (/\b(children|kids|child)\b/i.test(text)) categories.add("children_products");
+  if (/\b(children|kids|child|toddler|baby|infant)\b/i.test(text)) categories.add("children_products");
   if (/\b(weight loss|slimming)\b/i.test(text)) categories.add("weight_loss");
   if (/\b(job|hiring|recruitment)\b/i.test(text)) categories.add("job");
   if (/\b(housing|real estate|rental)\b/i.test(text)) categories.add("housing");
@@ -1978,7 +3316,7 @@ function detectAudienceSignals(text = "") {
   if (/\b(under 18|under-18|u18)\b/i.test(value)) signals.add("under_18");
   if (/\b(under 21|under-21|u21)\b/i.test(value)) signals.add("under_21");
   if (/\b(teen|teenager|teens)\b/i.test(value)) signals.add("teenagers");
-  if (/\b(children|kids|child)\b/i.test(value)) signals.add("children");
+  if (/\b(children|kids|child|toddler|baby|infant)\b/i.test(value)) signals.add("children");
   if (/\b(vulnerable|economically vulnerable|financially vulnerable)\b/i.test(value)) signals.add("vulnerable_financial");
   if (/\b(religion|ethnicity|race|gender)\b/i.test(value)) {
     signals.add("religion");
@@ -2149,6 +3487,12 @@ function buildComplianceDetails(evaluation = null) {
   };
 }
 
+function patchAgent(id, patch = {}) {
+  if (!id || !patch || typeof patch !== "object") return;
+  const outputs = state.agentOutputs.map((item) => (item.id === id ? { ...item, ...patch } : item));
+  setState({ agentOutputs: outputs });
+}
+
 function updateAgent(id, text, status) {
   let updatedAgent = null;
   const outputs = state.agentOutputs.map(o => {
@@ -2164,7 +3508,11 @@ function updateAgent(id, text, status) {
   if (updatedAgent && status === "done" && shouldFlagIssue(updatedAgent)) {
     issueNodeIds.add(updatedAgent.nodeId);
   }
-  setState({ agentOutputs: outputs, issueNodeIds });
+  const runningNodeIds = new Set(state.runningNodeIds);
+  if (updatedAgent && (status === "done" || status === "error")) {
+    runningNodeIds.delete(updatedAgent.nodeId);
+  }
+  setState({ agentOutputs: outputs, issueNodeIds, runningNodeIds });
 }
 
 function shouldFlagIssue(agent) {
@@ -2444,7 +3792,84 @@ function scheduleFlowchartSync() {
   requestAnimationFrame(() => { fcSched = false; syncFlowchart(); });
 }
 
+function buildHierarchicalFlowGraph(plan = []) {
+  if (!Array.isArray(plan) || !plan.length) return { nodes: [], edges: [] };
+  const nodes = [
+    {
+      id: FLOW_BRIEF_NODE_ID,
+      label: "Campaign Brief",
+      kind: "system",
+      position: { x: 40, y: 180 }
+    },
+    {
+      id: ORCHESTRATOR_NODE_ID,
+      label: "Orchestrator Agent",
+      kind: "manager",
+      position: { x: 280, y: 180 }
+    },
+    {
+      id: PARALLEL_COMPLIANCE_NODE_ID,
+      label: "Parallel Compliance Agent",
+      kind: "parallel",
+      position: { x: 280, y: 20 }
+    }
+  ];
+  const edges = [
+    { source: FLOW_BRIEF_NODE_ID, target: ORCHESTRATOR_NODE_ID },
+    { source: ORCHESTRATOR_NODE_ID, target: PARALLEL_COMPLIANCE_NODE_ID, kind: "control" }
+  ];
+
+  const sortedPlan = [...plan].sort((a, b) => (Number(a.phase) || 0) - (Number(b.phase) || 0));
+  const masterXStart = 560;
+  const masterXGap = 320;
+  const masterY = 180;
+  const subYStart = 330;
+  const subYGap = 110;
+
+  sortedPlan.forEach((agent, index) => {
+    const x = masterXStart + (index * masterXGap);
+    nodes.push({
+      id: agent.nodeId,
+      label: agent.agentName,
+      kind: "master",
+      position: { x, y: masterY }
+    });
+    edges.push({ source: ORCHESTRATOR_NODE_ID, target: agent.nodeId, kind: "control" });
+    if (index > 0) {
+      edges.push({ source: sortedPlan[index - 1].nodeId, target: agent.nodeId });
+    }
+    if (agent.nodeId === "booking-proposals-agent") {
+      edges.push({ source: PARALLEL_COMPLIANCE_NODE_ID, target: agent.nodeId, kind: "control" });
+    }
+
+    const subAgents = MASTER_AGENT_SUBAGENTS[agent.nodeId] || [];
+    subAgents.forEach((subAgent, subIndex) => {
+      const subId = subAgent.id;
+      nodes.push({
+        id: subId,
+        label: subAgent.name,
+        kind: "subagent",
+        position: { x, y: subYStart + (subIndex * subYGap) }
+      });
+      edges.push({ source: agent.nodeId, target: subId, kind: "control" });
+    });
+  });
+
+  const lastMaster = sortedPlan[sortedPlan.length - 1];
+  nodes.push({
+    id: FLOW_OUTPUT_NODE_ID,
+    label: "Output and Measurement",
+    kind: "output",
+    position: { x: masterXStart + (sortedPlan.length * masterXGap), y: masterY }
+  });
+  if (lastMaster) edges.push({ source: lastMaster.nodeId, target: FLOW_OUTPUT_NODE_ID });
+
+  return { nodes, edges };
+}
+
 function buildGraphForDemo(demo, plan) {
+  const hierarchicalGraph = buildHierarchicalFlowGraph(plan);
+  if (hierarchicalGraph.nodes.length) return hierarchicalGraph;
   const planGraph = Utils.buildGraphFromPlan(plan);
   if (demo?.flowchart?.nodes?.length) {
     const flowIds = new Set((demo.flowchart.nodes || []).map((node) => node.id));
@@ -2457,6 +3882,12 @@ function buildGraphForDemo(demo, plan) {
 
 function nodeClassForKind(kind) {
   return kind ? `node-${kind}` : "";
+}
+
+function edgeClassForKind(kind) {
+  if (kind === "data") return "edge-data";
+  if (kind === "control") return "edge-control";
+  return "";
 }
 
 function addFlowchartPositions(flowchart) {
@@ -2532,7 +3963,7 @@ function syncFlowchart() {
     })),
     ...graph.edges.map(e => ({
       data: { source: e.source, target: e.target },
-      classes: e.kind === "data" ? "edge-data" : ""
+      classes: edgeClassForKind(e.kind)
     }))
   ];
   const sig = JSON.stringify(elements.map(e => e.data));
@@ -2540,10 +3971,29 @@ function syncFlowchart() {
 
   const errorIds = state.agentOutputs.filter(o => o.status === "error").map(o => o.nodeId);
   const issueIds = new Set([...(state.issueNodeIds || []), ...errorIds]);
+  const activeIds = new Set([...state.runningNodeIds]);
+  const completedIds = new Set(state.agentOutputs.filter(o => o.status === "done").map(o => o.nodeId));
+  const failedIds = new Set([...issueIds]);
+  const executionDetails = state.campaignStateObject?.executionDetails || {};
+
+  if (state.stage === "run") activeIds.add(ORCHESTRATOR_NODE_ID);
+  if (state.stage === "idle" && state.agentOutputs.length) completedIds.add(ORCHESTRATOR_NODE_ID);
+
+  state.plan.forEach((agent) => {
+    const output = state.agentOutputs.find((item) => item.nodeId === agent.nodeId);
+    const subAgents = MASTER_AGENT_SUBAGENTS[agent.nodeId] || [];
+    subAgents.forEach((subAgent) => {
+      const subId = subAgent.id;
+      if (output?.status === "running") activeIds.add(subId);
+      if (output?.status === "done" || executionDetails[agent.nodeId]?.subAgentResults?.some((item) => item.id === subId)) completedIds.add(subId);
+      if (output?.status === "error") failedIds.add(subId);
+    });
+  });
+
   fcCtrl.setNodeState({
-    activeIds: [...state.runningNodeIds],
-    completedIds: state.agentOutputs.filter(o => o.status === "done").map(o => o.nodeId),
-    failedIds: [...issueIds],
+    activeIds: [...activeIds],
+    completedIds: [...completedIds],
+    failedIds: [...failedIds],
     selectedId: state.focusedNodeId
   });
   fcCtrl.resize();
