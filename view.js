@@ -15,8 +15,23 @@ const marked = new Marked({
 
 const loading = html`<div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div>`;
 
-function formatPrettyLabel(value = "") {
+function sanitizeDisplayText(value = "") {
   return String(value)
+    .replace(/\bolli_household_id\b/gi, "audience_household_id")
+    .replace(/\bneo_order_id\b/gi, "booking_order_id")
+    .replace(/\bstreamx_delivery_pct\b/gi, "delivery_pct")
+    .replace(/\bOlli Household ID\b/gi, "Audience Household ID")
+    .replace(/\bNeo Order ID\b/gi, "Booking Order ID")
+    .replace(/\bStreamx Delivery %\b/gi, "Delivery %")
+    .replace(/\bDemo\s*Direct\b/gi, "Booking")
+    .replace(/\bOlli\b/gi, "Audience Identity")
+    .replace(/\bNEO\b/gi, "Planning")
+    .replace(/\bNeo\b/gi, "Planning")
+    .replace(/\bStreamX\b/gi, "Delivery");
+}
+
+function formatPrettyLabel(value = "") {
+  return sanitizeDisplayText(String(value)
     .replace(/[_-]+/g, " ")
     .replace(/\s+/g, " ")
     .trim()
@@ -26,7 +41,7 @@ function formatPrettyLabel(value = "") {
     .replace(/\bPct\b/g, "%")
     .replace(/\bCpm\b/g, "CPM")
     .replace(/\bRoi\b/g, "ROI")
-    .replace(/\bScte35\b/gi, "SCTE-35");
+    .replace(/\bScte35\b/gi, "SCTE-35"));
 }
 
 function formatPrettyScalar(value) {
@@ -81,7 +96,7 @@ function renderPrettyValue(value) {
   }
 
   if (typeof value === "string") {
-    const text = value.trim();
+    const text = sanitizeDisplayText(value).trim();
     return (text.includes("\n") || text.length > 96)
       ? html`<div class="detail-text-panel">${text}</div>`
       : html`<span>${text}</span>`;
@@ -134,7 +149,7 @@ function renderPrettyValue(value) {
     `;
   }
 
-  return html`<pre class="raw-data mb-0">${String(value)}</pre>`;
+  return html`<pre class="raw-data mb-0">${sanitizeDisplayText(String(value))}</pre>`;
 }
 
 function renderPrettySection(title, value) {
@@ -213,6 +228,322 @@ function buildStageTakeaways(agent, previewText = "") {
     takeaways.push(truncateCardText(agent.task, 118));
   }
   return takeaways.slice(0, 3);
+}
+
+const ARCHITECT_CARD_META = [
+  { label: "Scenario A", shortLabel: "A", title: "Scenario in Progress" },
+  { label: "Scenario B", shortLabel: "B", title: "Scenario in Progress" },
+  { label: "Scenario C", shortLabel: "C", title: "Scenario in Progress" }
+];
+
+function getArchitectScenarioMeta(option = {}, index = 0) {
+  const fallback = ARCHITECT_CARD_META[index] || { label: `Scenario ${index + 1}`, shortLabel: String(index + 1), title: option?.title || "Scenario" };
+  const title = String(option?.title || fallback.title || "").replace(/^Scenario\s+[A-Z]\s*-\s*/i, "").trim();
+  return {
+    ...fallback,
+    title: title || fallback.title
+  };
+}
+
+function hasFallbackNarrative(text = "") {
+  return /llm fallback activated/i.test(String(text || ""));
+}
+
+function detectStageRole(agent = {}) {
+  const text = `${agent?.nodeId || ""} ${agent?.name || ""}`.toLowerCase();
+  if (text.includes("planning") || text.includes("identity") || text.includes("audience")) return "planning";
+  if (text.includes("inventory") || text.includes("yield")) return "inventory";
+  if (text.includes("booking") || text.includes("proposal")) return "booking";
+  if (text.includes("trafficking") || text.includes("signal")) return "trafficking";
+  if (text.includes("inflight") || text.includes("operation")) return "inflight";
+  if (text.includes("measurement") || text.includes("attribution")) return "measurement";
+  if (text.includes("compliance")) return "compliance";
+  return "generic";
+}
+
+function buildAgentSummaryMetrics(agent = {}, state = {}) {
+  const role = detectStageRole(agent);
+  const audience = agent?.stateUpdate?.audience_summary || {};
+  const inventory = agent?.stateUpdate?.inventory_summary || {};
+  const booking = agent?.stateUpdate?.booking_summary || {};
+  const trafficking = agent?.stateUpdate?.trafficking_summary || {};
+  const inflight = agent?.stateUpdate?.inflight_summary || {};
+  const measurement = agent?.stateUpdate?.measurement_summary || {};
+  const reach = state?.dashboard?.reach || {};
+  const lineItems = booking.line_items || [];
+
+  if (role === "planning") {
+    return [
+      { label: "Users Identified", value: audience.matched_profiles ? Number(audience.matched_profiles).toLocaleString() : "Pending" },
+      { label: "Unique Users", value: audience.unique_households ? Number(audience.unique_households).toLocaleString() : "Pending" },
+      { label: "Lead Cohort", value: audience.top_segments?.[0]?.label || "Pending" },
+      { label: "Overlap", value: audience.overlap_pct != null ? `${audience.overlap_pct}%` : "Pending" }
+    ];
+  }
+
+  if (role === "inventory") {
+    return [
+      { label: "Inventory Available", value: inventory.capacity_impressions ? `${Number(inventory.capacity_impressions).toLocaleString()} imp` : "Pending" },
+      { label: "Capacity Value", value: inventory.capacity_spend_usd ? `$${Number(inventory.capacity_spend_usd).toLocaleString()}` : "Pending" },
+      { label: "Streaming CPM", value: inventory.premium_streaming_cpm ? `$${inventory.premium_streaming_cpm}` : "Pending" },
+      { label: "Linear CPM", value: inventory.blended_linear_cpm ? `$${inventory.blended_linear_cpm}` : "Pending" }
+    ];
+  }
+
+  if (role === "booking") {
+    const streamingCount = lineItems.filter((item) => item.platform_type === "digital").length;
+    const linearCount = lineItems.filter((item) => item.platform_type === "linear").length;
+    return [
+      { label: "Slots Chosen", value: lineItems.length ? `${lineItems.length} items` : "Pending" },
+      { label: "Guaranteed", value: booking.guarantee_impressions ? `${Number(booking.guarantee_impressions).toLocaleString()} imp` : "Pending" },
+      { label: "Channel Mix", value: lineItems.length ? `${streamingCount} streaming / ${linearCount} linear` : "Pending" },
+      { label: "Compliance", value: booking.compliance_status || "Pending" }
+    ];
+  }
+
+  if (role === "trafficking") {
+    return [
+      { label: "Readiness", value: trafficking.readiness_score != null ? `${trafficking.readiness_score}/100` : "Pending" },
+      { label: "Signal Risks", value: trafficking.signal_risks?.length != null ? `${trafficking.signal_risks.length}` : "Pending" },
+      { label: "Assets Checked", value: trafficking.asset_checks?.length ? `${trafficking.asset_checks.length} checks` : "Pending" },
+      { label: "Delivery Setup", value: trafficking.signal_risks?.[0]?.network || "Ready" }
+    ];
+  }
+
+  if (role === "inflight") {
+    const allocation = inflight.final_allocation || {};
+    return [
+      { label: "Streaming Delivery", value: inflight.digital_delivery_rate_pct != null ? `${inflight.digital_delivery_rate_pct}%` : "Pending" },
+      { label: "Linear Delivery", value: inflight.linear_delivery_rate_pct != null ? `${inflight.linear_delivery_rate_pct}%` : "Pending" },
+      { label: "Make-Good", value: inflight.shift_budget_usd ? `$${Number(inflight.shift_budget_usd).toLocaleString()} shifted` : "Not needed" },
+      { label: "Final Mix", value: allocation.streamingPct != null ? `${allocation.streamingPct}/${allocation.linearPct}/${allocation.reservePct}` : "Pending" }
+    ];
+  }
+
+  if (role === "measurement") {
+    return [
+      { label: "Households Reached", value: measurement.matched_households ? Number(measurement.matched_households).toLocaleString() : "Pending" },
+      { label: "Hit Rate", value: measurement.clean_room_match_rate_pct != null ? `${measurement.clean_room_match_rate_pct}%` : "Pending" },
+      { label: "Cross-Platform Reach", value: reach.overlapPct != null ? `${reach.overlapPct}% overlap` : "Pending" },
+      { label: "ROI", value: measurement.deterministic_roi != null ? `${measurement.deterministic_roi}` : "Pending" }
+    ];
+  }
+
+  if (role === "compliance") {
+    return [
+      { label: "Status", value: state?.complianceDetails?.status || agent?.status || "Pending" },
+      { label: "Findings", value: state?.complianceDetails?.findings?.length != null ? `${state.complianceDetails.findings.length}` : "Pending" }
+    ];
+  }
+
+  return [];
+}
+
+function joinReadableList(items = []) {
+  const values = items.filter(Boolean);
+  if (!values.length) return "";
+  if (values.length === 1) return values[0];
+  if (values.length === 2) return `${values[0]} and ${values[1]}`;
+  return `${values.slice(0, -1).join(", ")}, and ${values[values.length - 1]}`;
+}
+
+function buildStageDataSourceSummary(agent = {}) {
+  const keys = Object.keys(agent?.inputData || {}).slice(0, 4);
+  if (!keys.length) return "the shared campaign state";
+  return joinReadableList(keys.map((key) => formatPrettyLabel(key).toLowerCase()));
+}
+
+function buildStageProcessSummary(agent = {}) {
+  const role = detectStageRole(agent);
+  const dataSources = buildStageDataSourceSummary(agent);
+
+  if (role === "planning") {
+    return `This stage worked through ${dataSources} to score viewer profiles, suppress duplicate households, and lock the audience definition for the rest of the run.`;
+  }
+  if (role === "inventory") {
+    return `This stage worked through ${dataSources} to test capacity, price the inventory path, and decide whether the selected scenario could be fulfilled with sensible timing and cost.`;
+  }
+  if (role === "booking") {
+    return `This stage worked through ${dataSources} to turn the scenario into bookable line items, guarantees, and a compliant proposal structure.`;
+  }
+  if (role === "trafficking") {
+    return `This stage worked through ${dataSources} to validate launch readiness, asset quality, and routing risk before activation.`;
+  }
+  if (role === "inflight") {
+    return `This stage worked through ${dataSources} to simulate pacing, evaluate delivery risk, and decide whether an in-flight intervention was needed.`;
+  }
+  if (role === "measurement") {
+    return `This stage worked through ${dataSources} to match reached households, quantify outcome signals, and write the learning package back into the campaign state.`;
+  }
+  if (role === "compliance") {
+    return `This stage worked through ${dataSources} to check policy fit, capture evidence gaps, and keep downstream execution inside compliant guardrails.`;
+  }
+  return `This stage worked through ${dataSources} to update the shared campaign state and keep the pipeline moving.`;
+}
+
+function buildStageMetricNarrative(agent = {}, state = {}) {
+  const role = detectStageRole(agent);
+  const audience = agent?.stateUpdate?.audience_summary || {};
+  const inventory = agent?.stateUpdate?.inventory_summary || {};
+  const booking = agent?.stateUpdate?.booking_summary || {};
+  const trafficking = agent?.stateUpdate?.trafficking_summary || {};
+  const inflight = agent?.stateUpdate?.inflight_summary || {};
+  const measurement = agent?.stateUpdate?.measurement_summary || {};
+  const reach = state?.dashboard?.reach || {};
+
+  if (role === "planning" && (audience.matched_profiles || audience.unique_households)) {
+    return `It narrowed ${Number(audience.matched_profiles || 0).toLocaleString()} matched profiles into ${Number(audience.unique_households || 0).toLocaleString()} unique households and elevated ${audience.top_segments?.[0]?.label || "the top cohort"} as the operating audience.`;
+  }
+  if (role === "inventory" && (inventory.capacity_impressions || inventory.capacity_spend_usd)) {
+    return `It found ${Number(inventory.capacity_impressions || 0).toLocaleString()} fulfillable impressions with premium streaming CPM around $${inventory.premium_streaming_cpm || "0"} and linear CPM around $${inventory.blended_linear_cpm || "0"}.`;
+  }
+  if (role === "booking" && booking.line_items?.length) {
+    return `It assembled ${booking.line_items.length} line items, guaranteed ${Number(booking.guarantee_impressions || 0).toLocaleString()} impressions, and left proposal compliance at ${booking.compliance_status || "pending"}.`;
+  }
+  if (role === "trafficking" && (trafficking.readiness_score != null || trafficking.asset_checks?.length)) {
+    return `It closed the stage at ${trafficking.readiness_score || 0}/100 readiness with ${trafficking.asset_checks?.length || 0} asset checks and ${trafficking.signal_risks?.length || 0} flagged signal risks.`;
+  }
+  if (role === "inflight" && (inflight.digital_delivery_rate_pct != null || inflight.linear_delivery_rate_pct != null)) {
+    return inflight.make_good_triggered
+      ? `It projected ${inflight.digital_delivery_rate_pct || 0}% streaming delivery versus ${inflight.linear_delivery_rate_pct || 0}% linear delivery, then triggered a $${Number(inflight.shift_budget_usd || 0).toLocaleString()} make-good to protect pacing.`
+      : `It projected ${inflight.digital_delivery_rate_pct || 0}% streaming delivery versus ${inflight.linear_delivery_rate_pct || 0}% linear delivery and kept the original allocation intact because no make-good was required.`;
+  }
+  if (role === "measurement" && (measurement.matched_households || measurement.clean_room_match_rate_pct != null)) {
+    return `It matched ${Number(measurement.matched_households || 0).toLocaleString()} households at a ${measurement.clean_room_match_rate_pct || 0}% hit rate, with ${reach.overlapPct != null ? `${reach.overlapPct}%` : "measured"} cross-platform overlap and ROI at ${measurement.deterministic_roi || "pending"}.`;
+  }
+  if (role === "compliance" && state?.complianceDetails) {
+    return `It completed the compliance pass with status ${state.complianceDetails.status || "pending"} and ${state.complianceDetails.findings?.length || 0} recorded findings.`;
+  }
+  return "";
+}
+
+function buildStageFindingLines(agent = {}, state = {}, simple = false) {
+  const previewText = buildStagePreviewText(agent);
+  const candidates = [
+    buildStageMetricNarrative(agent, state),
+    ...(agent?.summaryLines || []),
+    ...splitSummaryFragments(agent?.summary || ""),
+    ...splitSummaryFragments(previewText)
+  ];
+  const seen = new Set();
+  const lines = [];
+  candidates.forEach((candidate) => {
+    const compact = truncateCardText(candidate, simple ? 150 : 220);
+    const key = summaryDedupKey(compact);
+    if (!compact || compact.length < 20 || seen.has(key)) return;
+    seen.add(key);
+    lines.push(compact);
+  });
+  return lines.slice(0, simple ? 3 : 4);
+}
+
+function buildStageSubAgentSummaryLines(agent = {}, simple = false) {
+  const subAgents = agent?.subAgentResults || [];
+  if (!subAgents.length) return [];
+  const visibleCount = simple ? 2 : 3;
+  const lines = subAgents.slice(0, visibleCount).map((item) => {
+    const details = (item?.details || [])
+      .map((detail) => stripMarkdownToText(detail))
+      .filter(Boolean);
+    const detailText = truncateCardText(details.slice(0, simple ? 1 : 2).join(" "), simple ? 120 : 180);
+    return `${item.name}: ${detailText || "Completed its scoped task and updated the shared stage output."}`;
+  });
+  if (subAgents.length > visibleCount) {
+    lines.push(`Additional sub-agent output is available in the detailed breakdown (${subAgents.length - visibleCount} more recorded).`);
+  }
+  return lines;
+}
+
+function buildStageImpactLines(agent = {}, simple = false) {
+  const candidates = [
+    agent?.whyMatters || "",
+    agent?.handoff ? `Next handoff: ${agent.handoff}` : ""
+  ];
+  const seen = new Set();
+  const lines = [];
+  candidates.forEach((candidate) => {
+    const compact = truncateCardText(candidate, simple ? 160 : 240);
+    const key = summaryDedupKey(compact);
+    if (!compact || compact.length < 20 || seen.has(key)) return;
+    seen.add(key);
+    lines.push(compact);
+  });
+  return lines;
+}
+
+function renderStageSummaryBlock(agent, state, options = {}) {
+  const {
+    simple = false
+  } = options;
+  const processSummary = buildStageProcessSummary(agent);
+  const findingLines = buildStageFindingLines(agent, state, simple);
+  const subAgentLines = buildStageSubAgentSummaryLines(agent, simple);
+  const impactLines = buildStageImpactLines(agent, simple);
+  const hasContent = processSummary || findingLines.length || subAgentLines.length || impactLines.length;
+
+  if (!hasContent) return null;
+
+  return html`
+    <section class="stage-summary-panel stage-summary-output-panel">
+      <div class="stage-panel-label">Stage Summary</div>
+      <div class="stage-summary-flow">
+        ${processSummary ? html`
+          <div class="stage-summary-section">
+            <div class="stage-summary-section-title">How The Stage Worked</div>
+            <p class="stage-summary-copy mb-0">${processSummary}</p>
+          </div>
+        ` : null}
+        ${findingLines.length ? html`
+          <div class="stage-summary-section">
+            <div class="stage-summary-section-title">What It Found</div>
+            <ul class="stage-summary-list mb-0">
+              ${findingLines.map((line) => html`<li>${line}</li>`)}
+            </ul>
+          </div>
+        ` : null}
+        ${subAgentLines.length ? html`
+          <div class="stage-summary-section">
+            <div class="stage-summary-section-title">What The Sub-Agents Did</div>
+            <ul class="stage-summary-list mb-0">
+              ${subAgentLines.map((line) => html`<li>${line}</li>`)}
+            </ul>
+          </div>
+        ` : null}
+        ${impactLines.length ? html`
+          <div class="stage-summary-section stage-summary-impact">
+            <div class="stage-summary-section-title">Why It Helped</div>
+            <ul class="stage-summary-list mb-0">
+              ${impactLines.map((line) => html`<li>${line}</li>`)}
+            </ul>
+          </div>
+        ` : null}
+      </div>
+    </section>
+  `;
+}
+
+function renderStageMetricBlock(summaryMetrics = [], quickPills = []) {
+  if (!summaryMetrics.length && !quickPills.length) return null;
+  return html`
+    <section class="stage-summary-panel stage-metric-panel">
+      <div class="stage-panel-label">Stage Snapshot</div>
+      ${summaryMetrics.length ? html`
+        <div class="stage-summary-metric-grid">
+          ${summaryMetrics.map((item) => html`
+            <div class="stage-summary-metric-card">
+              <div class="stage-summary-metric-label">${item.label}</div>
+              <div class="stage-summary-metric-value">${item.value}</div>
+            </div>
+          `)}
+        </div>
+      ` : null}
+      ${quickPills.length ? html`
+        <div class="detail-pill-row stage-summary-pill-row">
+          ${quickPills.map((label) => html`<span class="detail-pill">${label}</span>`)}
+        </div>
+      ` : null}
+    </section>
+  `;
 }
 
 function subAgentStatusMeta(status = "") {
@@ -471,11 +802,164 @@ function renderCampaignPrompt(state, demo, actions) {
     </section>`;
 }
 
+function renderArchitectLoadingCards() {
+  return html`
+    <div class="row g-3">
+      ${ARCHITECT_CARD_META.map((meta) => html`
+        <div class="col-12 col-lg-4">
+          <article class="architect-scenario-card is-loading">
+            <div class="architect-scenario-header">
+              <div class="architect-scenario-title-wrap">
+                <span class="architect-scenario-label">${meta.label}</span>
+                <h5 class="mb-0">${meta.title}</h5>
+              </div>
+            </div>
+            <div class="architect-scenario-body">
+              <section class="architect-scenario-summary">
+                <div class="architect-section-label">Summary</div>
+                <span class="architect-skeleton w-90"></span>
+                <span class="architect-skeleton w-100"></span>
+                <span class="architect-skeleton w-70"></span>
+              </section>
+              <section class="architect-scenario-params">
+                <div class="architect-section-label">Plan Parameters</div>
+                <div class="architect-param-grid">
+                  ${Array.from({ length: 4 }, (_, idx) => html`
+                    <div class="architect-param-card" data-slot=${idx}>
+                      <span class="architect-skeleton w-40"></span>
+                      <span class="architect-skeleton w-90"></span>
+                      <span class="architect-skeleton w-70"></span>
+                    </div>
+                  `)}
+                </div>
+              </section>
+              <section class="architect-agent-plan-card">
+                <div class="architect-section-label">Agent Plan</div>
+                <div class="architect-loading-steps">
+                  ${Array.from({ length: 4 }, (_, idx) => html`
+                    <div class="architect-loading-step" data-step=${idx}>
+                      <span class="architect-step-dot"></span>
+                      <div class="architect-loading-copy">
+                        <span class="architect-skeleton w-55"></span>
+                        <span class="architect-skeleton w-85"></span>
+                      </div>
+                    </div>
+                  `)}
+                </div>
+              </section>
+            </div>
+          </article>
+        </div>
+      `)}
+    </div>
+  `;
+}
+
+function renderArchitectPlanSteps(option = {}) {
+  const steps = option.plan || [];
+  if (!steps.length) return html`<p class="architect-empty-copy mb-0">Agent steps will populate after scenario generation finishes.</p>`;
+  return html`
+    <ol class="architect-plan-list mb-0">
+      ${steps.map((agent, index) => html`
+        <li class="architect-plan-step">
+          <div class="architect-plan-step-head">
+            <span class="architect-plan-step-index">${index + 1}</span>
+            <div class="architect-plan-step-copy">
+              <div class="architect-plan-step-name">${agent.agentName}</div>
+              <p class="architect-plan-step-summary mb-0">${truncateCardText(agent.initialTask || "", 120)}</p>
+            </div>
+          </div>
+          <details class="architect-prompt-disclosure">
+            <summary>Prompt details</summary>
+            <div class="architect-prompt-detail">
+              <div class="architect-prompt-detail-label">Task</div>
+              <p class="mb-3">${agent.initialTask || "No task detail provided."}</p>
+              <div class="architect-prompt-detail-label">System Prompt</div>
+              <p class="mb-0">${agent.systemInstruction || "No system prompt detail provided."}</p>
+            </div>
+          </details>
+        </li>
+      `)}
+    </ol>
+  `;
+}
+
+function renderArchitectScenarioCard(option, index, state, actions) {
+  const selected = state.selectedArchitectPlanId === option.id;
+  const meta = getArchitectScenarioMeta(option, index);
+  const statusTone = (option.complianceValidation?.status || "").toLowerCase().includes("adjust") ? "warning" : "success";
+  return html`
+    <div class="col-12 col-lg-4">
+      <article class="architect-scenario-card ${selected ? "is-selected" : ""}">
+        <div class="architect-scenario-header">
+          <div class="architect-scenario-title-wrap">
+            <span class="architect-scenario-label">${meta.label}</span>
+            <h5 class="mb-0">${meta.title}</h5>
+          </div>
+          <div class="architect-scenario-statuses">
+            ${option.recommended ? html`<span class="badge text-bg-warning text-dark">Recommended</span>` : null}
+            <span class="badge text-bg-${selected ? "success" : "secondary"}">${selected ? "Selected" : "Available"}</span>
+          </div>
+        </div>
+        <div class="architect-scenario-body">
+          <section class="architect-scenario-summary">
+            <div class="architect-section-label">Summary</div>
+            <p class="architect-summary-copy">${option.why || option.promptText || "Summary not provided."}</p>
+            <p class="architect-summary-support mb-0">${option.promptText || "Scenario objective not provided."}</p>
+          </section>
+
+          <section class="architect-scenario-params">
+            <div class="architect-section-label">Plan Parameters</div>
+            <div class="architect-param-grid">
+              <div class="architect-param-card">
+                <div class="architect-param-label">Strategy</div>
+                <p class="architect-param-copy mb-0">${option.strategy || "Not provided."}</p>
+              </div>
+              <div class="architect-param-card">
+                <div class="architect-param-label">Channel Allocation</div>
+                <p class="architect-param-copy mb-0">${option.allocationStrategy || "Not provided."}</p>
+              </div>
+              <div class="architect-param-card">
+                <div class="architect-param-label">Delivery Timing</div>
+                <p class="architect-param-copy mb-0">${option.deliveryTiming || "Not provided."}</p>
+              </div>
+              <div class="architect-param-card">
+                <div class="architect-param-label">ROI Logic</div>
+                <p class="architect-param-copy mb-0">${option.roiReasoning || "Not provided."}</p>
+              </div>
+            </div>
+
+            <details class="architect-compliance-disclosure">
+              <summary>
+                <span>Compliance Check</span>
+                <span class="badge text-bg-${statusTone}">${option.complianceValidation?.status || "Passed"}</span>
+              </summary>
+              <p class="architect-compliance-copy mb-0">${option.complianceValidation?.summary || "Compliance check summary not provided."}</p>
+            </details>
+          </section>
+
+          <section class="architect-agent-plan-card">
+            <div class="architect-section-label">Agent Plan</div>
+            ${renderArchitectPlanSteps(option)}
+          </section>
+
+          <button class="btn btn-sm btn-primary w-100 mt-auto" @click=${() => actions.chooseArchitectPlan(option.id)} ?disabled=${["architect", "run"].includes(state.stage)}>
+            ${selected ? "Current Selection" : "Choose This Scenario"}
+          </button>
+        </div>
+      </article>
+    </div>
+  `;
+}
+
 function renderPlan(state, actions) {
   const streaming = state.stage === "architect";
   const selecting = state.stage === "plan-select";
   const hasOptions = (state.architectPlans || []).length > 0;
   const hasPlan = state.plan.length > 0;
+  const architectFallbackNote = /falling back|credentials were not provided/i.test(state.architectBuffer || "")
+    ? "Live architect output was unavailable, so the scenario cards are using the deterministic fallback plan."
+    : "";
   return html`
     <section class="card mb-4" data-running-key="architect-plan">
       <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
@@ -487,58 +971,18 @@ function renderPlan(state, actions) {
       </div>
       <div class="card-body">
         ${streaming ? html`
-          <div class="bg-dark text-white rounded-3 p-3 mb-0">
-            ${state.architectBuffer
-              ? html`<pre class="mb-0 text-white" style="white-space: pre-wrap; overflow-wrap: break-word;">${state.architectBuffer}</pre>`
-              : html`<div class="d-flex align-items-center gap-2"><div class="spinner-border spinner-border-sm" role="status"></div><span>Streaming architect response...</span></div>`}
+          <div class="architect-loading-note">
+            <div class="d-flex align-items-center gap-2">
+              <div class="spinner-border spinner-border-sm text-warning" role="status"></div>
+              <span>Architect is generating three scenarios and tightening the agent plan.</span>
+            </div>
           </div>
+          ${renderArchitectLoadingCards()}
         ` : null}
+        ${architectFallbackNote ? html`<div class="architect-loading-note">${architectFallbackNote}</div>` : null}
         ${hasOptions ? html`
           <div class="row g-3">
-            ${state.architectPlans.map((option) => {
-              const selected = state.selectedArchitectPlanId === option.id;
-              return html`
-                <div class="col-12 col-lg-4">
-                  <article class="architect-option-card h-100 ${selected ? "is-selected" : ""}">
-                    <div class="architect-option-head">
-                      <h5 class="mb-1">${option.title}</h5>
-                      <span class="badge text-bg-${selected ? "success" : "secondary"}">${selected ? "Selected" : "Available"}</span>
-                    </div>
-                    <div class="prompt-tile-card">
-                      <div class="prompt-tile-label">Prompt Tile</div>
-                      <div class="prompt-tile-title">${option.promptTile || "Architect Prompt"}</div>
-                      <p class="prompt-tile-text mb-0">${option.promptText || "No prompt objective supplied."}</p>
-                    </div>
-                    <p class="small text-body-secondary mb-2"><strong>Strategy:</strong> ${option.strategy}</p>
-                    <p class="small text-body-secondary mb-3"><strong>Why this option:</strong> ${option.why}</p>
-                    <div class="small mb-2"><strong>Channel Allocation:</strong> ${option.allocationStrategy || "Allocation strategy not provided."}</div>
-                    <div class="small mb-2"><strong>Delivery Timing:</strong> ${option.deliveryTiming || "Delivery timing not provided."}</div>
-                    <div class="small mb-3"><strong>Return on Investment Reasoning:</strong> ${option.roiReasoning || "Return on investment reasoning not provided."}</div>
-                    <div class="small mb-3">
-                      <strong>Compliance Validation:</strong>
-                      <span class="badge ms-2 text-bg-${(option.complianceValidation?.status || "").toLowerCase().includes("adjust") ? "warning" : "success"}">${option.complianceValidation?.status || "Passed"}</span>
-                      <div class="text-body-secondary mt-1">${option.complianceValidation?.summary || "Compliance check summary not provided."}</div>
-                    </div>
-                    <div class="small fw-semibold mb-2">Architect Plan</div>
-                    <ol class="architect-plan-list mb-3">
-                      ${(option.plan || []).map((agent) => html`
-                        <li>
-                          <span class="fw-semibold">${agent.agentName}</span>
-                          <p class="text-body-secondary mt-1 mb-2">${agent.initialTask}</p>
-                          <details>
-                            <summary class="small text-warning">System Prompt Detail</summary>
-                            <p class="text-body-secondary small mt-2 mb-0">${agent.systemInstruction}</p>
-                          </details>
-                        </li>
-                      `)}
-                    </ol>
-                    <button class="btn btn-sm btn-primary w-100" @click=${() => actions.chooseArchitectPlan(option.id)} ?disabled=${["architect", "run"].includes(state.stage)}>
-                      ${selected ? "Current Selection" : "Choose This Architect Plan"}
-                    </button>
-                  </article>
-                </div>
-              `;
-            })}
+            ${state.architectPlans.map((option, index) => renderArchitectScenarioCard(option, index, state, actions))}
           </div>
         ` : null}
         ${!streaming && !hasOptions && !hasPlan ? html`<div class="text-center py-3 text-body-secondary small">Three architect plans will appear here after generation.</div>` : null}
@@ -603,7 +1047,7 @@ function renderFlow(state, actions) {
         ${renderFlowStatusBoard(state)}
         <div class="d-flex flex-column gap-3">
           <div id="flowchart-canvas" class="flowchart-canvas border rounded-3 bg-body-tertiary" data-flow-orientation=${state.flowOrientation} data-flow-columns=${state.flowColumns}></div>
-          ${renderFlowOutputPanel(state, actions)}
+          ${renderFlowOutputDisclosure(state, actions)}
         </div>
       </div>
     </section>
@@ -640,15 +1084,25 @@ function renderComplianceDetails(state, actions) {
       : "success";
   return html`
     <section class="card mb-4">
-      <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2"><span><i class="bi bi-shield-check me-2"></i>Compliance Sources and Rationale</span><button class="btn btn-sm btn-outline-warning" @click=${actions.toggleComplianceExplanation}>${state.complianceExplanationOpen ? "Hide Detailed Explanation" : "Show Detailed Explanation"}</button></div>
-      <div class="card-body">
-        <div class="mb-2"><span class="badge text-bg-${statusTone}">${details?.status || "Status Unknown"}</span></div>
-        <p class="text-body-secondary small mb-3">${details?.summary || "Compliance sources populate after run completion."}</p>
-        ${details?.findings?.length ? html`<div class="mb-3"><h6 class="mb-2">Findings</h6><ul class="mb-0">${details.findings.map((finding) => html`<li class="small text-body-secondary">${finding}</li>`)}</ul></div>` : null}
-        ${details?.alternatives?.length ? html`<div class="mb-3"><h6 class="mb-2">Compliant Alternatives</h6><ul class="mb-0">${details.alternatives.map((alt) => html`<li class="small text-body-secondary">${alt}</li>`)}</ul></div>` : null}
-        ${details?.sources?.length ? html`<div class="table-responsive"><table class="table table-dark table-striped align-middle mb-0"><thead><tr><th scope="col">Policy</th><th scope="col">Source</th><th scope="col">Why Applied</th></tr></thead><tbody>${details.sources.map((item) => html`<tr><td>${item.policy}</td><td>${item.source}</td><td>${item.why}</td></tr>`)}</tbody></table></div>` : null}
-        ${state.complianceExplanationOpen ? html`<div class="explanation-panel mt-3"><p class="mb-2">${details?.detailedExplanation || "The compliance agent records every rule match and why that rule changed routing."}</p><p class="mb-0">This explanation is detailed so operations and legal reviewers can audit each policy decision path.</p></div>` : null}
-      </div>
+      <details class="compliance-disclosure">
+        <summary class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <span><i class="bi bi-shield-check me-2"></i>Compliance Sources and Rationale</span>
+          <div class="d-flex align-items-center gap-2 flex-wrap">
+            <span class="badge text-bg-${statusTone}">${details?.status || "Status Unknown"}</span>
+            <span class="compliance-disclosure-hint">Expand</span>
+          </div>
+        </summary>
+        <div class="card-body">
+          <p class="text-body-secondary small mb-3">${details?.summary || "Compliance sources populate after run completion."}</p>
+          ${details?.findings?.length ? html`<div class="mb-3"><h6 class="mb-2">Findings</h6><ul class="mb-0">${details.findings.map((finding) => html`<li class="small text-body-secondary">${finding}</li>`)}</ul></div>` : null}
+          ${details?.alternatives?.length ? html`<div class="mb-3"><h6 class="mb-2">Compliant Alternatives</h6><ul class="mb-0">${details.alternatives.map((alt) => html`<li class="small text-body-secondary">${alt}</li>`)}</ul></div>` : null}
+          ${details?.sources?.length ? html`<div class="table-responsive"><table class="table table-dark table-striped align-middle mb-0"><thead><tr><th scope="col">Policy</th><th scope="col">Source</th><th scope="col">Why Applied</th></tr></thead><tbody>${details.sources.map((item) => html`<tr><td>${item.policy}</td><td>${item.source}</td><td>${item.why}</td></tr>`)}</tbody></table></div>` : null}
+          <div class="d-flex justify-content-end mt-3">
+            <button class="btn btn-sm btn-outline-warning" @click=${actions.toggleComplianceExplanation}>${state.complianceExplanationOpen ? "Hide Detailed Explanation" : "Show Detailed Explanation"}</button>
+          </div>
+          ${state.complianceExplanationOpen ? html`<div class="explanation-panel mt-3"><p class="mb-2">${details?.detailedExplanation || "The compliance agent records every rule match and why that rule changed routing."}</p><p class="mb-0">This explanation is detailed so operations and legal reviewers can audit each policy decision path.</p></div>` : null}
+        </div>
+      </details>
     </section>`;
 }
 
@@ -839,6 +1293,72 @@ function renderFlowStatusBoard(state) {
   `;
 }
 
+function buildFlowProgressMeta(state) {
+  const summary = buildFlowStatusSummary(state);
+  const totalCount = summary.activeCount + summary.completedCount + summary.failedCount + summary.pendingCount;
+  const finishedCount = summary.completedCount + summary.failedCount;
+  const progressPct = totalCount ? Math.round((finishedCount / totalCount) * 100) : 0;
+  const currentLabel = summary.currentTitles.length
+    ? (summary.currentTitles.length === 1
+      ? summary.currentTitles[0]
+      : `${summary.currentTitles[0]} + ${summary.currentTitles.length - 1} more`)
+    : finishedCount && finishedCount === totalCount
+      ? "Execution complete"
+      : "Waiting to start";
+  const tone = summary.failedCount
+    ? "danger"
+    : summary.activeCount
+      ? "primary"
+      : finishedCount
+        ? "success"
+        : "secondary";
+  return {
+    ...summary,
+    totalCount,
+    finishedCount,
+    progressPct,
+    currentLabel,
+    tone
+  };
+}
+
+function renderFlowOutputDisclosure(state, actions = {}) {
+  const progress = buildFlowProgressMeta(state);
+  const statusLabel = progress.failedCount
+    ? `${progress.failedCount} issue${progress.failedCount === 1 ? "" : "s"}`
+    : progress.activeCount
+      ? `${progress.activeCount} running`
+      : progress.finishedCount && progress.finishedCount === progress.totalCount
+        ? "Complete"
+        : "Ready";
+  const progressNote = progress.totalCount
+    ? `${progress.finishedCount}/${progress.totalCount} resolved • ${progress.pendingCount} pending`
+    : "Expand to follow the live trace.";
+  return html`
+    <details class="flow-live-disclosure">
+      <summary class="flow-live-disclosure-summary">
+        <div class="flow-live-disclosure-copy">
+          <div class="flow-live-disclosure-label">Live Output</div>
+          <div class="flow-live-disclosure-title">${progress.currentLabel}</div>
+          <div class="flow-live-disclosure-note">${progressNote}</div>
+        </div>
+        <div class="flow-live-disclosure-progress">
+          <div class="flow-live-disclosure-meta">
+            <span class="flow-live-tab-status tone-${progress.tone}">${statusLabel}</span>
+            <span class="flow-live-progress-value">${progress.progressPct}%</span>
+          </div>
+          <div class="flow-live-progress-track" aria-hidden="true">
+            <span class="flow-live-progress-fill tone-${progress.tone}" style=${`width: ${progress.progressPct}%`}></span>
+          </div>
+        </div>
+      </summary>
+      <div class="flow-live-disclosure-body">
+        ${renderFlowOutputPanel(state, actions)}
+      </div>
+    </details>
+  `;
+}
+
 function resolveFlowNodeDetail(state, nodeId) {
   if (!nodeId) return null;
   const executionDetails = state.campaignStateObject?.executionDetails || {};
@@ -885,6 +1405,7 @@ function resolveFlowNodeDetail(state, nodeId) {
   }
 
   if (nodeId === "campaign-output-node") {
+    const executive = state.dashboard?.executive || null;
     return {
       kind: "structured",
       title: "Output and Measurement",
@@ -892,11 +1413,13 @@ function resolveFlowNodeDetail(state, nodeId) {
       status: state.dashboard ? { l: "Ready", c: "success" } : { l: "Pending", c: "secondary" },
       detail: {
         summaryLines: state.dashboard
-          ? [
+          ? (executive?.summaryLines || [
             `Unique households: ${state.dashboard.reach?.uniqueHouseholds || 0}.`,
             `Make-good shift: ${state.dashboard.makeGood?.shiftBudget?.toLocaleString?.() || 0} dollars.`
-          ]
+          ])
           : ["The final dashboard will populate after campaign execution finishes."],
+        stateUpdate: executive?.metrics?.reduce((acc, item) => ({ ...acc, [item.label]: item.value }), {}) || {},
+        stateUpdateLabel: "Campaign Outcome Summary",
         whyMatters: "This is where the hierarchical run turns into measurable outcomes."
       }
     };
@@ -1034,7 +1557,10 @@ function renderFlowOutputPanel(state, actions = {}) {
     const output = resolved.output;
     const panelTitle = state.focusedNodeId ? "Pinned Step" : "Live Output";
     const status = output ? (output.status === "done" ? { l: "Done", c: "success" } : output.status === "error" ? { l: "Error", c: "danger" } : { l: "Running", c: "primary" }) : null;
-    return html`<div class="flow-output-panel h-100 d-flex flex-column"><div class="d-flex justify-content-between align-items-start mb-2"><div><p class="text-uppercase small text-body-secondary mb-1">${panelTitle}</p><h6 class="mb-1">${resolved.title}</h6></div>${status ? html`<span class="badge text-bg-${status.c}">${status.l}</span>` : null}</div>${liveSwitcher}<div class="${output ? agentStreamClasses(output) : "agent-stream border rounded-3 p-3 bg-body"} flex-grow-1 overflow-auto">${output ? html`${renderOutputBody(output)}${renderAgentStructuredDetails(output, state, actions, "mt-3", { includeInputData: false, subAgentContextKey: `flow-${output.nodeId}` })}` : html`<div class="text-body-secondary small">Build agents to stream output.</div>`}</div></div>`;
+    const fallbackNote = output && (hasFallbackNarrative(output.text) || output.fallbackUsed || output.subAgentResults?.some((item) => item.fallbackUsed || hasFallbackNarrative(item.text)))
+      ? html`<div class="flow-output-notice">Live API fallback applied. The structured result remains valid and the full fallback trace is shown below.</div>`
+      : null;
+    return html`<div class="flow-output-panel h-100 d-flex flex-column"><div class="d-flex justify-content-between align-items-start mb-2"><div><p class="text-uppercase small text-body-secondary mb-1">${panelTitle}</p><h6 class="mb-1">${resolved.title}</h6></div>${status ? html`<span class="badge text-bg-${status.c}">${status.l}</span>` : null}</div>${liveSwitcher}<div class="${output ? agentStreamClasses(output) : "agent-stream border rounded-3 p-3 bg-body"} flex-grow-1 overflow-auto">${output ? html`${fallbackNote}${renderOutputBody(output)}${renderAgentStructuredDetails(output, state, actions, "mt-3", { includeInputData: false, subAgentContextKey: `flow-${output.nodeId}` })}` : html`<div class="text-body-secondary small">Build agents to stream output.</div>`}</div></div>`;
   }
   return renderStructuredFlowDetail(resolved, state, actions, liveSwitcher);
 }
@@ -1071,82 +1597,18 @@ function renderAgentCard(agent, state, simple, actions) {
   const subRunning = subAgents.filter((item) => item.status === "running").length;
   const previewText = buildStagePreviewText(agent);
   const missionText = truncateCardText(agent.task || agent.initialTask || "No stage mission provided.", simple ? 140 : 180);
-  const takeaways = buildStageTakeaways(agent, previewText);
-  const summaryBlock = takeaways.length ? html`
-    <section class="stage-summary-panel">
-      <div class="stage-panel-label">Output Summary</div>
-      <ul class="stage-takeaway-list">
-        ${takeaways.map((line) => html`<li>${line}</li>`)}
-      </ul>
-    </section>
-  ` : null;
-  const progressPct = Math.max(0, Math.min(100, subAgents.length
-    ? Math.round((subDone / subAgents.length) * 100)
-    : agent.status === "done"
-      ? 100
-      : agent.status === "running"
-        ? 58
-        : agent.status === "error"
-          ? 100
-          : 12));
-  const progressTone = hasIssue || agent.status === "error"
-    ? "is-danger"
-    : agent.status === "done"
-      ? "is-success"
-      : "is-live";
-  const progressLabel = subAgents.length
-    ? `${progressPct}% worker completion`
-    : agent.status === "done"
-      ? "Stage complete"
-      : agent.status === "running"
-        ? "Live execution"
-        : agent.status === "error"
-          ? "Execution blocked"
-          : "Queued";
-  const snapshotStats = [
-    {
-      label: "Sub-Agents",
-      value: subAgents.length ? `${subDone}/${subAgents.length} done` : "No workers",
-      tone: subRunning ? "is-live" : subDone === subAgents.length && subAgents.length ? "is-success" : ""
-    },
-    {
-      label: "Campaign State",
-      value: hasStateUpdate ? "Updated" : "Pending",
-      tone: hasStateUpdate ? "is-success" : ""
-    },
-    {
-      label: "Handoff",
-      value: hasHandoff ? "Ready" : "Pending",
-      tone: hasHandoff ? "is-success" : ""
-    },
-    {
-      label: "Evidence",
-      value: rawEntry ? "Attached" : "Waiting",
-      tone: rawEntry ? "is-success" : ""
-    }
-  ];
-  const snapshotBlock = html`
-    <section class=${`stage-snapshot-card ${progressTone}`.trim()}>
-      <div class="stage-progress-meta">
-        <div>
-          <div class="stage-panel-label mb-1">Execution Snapshot</div>
-          <div class="stage-progress-value">${progressLabel}</div>
-        </div>
-        ${subAgents.length ? html`<span class="badge text-bg-dark border stage-subagent-count">${subAgents.length} sub-agents</span>` : null}
-      </div>
-      <div class="stage-progress-track">
-        <span class="stage-progress-fill" style=${`width: ${progressPct}%;`}></span>
-      </div>
-      <div class="stage-stat-grid">
-        ${snapshotStats.map((item) => html`
-          <div class=${`stage-stat-card ${item.tone}`.trim()}>
-            <div class="stage-stat-label">${item.label}</div>
-            <div class="stage-stat-value">${item.value}</div>
-          </div>
-        `)}
-      </div>
-    </section>
-  `;
+  const summaryMetrics = buildAgentSummaryMetrics(agent, state);
+  const hasFallback = hasFallbackNarrative(agent?.text) || subAgents.some((item) => item?.fallbackUsed || hasFallbackNarrative(item?.text));
+  const quickPills = [
+    subAgents.length ? `${subDone}/${subAgents.length} sub-agents ready` : null,
+    subRunning ? `${subRunning} sub-agent live` : null,
+    hasStateUpdate ? "Campaign state updated" : null,
+    hasHandoff ? "Handoff ready" : null,
+    rawEntry ? "Evidence attached" : null,
+    hasFallback ? "Fallback used" : null
+  ].filter(Boolean);
+  const metricBlock = renderStageMetricBlock(summaryMetrics, quickPills);
+  const summaryBlock = renderStageSummaryBlock(agent, state, { simple });
   const missionBlock = html`
     <section class="stage-mission-card" title="${agent.task || agent.initialTask || ""}">
       <div class="stage-panel-label">Stage Mission</div>
@@ -1155,33 +1617,43 @@ function renderAgentCard(agent, state, simple, actions) {
   `;
   const outputNote = agent.text
     ? agent.status === "running"
-      ? "Showing the freshest live excerpt. Open the full output to follow the stream."
-      : "Showing a clipped excerpt. Open the full output for the complete response."
-    : "The output preview will populate as soon as the model starts returning text.";
-  const outputPreview = agent.text
-    ? html`
+      ? "The executed summary stays readable here while the live trace continues to stream."
+      : hasFallback
+        ? "A graceful fallback was applied. The executed summary below remains the primary readout."
+        : "The executed summary below is the primary readout. Open the detailed output only when you need the full trace."
+    : "The live output panel will populate as soon as the model starts returning text.";
+  const outputPreview = agent.status === "running" && previewText
+      ? html`
       <div class="stage-preview-shell">
-        <div class="stage-panel-label">Latest Excerpt</div>
-        ${agent.status === "running"
-          ? html`<pre class="stage-preview-live mb-0">${previewText}</pre>`
-          : html`<p class="stage-preview-text mb-0">${previewText}</p>`}
+        <div class="stage-panel-label">Live Output</div>
+        <pre class="stage-preview-live mb-0">${previewText}</pre>
       </div>
     `
-    : html`<p class="small text-body-secondary mb-0">Waiting for the live LLM response for this stage.</p>`;
+    : html`
+      <div class=${`stage-output-state ${hasFallback ? "is-warning" : agent.status === "error" ? "is-danger" : ""}`.trim()}>
+        ${agent.status === "running"
+          ? "Waiting for the live output stream to populate."
+          : hasFallback
+          ? "The live language-model call fell back to deterministic stage logic. Open the detailed output for the full fallback note."
+          : agent.status === "error"
+            ? "The live output was interrupted before the stage could complete."
+            : "The stage summary is complete. Use the disclosure below for the full narrative, evidence, and handoff."}
+      </div>
+    `;
   const stageOutputHeading = agent.status === "running"
     ? html`
       <div class="d-flex align-items-center gap-2 flex-wrap">
-        <h6 class="mb-0">Live Output Snapshot</h6>
+        <h6 class="mb-0">Live Output</h6>
         <span class="stage-live-indicator">
           <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
           <span>Streaming...</span>
         </span>
       </div>
     `
-    : html`<h6 class="mb-0">Output Snapshot</h6>`;
+    : html`<h6 class="mb-0">Detailed Output</h6>`;
   const fullOutputBlock = agent.text ? html`
     <details class="stage-output-disclosure mt-3">
-      <summary>${agent.status === "running" ? "Open live output" : "Open full output"}</summary>
+      <summary>${agent.status === "running" ? "Open live output trace" : "Open detailed output"}</summary>
       <div class="${agentStreamClasses(agent)} mt-3">${renderOutputBody(agent)}</div>
     </details>
   ` : null;
@@ -1233,11 +1705,11 @@ function renderAgentCard(agent, state, simple, actions) {
         </div>
         <div class="p-3 d-flex flex-column gap-3 flex-grow-1">
           ${missionBlock}
-          ${summaryBlock}
-          ${snapshotBlock}
+          ${metricBlock}
           <div class="stage-output-card compact">
             <div class="small text-uppercase text-body-secondary mb-1">Stage Output</div>
             <p class="stage-output-note mb-3">${outputNote}</p>
+            ${summaryBlock}
             ${outputPreview}
             ${fullOutputBlock}
             ${stageContextBlock}
@@ -1259,8 +1731,7 @@ function renderAgentCard(agent, state, simple, actions) {
           <span class="badge text-bg-${meta.c} align-self-start">${meta.l}</span>
         </div>
         ${missionBlock}
-        ${summaryBlock}
-        ${snapshotBlock}
+        ${metricBlock}
         ${qualityBadge}
         ${subAgentDetails}
       </div>
@@ -1274,6 +1745,7 @@ function renderAgentCard(agent, state, simple, actions) {
           </div>
         </div>
         <p class="stage-output-note mb-3">${outputNote}</p>
+        ${summaryBlock}
         ${outputPreview}
         ${fullOutputBlock}
         ${stageContextBlock}
@@ -1324,12 +1796,40 @@ function renderDashboard(state, actions) {
             </div>
           </div>
         ` : null}
+        ${renderDashboardExecutiveSummary(state.dashboard?.executive)}
         <div class="dashboard-grid"><div class="chart-card"><div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2"><h6 class="mb-0">Delivery Pacing (Linear versus Digital)</h6><div class="btn-group btn-group-sm" role="group"><button class="btn btn-outline-warning ${state.pacingMode === "pct" ? "active" : ""}" @click=${() => actions.setPacingMode("pct")}>Delivery Rate (%)</button><button class="btn btn-outline-warning ${state.pacingMode === "imp" ? "active" : ""}" @click=${() => actions.setPacingMode("imp")}>Delivered Impressions</button></div></div>${renderPacingChart()}<div class="d-flex gap-3 small mt-2 text-body-secondary"><span class="d-flex align-items-center gap-2"><span class="legend-swatch linear"></span>Linear</span><span class="d-flex align-items-center gap-2"><span class="legend-swatch digital"></span>Digital</span></div></div><div class="donut-card"><h6 class="mb-3">Cross-Platform Reach</h6>${renderReachDonut(reach)}<div class="reach-metrics mt-3"><div><div class="metric-label">Unique Households</div><div class="metric-value">${formatNumber(reach.uniqueHouseholds)}</div></div><div><div class="metric-label">Devices Touched</div><div class="metric-value">${formatNumber(reach.deviceCount)}</div></div><div><div class="metric-label">Cross-Platform Overlap</div><div class="metric-value">${reach.overlapPct}%</div></div></div></div></div>
         ${renderMakeGood(state)}
         ${state.visualizationExplanationOpen ? renderVisualizationExplanation(state) : null}
         <div class="mt-4"><h6 class="mb-3">Agent Actions</h6>${renderActionTable(actionRows)}</div>
       </div>
     </section>`;
+}
+
+function renderDashboardExecutiveSummary(executive = null) {
+  if (!executive) return null;
+  return html`
+    <section class="campaign-summary-card mb-4">
+      <div class="campaign-summary-head">
+        <div>
+          <div class="campaign-summary-label">Campaign Summary</div>
+          <h5 class="mb-1">${executive.headline || "Selected scenario"}</h5>
+        </div>
+        <span class="badge text-bg-warning text-dark">Full Summary</span>
+      </div>
+      <div class="campaign-summary-copy">
+        ${(executive.summaryLines || []).map((line) => html`<p class="mb-2">${line}</p>`)}
+      </div>
+      <div class="campaign-summary-grid">
+        ${(executive.metrics || []).map((metric) => html`
+          <div class="campaign-summary-metric">
+            <div class="campaign-summary-metric-label">${metric.label}</div>
+            <div class="campaign-summary-metric-value">${metric.value}</div>
+          </div>
+        `)}
+      </div>
+      ${executive.makeGoodSummary ? html`<div class="campaign-summary-note">${executive.makeGoodSummary}</div>` : null}
+    </section>
+  `;
 }
 
 function renderVisualizationLoadingCard() {
@@ -1376,7 +1876,7 @@ function renderMakeGood(state) {
   if (!ops || ops.status !== "done") return null;
   const summary = state.dashboard?.makeGood;
   if (!summary) return null;
-  return html`<div class="makegood-card mt-4"><div class="d-flex justify-content-between align-items-center flex-wrap gap-2"><div><h6 class="mb-1">StreamX Make-Good Triggered</h6><div class="small text-body-secondary">Reallocated ${summary.shiftBudget.toLocaleString()} United States dollars to Max ad-lite inventory.</div></div><div class="makegood-metrics"><span>Return on Investment Before Intervention: <strong>${summary.beforeRoi.toFixed(2)}</strong></span><span>Return on Investment After Intervention: <strong>${summary.afterRoi.toFixed(2)}</strong></span></div></div><div class="makegood-track mt-3"><span class="budget-chip chip-linear">Linear</span><span class="budget-chip chip-digital">Max ad-lite</span><span class="budget-chip chip-move">${summary.shiftBudget.toLocaleString()} United States dollars</span></div></div>`;
+  return html`<div class="makegood-card mt-4"><div class="d-flex justify-content-between align-items-center flex-wrap gap-2"><div><h6 class="mb-1">Delivery Make-Good Triggered</h6><div class="small text-body-secondary">Reallocated ${summary.shiftBudget.toLocaleString()} United States dollars to stronger inventory.</div></div><div class="makegood-metrics"><span>Return on Investment Before Intervention: <strong>${summary.beforeRoi.toFixed(2)}</strong></span><span>Return on Investment After Intervention: <strong>${summary.afterRoi.toFixed(2)}</strong></span></div></div><div class="makegood-track mt-3"><span class="budget-chip chip-linear">Linear</span><span class="budget-chip chip-digital">Streaming</span><span class="budget-chip chip-move">${summary.shiftBudget.toLocaleString()} United States dollars</span></div></div>`;
 }
 
 function renderActionTable(actions) {

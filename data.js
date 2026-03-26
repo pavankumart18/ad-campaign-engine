@@ -87,7 +87,7 @@ export const datasetMeta = {
     ],
   },
   audienceGraph: {
-    title: "Olli Cross-Platform Identity Graph",
+    title: "Audience Identity Graph",
     columns: [
       "olli_household_id",
       "segment_name",
@@ -104,7 +104,7 @@ export const datasetMeta = {
     ],
   },
   inventoryMatrix: {
-    title: "NEO / StreamX Inventory Matrix",
+    title: "Planning Inventory Matrix",
     columns: [
       "neo_order_id",
       "network",
@@ -130,7 +130,7 @@ export const datasetMeta = {
     ],
   },
   liveDeliveryLog: {
-    title: "StreamX Live Delivery Log",
+    title: "Delivery Log",
     columns: [
       "delivery_id",
       "campaign_id",
@@ -1294,7 +1294,7 @@ let inventoryCounter = 1;
 
 function pushInventoryRow(row) {
   inventoryMatrix.push({
-    neo_order_id: `NEO-${pad(inventoryCounter++, 4)}`,
+    neo_order_id: `BOOK-${pad(inventoryCounter++, 4)}`,
     ...row,
   });
 }

@@ -1,7 +1,7 @@
 {
   "title": "WBD Scenario Planning and Multi-Agent Engine",
   "subtitle": "Start with a simple campaign idea and let the system recommend the best converged scenario.",
-  "narrative": "This demo now starts from a natural-language campaign prompt, maps it to synthetic WBD first-party viewer data, recommends a scenario, and then runs a hierarchical multi-agent workflow across planning, yield, booking, trafficking, operations, and measurement.",
+  "narrative": "This demo starts from a natural-language campaign prompt, maps it to synthetic WBD first-party viewer data, recommends a scenario, and then runs a hierarchical multi-agent workflow across audience identification, planning, booking, delivery, compliance, operations, and measurement.",
   "supabase": {
     "url": "https://cjjvgiczswsiqhcvapjp.supabase.co",
     "key": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqanZnaWN6c3dzaXFoY3ZhcGpwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUzODA3MTIsImV4cCI6MjA4MDk1NjcxMn0.CRQMGRp0QzMQ4uq2ZduWItYVZqjcvIv4AWPTiBfaY-k"
@@ -27,7 +27,7 @@
           {
             "agentName": "The Planner",
             "nodeId": "planner",
-            "systemInstruction": "Use the synthetic WBD viewer dataset and Olli graph to find young-parent households, highlight streaming-heavy behavior, and document the strongest audience and platform signals.",
+            "systemInstruction": "Use the synthetic WBD viewer dataset and audience identity graph to find young-parent households, highlight streaming-heavy behavior, and document the strongest audience and platform signals.",
             "initialTask": "Resolve the highest-fit parent-of-toddler audience and explain why the selected audience should lean toward Max, discovery+, or linear support.",
             "stage": 1,
             "next": ["The Sales Rep"]
@@ -66,10 +66,10 @@
           { "id": "sales-rep", "label": "Agent 2: The Sales Rep", "kind": "agent" },
           { "id": "compliance-bot", "label": "Agent 3: Compliance Bot", "kind": "agent" },
           { "id": "ops-director", "label": "Agent 4: Ops Director", "kind": "agent" },
-          { "id": "data-olli", "label": "Olli Audience Graph", "kind": "data", "bindTo": "planner" },
-          { "id": "data-neo", "label": "NEO / StreamX Inventory", "kind": "data", "bindTo": "sales-rep" },
+          { "id": "data-olli", "label": "Audience Identity Graph", "kind": "data", "bindTo": "planner" },
+          { "id": "data-neo", "label": "Planning Inventory Matrix", "kind": "data", "bindTo": "sales-rep" },
           { "id": "data-policy", "label": "Global Compliance Policy Engine", "kind": "data", "bindTo": "compliance-bot" },
-          { "id": "data-streamx", "label": "StreamX Delivery Log", "kind": "data", "bindTo": "ops-director" },
+          { "id": "data-streamx", "label": "Delivery Log", "kind": "data", "bindTo": "ops-director" },
           { "id": "output", "label": "Output & Visualization", "kind": "output" }
         ],
         "edges": [
