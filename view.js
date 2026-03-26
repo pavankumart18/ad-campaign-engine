@@ -503,10 +503,12 @@ function renderStageSummaryBlock(agent, state, options = {}) {
         ` : null}
         ${subAgentLines.length ? html`
           <div class="stage-summary-section">
-            <div class="stage-summary-section-title">What The Sub-Agents Did</div>
-            <ul class="stage-summary-list mb-0">
-              ${subAgentLines.map((line) => html`<li>${line}</li>`)}
-            </ul>
+            <details class="stage-output-disclosure stage-summary-disclosure">
+              <summary>What The Sub-Agents Did</summary>
+              <ul class="stage-summary-list mb-0">
+                ${subAgentLines.map((line) => html`<li>${line}</li>`)}
+              </ul>
+            </details>
           </div>
         ` : null}
         ${impactLines.length ? html`
