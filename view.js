@@ -147,6 +147,74 @@ function renderPrettySection(title, value) {
   `;
 }
 
+function stripMarkdownToText(text = "") {
+  return String(text || "")
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/`([^`]*)`/g, "$1")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/^#{1,6}\s*/gm, "")
+    .replace(/^\s*[-*+]\s+/gm, "")
+    .replace(/^\s*\d+\.\s+/gm, "")
+    .replace(/[>*_~|]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function truncateCardText(text = "", max = 120) {
+  const cleaned = stripMarkdownToText(text);
+  if (!cleaned) return "";
+  if (cleaned.length <= max) return cleaned;
+  const clipped = cleaned.slice(0, max - 3);
+  const boundary = clipped.lastIndexOf(" ");
+  const safe = boundary > max * 0.55 ? clipped.slice(0, boundary) : clipped;
+  return `${safe.trimEnd()}...`;
+}
+
+function splitSummaryFragments(text = "") {
+  const cleaned = stripMarkdownToText(text);
+  if (!cleaned) return [];
+  return cleaned
+    .split(/(?<=[.!?])\s+|(?:\s*[;|]\s*)/g)
+    .map((part) => part.trim())
+    .filter((part) => part.length >= 18);
+}
+
+function summaryDedupKey(text = "") {
+  return stripMarkdownToText(text)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function buildStagePreviewText(agent) {
+  if (!agent?.text) return "";
+  const raw = String(agent.text).trim();
+  const source = agent.status === "running" ? raw.slice(-520) : raw;
+  return truncateCardText(source, agent.status === "running" ? 320 : 260);
+}
+
+function buildStageTakeaways(agent, previewText = "") {
+  const candidates = [
+    ...(agent?.summaryLines || []),
+    agent?.summary || "",
+    ...splitSummaryFragments(previewText),
+    ...splitSummaryFragments(agent?.text || "")
+  ];
+  const seen = new Set();
+  const takeaways = [];
+  candidates.forEach((candidate) => {
+    const compact = truncateCardText(candidate, 118);
+    const key = summaryDedupKey(compact);
+    if (!compact || compact.length < 16 || !key || seen.has(key)) return;
+    seen.add(key);
+    takeaways.push(compact);
+  });
+  if (!takeaways.length && agent?.task) {
+    takeaways.push(truncateCardText(agent.task, 118));
+  }
+  return takeaways.slice(0, 3);
+}
+
 function subAgentStatusMeta(status = "") {
   const value = (status || "").toLowerCase();
   if (value === "done") return { label: "Done", tone: "success" };
@@ -994,71 +1062,132 @@ function renderAgentCard(agent, state, simple, actions) {
   const isOpen = state.rawDataOpen?.has(agent.nodeId);
   const quality = state.dataQuality;
   const subAgents = agent.subAgentResults || [];
-  const summaryLines = agent.summaryLines || [];
   const hasInputData = !!(agent?.inputData && Object.keys(agent.inputData).length);
   const hasStateUpdate = !!(agent?.stateUpdate && Object.keys(agent.stateUpdate).length);
   const hasHandoff = !!(agent?.handoff && String(agent.handoff).trim());
-  const qualityBadge = isPlanner(agent) && quality ? html`<span class="badge data-quality mt-2">Data Quality: ${quality.duplicateCount} duplicate households, ${quality.nullDmaCount} missing designated market area values</span>` : null;
+  const qualityBadge = isPlanner(agent) && quality ? html`<span class="badge data-quality">Data Quality: ${quality.duplicateCount} duplicate households, ${quality.nullDmaCount} missing designated market area values</span>` : null;
   const rawToggle = rawEntry ? html`<button class="btn btn-sm btn-outline-warning" @click=${() => actions.toggleRawData(agent.nodeId)}>${isOpen ? "Hide Raw Data" : "View Raw Data"}</button>` : null;
-  const summaryBlock = summaryLines.length ? html`
-    <div class="stage-summary-lines">
-      ${summaryLines.slice(0, 2).map((line) => html`<p class="small text-body-secondary mb-1">${line}</p>`)}
-    </div>
-  ` : null;
   const subDone = subAgents.filter((item) => item.status === "done").length;
   const subRunning = subAgents.filter((item) => item.status === "running").length;
-  const quickPills = [
-    subAgents.length ? `${subDone}/${subAgents.length} sub-agents done` : null,
-    subRunning ? `${subRunning} sub-agent live` : null,
-    agent.stateUpdate && Object.keys(agent.stateUpdate).length ? "Campaign state updated" : null,
-    rawEntry ? "Stage raw data available" : null
-  ].filter(Boolean);
-  const quickPillBlock = quickPills.length ? html`
-    <div class="detail-pill-row stage-pill-row mt-3">
-      ${quickPills.map((label) => html`<span class="detail-pill">${label}</span>`)}
-    </div>
+  const previewText = buildStagePreviewText(agent);
+  const missionText = truncateCardText(agent.task || agent.initialTask || "No stage mission provided.", simple ? 140 : 180);
+  const takeaways = buildStageTakeaways(agent, previewText);
+  const summaryBlock = takeaways.length ? html`
+    <section class="stage-summary-panel">
+      <div class="stage-panel-label">Output Summary</div>
+      <ul class="stage-takeaway-list">
+        ${takeaways.map((line) => html`<li>${line}</li>`)}
+      </ul>
+    </section>
   ` : null;
-  const previewText = (() => {
-    if (!agent.text) return "";
-    const source = agent.status === "running" ? String(agent.text).trim().slice(-420) : String(agent.text).trim();
-    const plain = source
-      .replace(/```[\s\S]*?```/g, " ")
-      .replace(/`([^`]*)`/g, "$1")
-      .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
-      .replace(/^#{1,6}\s*/gm, "")
-      .replace(/^\s*[-*+]\s+/gm, "")
-      .replace(/^\s*\d+\.\s+/gm, "")
-      .replace(/[>*_~|]/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
-    const clipped = plain.length > 360 ? `${plain.slice(0, 360).trimEnd()}...` : plain;
-    return clipped;
-  })();
+  const progressPct = Math.max(0, Math.min(100, subAgents.length
+    ? Math.round((subDone / subAgents.length) * 100)
+    : agent.status === "done"
+      ? 100
+      : agent.status === "running"
+        ? 58
+        : agent.status === "error"
+          ? 100
+          : 12));
+  const progressTone = hasIssue || agent.status === "error"
+    ? "is-danger"
+    : agent.status === "done"
+      ? "is-success"
+      : "is-live";
+  const progressLabel = subAgents.length
+    ? `${progressPct}% worker completion`
+    : agent.status === "done"
+      ? "Stage complete"
+      : agent.status === "running"
+        ? "Live execution"
+        : agent.status === "error"
+          ? "Execution blocked"
+          : "Queued";
+  const snapshotStats = [
+    {
+      label: "Sub-Agents",
+      value: subAgents.length ? `${subDone}/${subAgents.length} done` : "No workers",
+      tone: subRunning ? "is-live" : subDone === subAgents.length && subAgents.length ? "is-success" : ""
+    },
+    {
+      label: "Campaign State",
+      value: hasStateUpdate ? "Updated" : "Pending",
+      tone: hasStateUpdate ? "is-success" : ""
+    },
+    {
+      label: "Handoff",
+      value: hasHandoff ? "Ready" : "Pending",
+      tone: hasHandoff ? "is-success" : ""
+    },
+    {
+      label: "Evidence",
+      value: rawEntry ? "Attached" : "Waiting",
+      tone: rawEntry ? "is-success" : ""
+    }
+  ];
+  const snapshotBlock = html`
+    <section class=${`stage-snapshot-card ${progressTone}`.trim()}>
+      <div class="stage-progress-meta">
+        <div>
+          <div class="stage-panel-label mb-1">Execution Snapshot</div>
+          <div class="stage-progress-value">${progressLabel}</div>
+        </div>
+        ${subAgents.length ? html`<span class="badge text-bg-dark border stage-subagent-count">${subAgents.length} sub-agents</span>` : null}
+      </div>
+      <div class="stage-progress-track">
+        <span class="stage-progress-fill" style=${`width: ${progressPct}%;`}></span>
+      </div>
+      <div class="stage-stat-grid">
+        ${snapshotStats.map((item) => html`
+          <div class=${`stage-stat-card ${item.tone}`.trim()}>
+            <div class="stage-stat-label">${item.label}</div>
+            <div class="stage-stat-value">${item.value}</div>
+          </div>
+        `)}
+      </div>
+    </section>
+  `;
+  const missionBlock = html`
+    <section class="stage-mission-card" title="${agent.task || agent.initialTask || ""}">
+      <div class="stage-panel-label">Stage Mission</div>
+      <p class="stage-mission-text mb-0">${missionText || "No stage mission provided."}</p>
+    </section>
+  `;
+  const outputNote = agent.text
+    ? agent.status === "running"
+      ? "Showing the freshest live excerpt. Open the full output to follow the stream."
+      : "Showing a clipped excerpt. Open the full output for the complete response."
+    : "The output preview will populate as soon as the model starts returning text.";
   const outputPreview = agent.text
-    ? html`${agent.status === "running"
-      ? html`<pre class="stage-preview-live mb-0">${previewText}</pre>`
-      : html`<p class="stage-preview-text mb-0">${previewText}</p>`}`
+    ? html`
+      <div class="stage-preview-shell">
+        <div class="stage-panel-label">Latest Excerpt</div>
+        ${agent.status === "running"
+          ? html`<pre class="stage-preview-live mb-0">${previewText}</pre>`
+          : html`<p class="stage-preview-text mb-0">${previewText}</p>`}
+      </div>
+    `
     : html`<p class="small text-body-secondary mb-0">Waiting for the live LLM response for this stage.</p>`;
   const stageOutputHeading = agent.status === "running"
     ? html`
       <div class="d-flex align-items-center gap-2 flex-wrap">
-        <h6 class="mb-0">Live LLM output in progress</h6>
+        <h6 class="mb-0">Live Output Snapshot</h6>
         <span class="stage-live-indicator">
           <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
           <span>Streaming...</span>
         </span>
       </div>
     `
-    : html`<h6 class="mb-0">Compact stage preview</h6>`;
+    : html`<h6 class="mb-0">Output Snapshot</h6>`;
   const fullOutputBlock = agent.text ? html`
     <details class="stage-output-disclosure mt-3">
-      <summary>${agent.status === "running" ? "Open live LLM output" : "Open full stage output"}</summary>
+      <summary>${agent.status === "running" ? "Open live output" : "Open full output"}</summary>
       <div class="${agentStreamClasses(agent)} mt-3">${renderOutputBody(agent)}</div>
     </details>
   ` : null;
   const subAgentDetails = subAgents.length ? html`
-    <details class="stage-side-disclosure mt-3">
-      <summary>Sub-Agent Details</summary>
+    <details class="stage-side-disclosure">
+      <summary>Sub-Agent Breakdown</summary>
       <div class="stage-side-disclosure-body">
         ${renderAgentStructuredDetailsContent(agent, state, actions, {
           includeInputData: false,
@@ -1072,7 +1201,7 @@ function renderAgentCard(agent, state, simple, actions) {
   ` : null;
   const stageContextBlock = (hasInputData || hasStateUpdate || hasHandoff || rawEntry) ? html`
     <details class="stage-output-disclosure mt-3">
-      <summary>Show Input Data and Stage Context</summary>
+      <summary>Context and data</summary>
       <div class="stage-side-disclosure-body">
         ${renderAgentStructuredDetailsContent(agent, state, actions, {
           includeSubAgents: false,
@@ -1098,15 +1227,17 @@ function renderAgentCard(agent, state, simple, actions) {
         <div class="p-3 bg-body-tertiary border-bottom d-flex justify-content-between align-items-start gap-2">
           <div class="text-truncate">
             <h6 class="mb-0 text-truncate" title="${agent.name}">${agent.name}</h6>
-            <small class="text-body-secondary text-truncate d-block" title="${agent.task}">${agent.task}</small>
+            <small class="text-body-secondary text-truncate d-block">${agent.phase ? `Stage ${agent.phase}` : "Workflow step"}</small>
           </div>
           <span class="badge text-bg-${meta.c}">${meta.l}</span>
         </div>
         <div class="p-3 d-flex flex-column gap-3 flex-grow-1">
+          ${missionBlock}
           ${summaryBlock}
-          ${quickPillBlock}
+          ${snapshotBlock}
           <div class="stage-output-card compact">
-            <div class="small text-uppercase text-body-secondary mb-2">Stage Output Preview</div>
+            <div class="small text-uppercase text-body-secondary mb-1">Stage Output</div>
+            <p class="stage-output-note mb-3">${outputNote}</p>
             ${outputPreview}
             ${fullOutputBlock}
             ${stageContextBlock}
@@ -1127,10 +1258,10 @@ function renderAgentCard(agent, state, simple, actions) {
           </div>
           <span class="badge text-bg-${meta.c} align-self-start">${meta.l}</span>
         </div>
-        <p class="text-body-secondary small flex-grow-1 mb-0">${agent.task}</p>
-        ${qualityBadge}
+        ${missionBlock}
         ${summaryBlock}
-        ${quickPillBlock}
+        ${snapshotBlock}
+        ${qualityBadge}
         ${subAgentDetails}
       </div>
     </div>
@@ -1141,8 +1272,8 @@ function renderAgentCard(agent, state, simple, actions) {
             <div class="small text-uppercase text-body-secondary mb-1">Stage Output</div>
             ${stageOutputHeading}
           </div>
-          ${subAgents.length ? html`<span class="badge text-bg-dark border stage-subagent-count">${subAgents.length} sub-agents</span>` : null}
         </div>
+        <p class="stage-output-note mb-3">${outputNote}</p>
         ${outputPreview}
         ${fullOutputBlock}
         ${stageContextBlock}

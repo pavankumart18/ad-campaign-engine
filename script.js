@@ -3014,7 +3014,7 @@ function buildMasterStageLiveSystemPrompt(out, baselineResult, agentStyle = "") 
     normalizeWhitespace(agentStyle),
     "Return one JSON object only. Do not use markdown fences.",
     "Top-level keys must be exactly: summaryLines, inputData, subAgentResults, stateUpdate, handoff, whyMatters.",
-    "summaryLines must be an array of exactly 2 or 3 concise business lines.",
+    "summaryLines must be an array of exactly 2 or 3 punchy business takeaways. Make each line outcome-first, concrete, and under 110 characters when possible.",
     "subAgentResults must preserve the sub-agent structure from the reference schema and each item must contain id, name, and details.",
     "details must be an array of short concrete statements grounded in the provided data.",
     "stateUpdate must preserve the exact nested shape of the reference schema so downstream agents can consume it.",
