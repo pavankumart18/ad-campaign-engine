@@ -1046,6 +1046,8 @@ function buildExecutiveCampaignSummary(campaignState = null, reach = null, makeG
   const overlapPct = Number(reach?.overlapPct || planning.overlap_pct || 0);
   const deviceCount = Number(reach?.deviceCount || campaignState.intelligence?.matchedRows?.length || 0);
   const crossPlatformReach = `${overlapPct}% of reached households are expected to see both channels`;
+  const reachedHouseholdsLabel = reachedHouseholds.toLocaleString();
+  const totalImpressionsLabel = totalImpressions.toLocaleString();
   const goalLabel = deriveCampaignGoalLabel(campaignState.intelligence?.campaign || {});
   const productLabel = campaignState.productFamily?.displayLabel
     || campaignState.intelligence?.campaign?.productFamily?.displayLabel
@@ -1055,7 +1057,17 @@ function buildExecutiveCampaignSummary(campaignState = null, reach = null, makeG
     ? routeReasonRaw.charAt(0).toLowerCase() + routeReasonRaw.slice(1)
     : "it best fits the audience behavior, supply shape, and delivery objective in this brief";
   const inventoryAvailable = Number(inventory.capacity_impressions || 0).toLocaleString();
-  const frequencyLabel = frequencyPerUser ? `${frequencyPerUser} exposures per reached household` : "Pending";
+  const frequencyWholeViewLow = frequencyPerUser ? Math.max(1, Math.floor(frequencyPerUser)) : 0;
+  const frequencyWholeViewHigh = frequencyPerUser ? Math.max(frequencyWholeViewLow, Math.ceil(frequencyPerUser)) : 0;
+  const frequencyPlainEnglish = frequencyPerUser
+    ? (frequencyWholeViewLow === frequencyWholeViewHigh
+      ? `In plain English, the average reached household would see the campaign about ${frequencyWholeViewLow} time${frequencyWholeViewLow === 1 ? "" : "s"}.`
+      : `In plain English, the average reached household would see the campaign about ${frequencyWholeViewLow} to ${frequencyWholeViewHigh} times.`)
+    : "Frequency will appear once the plan has both projected reach and booked impressions.";
+  const frequencyLabel = frequencyPerUser ? `${frequencyPerUser} times per reached household` : "Pending";
+  const frequencySource = frequencyPerUser
+    ? `This comes from dividing ${totalImpressionsLabel} total booked impressions by ${reachedHouseholdsLabel} households expected to be reached.`
+    : "This metric is waiting for both booked impression totals and projected reached households.";
   const lineItemLabel = `${lineItems.length} placements covering ${totalImpressions.toLocaleString()} booked impressions`;
   const planMix = [
     streamingPct ? `${streamingPct}% streaming` : null,
@@ -1078,7 +1090,7 @@ function buildExecutiveCampaignSummary(campaignState = null, reach = null, makeG
     },
     {
       title: "What the projected result means",
-      text: `If the plan performs as modeled, it should reach about ${reachedHouseholds.toLocaleString()} households. Average frequency is ${frequencyLabel}, cross-platform overlap is ${overlapPct}% which means that share of households is expected to see the campaign in both streaming and linear, and average CPM is $${blendedCpm}.`
+      text: `If the plan performs as modeled, it should reach about ${reachedHouseholdsLabel} households. Average frequency is ${frequencyLabel}. ${frequencySource} ${frequencyPlainEnglish} Cross-platform overlap is ${overlapPct}%, which means that share of households is expected to see the campaign in both streaming and linear, and average CPM is $${blendedCpm}.`
     }
   ];
   const metrics = [
@@ -1114,8 +1126,8 @@ function buildExecutiveCampaignSummary(campaignState = null, reach = null, makeG
     },
     {
       label: "Projected Households Reached",
-      value: reachedHouseholds.toLocaleString(),
-      help: "Homes expected to see at least one campaign exposure."
+      value: reachedHouseholdsLabel,
+      help: "Homes expected to see the campaign at least once."
     },
     {
       label: "Audience-to-Delivery Match Rate",
@@ -1125,7 +1137,9 @@ function buildExecutiveCampaignSummary(campaignState = null, reach = null, makeG
     {
       label: "Average Frequency",
       value: frequencyLabel,
-      help: "How often a reached household is expected to see the campaign."
+      help: frequencyPerUser
+        ? `${frequencySource} That works out to ${frequencyPerUser} times per reached household on average. ${frequencyPlainEnglish}`
+        : frequencySource
     },
     {
       label: "Cross-Platform Overlap",
@@ -1148,7 +1162,7 @@ function buildExecutiveCampaignSummary(campaignState = null, reach = null, makeG
       `This scenario was selected to drive ${goalLabel} for ${productLabel}.`,
       `The audience engine matched ${matchedProfiles.toLocaleString()} audience records and reduced them to ${uniqueUsers.toLocaleString()} unique households led by ${behavioralCohort}.`,
       `${lineItems.length} placements across ${topNetworks} are projected to deliver ${totalImpressions.toLocaleString()} impressions with ${deliveryDetails}.`,
-      `If the plan performs as modeled, it should reach about ${reachedHouseholds.toLocaleString()} households at ${frequencyLabel}, with ${crossPlatformReach} and an average CPM of $${blendedCpm}.`
+      `If the plan performs as modeled, it should reach about ${reachedHouseholdsLabel} households. Average frequency is ${frequencyLabel}, calculated from ${totalImpressionsLabel} impressions divided by ${reachedHouseholdsLabel} households reached. ${frequencyPlainEnglish} ${crossPlatformReach}, and average CPM is $${blendedCpm}.`
     ],
     metrics,
     makeGoodSummary: makeGood?.shiftBudget
@@ -3683,6 +3697,7 @@ function buildMasterStageLiveSystemPrompt(out, baselineResult, agentStyle = "") 
     "Keep the logic internally consistent. Do not contradict the selected scenario, the reference JSON, or the supplied stage inputs.",
     "If the data does not support a strong claim, write a precise conservative statement instead of inventing confidence.",
     "When you reference a number, pull it from the provided inputs or reference JSON only. Do not fabricate new metrics or unsupported percentages.",
+    "When you mention an average, rate, ratio, or percentage, explain what numbers it came from or what it is comparing, then restate the meaning in simple everyday language.",
     "Before returning JSON, silently check that each summary line answers both what happened and why it matters.",
     "subAgentResults must preserve the sub-agent structure from the reference schema and each item must contain id, name, and details.",
     "details must be an array of 3 to 5 concrete plain-English statements grounded in the provided data.",
@@ -3714,6 +3729,7 @@ function buildMasterStageLiveUserPrompt(out, campaignState, selectedPlan, baseli
     supplementalContext ? `\nAdditional Context:\n${supplementalContext}` : "",
     `\nReference JSON Shape And Fallback Values:\n${JSON.stringify(baselineResult, null, 2)}`,
     "\nWrite the summary for a broad audience, not just a domain expert. Use simple language, explain the important numbers, and make the stage result detailed enough to stand on its own.",
+    "\nIf you mention a calculated metric such as frequency, overlap, match rate, or CPM, say where the number came from and then translate it into plain language a non-expert would understand.",
     "\nUse an evidence-first structure: what the stage looked at, what it found, what the sub-agents added, what decision was made, what risk remains, and why that matters.",
     "\nMake sure the wording sounds logical and meaningful. Avoid generic praise, unsupported claims, and incomplete thoughts.",
     "\nIf the best answer is a measured tradeoff, say that clearly rather than overselling certainty.",
@@ -4300,6 +4316,17 @@ async function buildVisualizationNarrative({ creds, model, campaignPrompt, dashb
   try {
     if (!creds) throw new Error("No live credentials available.");
     let buffer = "";
+    const dashboardMakeGood = dashboard?.makeGood
+      ? {
+        shiftBudget: dashboard.makeGood.shiftBudget
+      }
+      : {};
+    const measurementSummary = campaignStateObject?.stageOutputs?.["measurement-agent"]?.measurement_summary
+      ? {
+        matched_households: campaignStateObject.stageOutputs["measurement-agent"].measurement_summary.matched_households,
+        clean_room_match_rate_pct: campaignStateObject.stageOutputs["measurement-agent"].measurement_summary.clean_room_match_rate_pct
+      }
+      : null;
     const summaryPayload = {
       campaignPrompt,
       selectedScenario: campaignStateObject?.selectedScenario || null,
@@ -4311,8 +4338,8 @@ async function buildVisualizationNarrative({ creds, model, campaignPrompt, dashb
         }
         : {},
       reach: dashboard?.reach || {},
-      makeGood: dashboard?.makeGood || {},
-      measurement: campaignStateObject?.stageOutputs?.["measurement-agent"]?.measurement_summary || null,
+      makeGood: dashboardMakeGood,
+      measurement: measurementSummary,
       actions: buildActionRows(agentOutputs, state.issueNodeIds || new Set())
     };
 
@@ -4324,7 +4351,7 @@ async function buildVisualizationNarrative({ creds, model, campaignPrompt, dashb
         messages: [
           {
             role: "system",
-            content: "You are an analytics narrator. Explain visualization outputs in detailed plain language for both domain experts and non-experts. Every section must contain a sentence that starts with 'Why this matters:'. Define abbreviations when first used and give enough context that the explanation stands on its own. The writing must sound logical, meaningful, and grounded in the supplied numbers. Avoid generic praise, filler, and unsupported claims. Use a consistent pattern in each section: what happened, which numbers prove it, what decision or implication follows."
+            content: "You are an analytics narrator. Explain visualization outputs in detailed plain language for both domain experts and non-experts. Every section must contain a sentence that starts with 'Why this matters:'. Define abbreviations when first used and give enough context that the explanation stands on its own. The writing must sound logical, meaningful, and grounded in the supplied numbers. Avoid generic praise, filler, and unsupported claims. Use a consistent pattern in each section: what happened, which numbers prove it, what decision or implication follows. Whenever you mention an average, rate, ratio, or percentage, explain what it was calculated from or what it compares, then restate the meaning in everyday language."
           },
           {
             role: "user",

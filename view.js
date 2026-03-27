@@ -324,8 +324,7 @@ function buildAgentSummaryMetrics(agent = {}, state = {}) {
     return [
       { label: "Households Reached", value: measurement.matched_households ? Number(measurement.matched_households).toLocaleString() : "Pending" },
       { label: "Hit Rate", value: measurement.clean_room_match_rate_pct != null ? `${measurement.clean_room_match_rate_pct}%` : "Pending" },
-      { label: "Cross-Platform Reach", value: reach.overlapPct != null ? `${reach.overlapPct}% overlap` : "Pending" },
-      { label: "ROI", value: measurement.deterministic_roi != null ? `${measurement.deterministic_roi}` : "Pending" }
+      { label: "Cross-Platform Reach", value: reach.overlapPct != null ? `${reach.overlapPct}% overlap` : "Pending" }
     ];
   }
 
@@ -409,7 +408,7 @@ function buildStageMetricNarrative(agent = {}, state = {}) {
       : `It projected ${inflight.digital_delivery_rate_pct || 0}% streaming delivery versus ${inflight.linear_delivery_rate_pct || 0}% linear delivery and kept the original allocation intact because no make-good was required.`;
   }
   if (role === "measurement" && (measurement.matched_households || measurement.clean_room_match_rate_pct != null)) {
-    return `It matched ${Number(measurement.matched_households || 0).toLocaleString()} households at a ${measurement.clean_room_match_rate_pct || 0}% hit rate, with ${reach.overlapPct != null ? `${reach.overlapPct}%` : "measured"} cross-platform overlap and ROI at ${measurement.deterministic_roi || "pending"}.`;
+    return `It matched ${Number(measurement.matched_households || 0).toLocaleString()} households at a ${measurement.clean_room_match_rate_pct || 0}% hit rate, with ${reach.overlapPct != null ? `${reach.overlapPct}%` : "measured"} cross-platform overlap.`;
   }
   if (role === "compliance" && state?.complianceDetails) {
     return `It completed the compliance pass with status ${state.complianceDetails.status || "pending"} and ${state.complianceDetails.findings?.length || 0} recorded findings.`;
@@ -1896,7 +1895,7 @@ function renderMakeGood(state) {
   if (!ops || ops.status !== "done") return null;
   const summary = state.dashboard?.makeGood;
   if (!summary) return null;
-  return html`<div class="makegood-card mt-4"><div class="d-flex justify-content-between align-items-center flex-wrap gap-2"><div><h6 class="mb-1">Delivery Make-Good Triggered</h6><div class="small text-body-secondary">Reallocated ${summary.shiftBudget.toLocaleString()} United States dollars to stronger inventory.</div></div><div class="makegood-metrics"><span>Return on Investment Before Intervention: <strong>${summary.beforeRoi.toFixed(2)}</strong></span><span>Return on Investment After Intervention: <strong>${summary.afterRoi.toFixed(2)}</strong></span></div></div><div class="makegood-track mt-3"><span class="budget-chip chip-linear">Linear</span><span class="budget-chip chip-digital">Streaming</span><span class="budget-chip chip-move">${summary.shiftBudget.toLocaleString()} United States dollars</span></div></div>`;
+  return html`<div class="makegood-card mt-4"><div class="d-flex justify-content-between align-items-center flex-wrap gap-2"><div><h6 class="mb-1">Delivery Make-Good Triggered</h6><div class="small text-body-secondary">Reallocated ${summary.shiftBudget.toLocaleString()} United States dollars to stronger inventory to protect delivery.</div></div></div><div class="makegood-track mt-3"><span class="budget-chip chip-linear">Linear</span><span class="budget-chip chip-digital">Streaming</span><span class="budget-chip chip-move">${summary.shiftBudget.toLocaleString()} United States dollars</span></div></div>`;
 }
 
 function renderActionTable(actions) {
