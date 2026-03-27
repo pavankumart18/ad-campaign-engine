@@ -1816,16 +1816,34 @@ function renderDashboardExecutiveSummary(executive = null) {
           <div class="campaign-summary-label">Campaign Summary</div>
           <h5 class="mb-1">${executive.headline || "Selected scenario"}</h5>
         </div>
-        <span class="badge text-bg-warning text-dark">Full Summary</span>
+        <span class="badge text-bg-warning text-dark">${executive.summaryBadge || "Plain-English Summary"}</span>
       </div>
+      ${executive.summaryIntro ? html`
+        <div class="campaign-summary-plain">
+          <div class="campaign-summary-plain-label">In Plain English</div>
+          <p class="mb-0">${executive.summaryIntro}</p>
+        </div>
+      ` : null}
       <div class="campaign-summary-copy">
-        ${(executive.summaryLines || []).map((line) => html`<p class="mb-2">${line}</p>`)}
+        ${(executive.sections || []).length
+          ? html`
+            <div class="campaign-summary-sections">
+              ${(executive.sections || []).map((section) => html`
+                <div class="campaign-summary-section">
+                  <div class="campaign-summary-section-title">${section.title}</div>
+                  <p class="campaign-summary-section-text">${section.text}</p>
+                </div>
+              `)}
+            </div>
+          `
+          : (executive.summaryLines || []).map((line) => html`<p class="mb-2">${line}</p>`)}
       </div>
       <div class="campaign-summary-grid">
         ${(executive.metrics || []).map((metric) => html`
           <div class="campaign-summary-metric">
             <div class="campaign-summary-metric-label">${metric.label}</div>
             <div class="campaign-summary-metric-value">${metric.value}</div>
+            ${metric.help ? html`<div class="campaign-summary-metric-help">${metric.help}</div>` : null}
           </div>
         `)}
       </div>

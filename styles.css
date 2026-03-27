@@ -1616,6 +1616,53 @@ h6,
   margin-bottom: 0.95rem;
 }
 
+.campaign-summary-plain {
+  border: 1px solid rgba(255, 162, 76, 0.22);
+  background: rgba(255, 255, 255, 0.82);
+  border-radius: 0.85rem;
+  padding: 0.9rem 1rem;
+  margin-bottom: 0.95rem;
+  color: #32405a;
+  line-height: 1.6;
+}
+
+.campaign-summary-plain-label {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.68rem;
+  color: #7c879c;
+  font-weight: 700;
+  margin-bottom: 0.3rem;
+}
+
+.campaign-summary-sections {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.campaign-summary-section {
+  border: 1px solid rgba(26, 34, 56, 0.08);
+  background: rgba(255, 255, 255, 0.78);
+  border-radius: 0.85rem;
+  padding: 0.85rem 0.95rem;
+}
+
+.campaign-summary-section-title {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.68rem;
+  color: #7c879c;
+  font-weight: 700;
+  margin-bottom: 0.38rem;
+}
+
+.campaign-summary-section-text {
+  margin: 0;
+  color: #43506a;
+  line-height: 1.58;
+}
+
 .campaign-summary-grid {
   display: grid;
   gap: 0.7rem;
@@ -1642,6 +1689,13 @@ h6,
   color: #1a2238;
   font-weight: 700;
   line-height: 1.4;
+}
+
+.campaign-summary-metric-help {
+  margin-top: 0.34rem;
+  color: #6b7487;
+  font-size: 0.78rem;
+  line-height: 1.45;
 }
 
 .campaign-summary-note {

@@ -1028,6 +1028,7 @@ function buildExecutiveCampaignSummary(campaignState = null, reach = null, makeG
       1
     );
   const frequencyPerUser = reachedHouseholds ? roundToTwo(totalImpressions / reachedHouseholds, 1) : 0;
+  const cleanRoomMatchRate = roundToTwo(Number(measurement.clean_room_match_rate_pct || 0), 1);
   const behavioralCohort = [
     planning.top_segments?.[0]?.label,
     planning.top_tags?.[0]?.label
@@ -1035,33 +1036,124 @@ function buildExecutiveCampaignSummary(campaignState = null, reach = null, makeG
   const topNetworks = [...new Set(lineItems.map((item) => item.network).filter(Boolean))].slice(0, 3).join(", ")
     || (campaignState.selectedScenario?.rankedNetworks || []).map((item) => item.name).slice(0, 3).join(", ")
     || "Max ad-lite, TNT Sports";
-  const deliveryDetails = `${roundToTwo(inflight.digital_delivery_rate_pct || 0, 1)}% streaming / ${roundToTwo(inflight.linear_delivery_rate_pct || 0, 1)}% linear`;
-  const crossPlatformReach = `${Number(reach?.overlapPct || planning.overlap_pct || 0)}% overlap across ${Number(reach?.deviceCount || campaignState.intelligence?.matchedRows?.length || 0).toLocaleString()} devices`;
+  const finalAllocation = inflight.final_allocation || campaignState.selectedScenario?.allocation || {};
+  const streamingPct = Math.round(Number(finalAllocation.streamingPct ?? campaignState.selectedScenario?.allocation?.streamingPct ?? 0));
+  const linearPct = Math.round(Number(finalAllocation.linearPct ?? campaignState.selectedScenario?.allocation?.linearPct ?? 0));
+  const reservePct = Math.round(Number(finalAllocation.reservePct ?? campaignState.selectedScenario?.allocation?.reservePct ?? 0));
+  const digitalDeliveryRate = roundToTwo(inflight.digital_delivery_rate_pct || 0, 1);
+  const linearDeliveryRate = roundToTwo(inflight.linear_delivery_rate_pct || 0, 1);
+  const deliveryDetails = `${digitalDeliveryRate}% on streaming and ${linearDeliveryRate}% on linear`;
+  const overlapPct = Number(reach?.overlapPct || planning.overlap_pct || 0);
+  const deviceCount = Number(reach?.deviceCount || campaignState.intelligence?.matchedRows?.length || 0);
+  const crossPlatformReach = `${overlapPct}% of reached households are expected to see both channels`;
+  const goalLabel = deriveCampaignGoalLabel(campaignState.intelligence?.campaign || {});
+  const productLabel = campaignState.productFamily?.displayLabel
+    || campaignState.intelligence?.campaign?.productFamily?.displayLabel
+    || "the campaign brief";
+  const routeReasonRaw = String(campaignState.selectedScenario?.recommendationReason || "").trim();
+  const routeReason = routeReasonRaw
+    ? routeReasonRaw.charAt(0).toLowerCase() + routeReasonRaw.slice(1)
+    : "it best fits the audience behavior, supply shape, and delivery objective in this brief";
+  const inventoryAvailable = Number(inventory.capacity_impressions || 0).toLocaleString();
+  const frequencyLabel = frequencyPerUser ? `${frequencyPerUser} exposures per reached household` : "Pending";
+  const lineItemLabel = `${lineItems.length} placements covering ${totalImpressions.toLocaleString()} booked impressions`;
+  const planMix = [
+    streamingPct ? `${streamingPct}% streaming` : null,
+    linearPct ? `${linearPct}% linear` : null,
+    reservePct ? `${reservePct}% held flexible for optimization` : null
+  ].filter(Boolean).join(", ") || "cross-platform allocation pending";
+  const summaryIntro = `This scenario was selected to drive ${goalLabel} for ${productLabel}. In plain terms, the system found the highest-fit audience, built a cross-platform plan around that group, and estimated delivery, reach, and cost before launch.`;
+  const sections = [
+    {
+      title: "Why this route was selected",
+      text: `The route was recommended because ${routeReason}. It is the clearest starting point for this brief based on audience behavior, available supply, and expected delivery quality.`
+    },
+    {
+      title: "Who the campaign is aimed at",
+      text: `The audience engine matched ${matchedProfiles.toLocaleString()} relevant audience records and removed duplicate homes to isolate ${uniqueUsers.toLocaleString()} unique households. The strongest shared behavior signal was ${behavioralCohort}, which became the control cohort for planning.`
+    },
+    {
+      title: "How the media plan is built",
+      text: `${lineItems.length} placements were assembled across ${topNetworks}. The working mix opens with ${planMix}. Inventory checks found ${inventoryAvailable} workable impressions, and projected delivery is ${deliveryDetails}.`
+    },
+    {
+      title: "What the projected result means",
+      text: `If the plan performs as modeled, it should reach about ${reachedHouseholds.toLocaleString()} households. Average frequency is ${frequencyLabel}, cross-platform overlap is ${overlapPct}% which means that share of households is expected to see the campaign in both streaming and linear, and average CPM is $${blendedCpm}.`
+    }
+  ];
   const metrics = [
-    { label: "Users Identified", value: matchedProfiles.toLocaleString() },
-    { label: "Unique Users", value: uniqueUsers.toLocaleString() },
-    { label: "Behavioral Cohort", value: behavioralCohort },
-    { label: "Inventory Available", value: `${Number(inventory.capacity_impressions || 0).toLocaleString()} impressions` },
-    { label: "Slots Chosen", value: `${lineItems.length} line items` },
-    { label: "Delivery Details", value: deliveryDetails },
-    { label: "Households Reached", value: reachedHouseholds.toLocaleString() },
-    { label: "Hit Rate", value: `${roundToTwo(Number(measurement.clean_room_match_rate_pct || 0), 1)}%` },
-    { label: "Frequency per User", value: frequencyPerUser ? `${frequencyPerUser}x` : "Pending" },
-    { label: "Cross-Platform Reach", value: crossPlatformReach },
-    { label: "Cost per Mille", value: `$${blendedCpm}` }
+    {
+      label: "Matched Audience Records",
+      value: matchedProfiles.toLocaleString(),
+      help: "All audience rows that matched the brief before duplicate households were removed."
+    },
+    {
+      label: "Unique Households",
+      value: uniqueUsers.toLocaleString(),
+      help: "The deduplicated audience that the downstream planning stages actually used."
+    },
+    {
+      label: "Lead Behavioral Cohort",
+      value: behavioralCohort,
+      help: "The strongest shared behavior signal that anchored targeting and planning."
+    },
+    {
+      label: "Available Inventory",
+      value: `${inventoryAvailable} impressions`,
+      help: "Estimated workable supply that could support the selected route."
+    },
+    {
+      label: "Booked Placements",
+      value: lineItemLabel,
+      help: "Distinct placements created across the selected networks and dayparts."
+    },
+    {
+      label: "Delivery Forecast",
+      value: deliveryDetails,
+      help: "Projected on-time delivery by channel if the plan launches as modeled."
+    },
+    {
+      label: "Projected Households Reached",
+      value: reachedHouseholds.toLocaleString(),
+      help: "Homes expected to see at least one campaign exposure."
+    },
+    {
+      label: "Audience-to-Delivery Match Rate",
+      value: `${cleanRoomMatchRate}%`,
+      help: "How much of the modeled audience can be connected back to measurable delivery."
+    },
+    {
+      label: "Average Frequency",
+      value: frequencyLabel,
+      help: "How often a reached household is expected to see the campaign."
+    },
+    {
+      label: "Cross-Platform Overlap",
+      value: crossPlatformReach,
+      help: `${deviceCount.toLocaleString()} modeled devices contributed to this overlap estimate.`
+    },
+    {
+      label: "Average CPM",
+      value: `$${blendedCpm}`,
+      help: "Estimated average cost for every 1,000 impressions in the booked plan."
+    }
   ];
 
   return {
     headline: campaignState.selectedScenario?.title || "Selected scenario",
+    summaryBadge: "Plain-English Summary",
+    summaryIntro,
+    sections,
     summaryLines: [
-      `${campaignState.selectedScenario?.title || "The selected scenario"} identified ${matchedProfiles.toLocaleString()} users and deduplicated them into ${uniqueUsers.toLocaleString()} unique users.`,
-      `${lineItems.length} booked slots across ${topNetworks} deliver ${totalImpressions.toLocaleString()} impressions at a blended CPM of $${blendedCpm}.`,
-      `Modeled outcome reaches ${reachedHouseholds.toLocaleString()} households at ${frequencyPerUser || 0}x frequency with ${crossPlatformReach}.`
+      `This scenario was selected to drive ${goalLabel} for ${productLabel}.`,
+      `The audience engine matched ${matchedProfiles.toLocaleString()} audience records and reduced them to ${uniqueUsers.toLocaleString()} unique households led by ${behavioralCohort}.`,
+      `${lineItems.length} placements across ${topNetworks} are projected to deliver ${totalImpressions.toLocaleString()} impressions with ${deliveryDetails}.`,
+      `If the plan performs as modeled, it should reach about ${reachedHouseholds.toLocaleString()} households at ${frequencyLabel}, with ${crossPlatformReach} and an average CPM of $${blendedCpm}.`
     ],
     metrics,
     makeGoodSummary: makeGood?.shiftBudget
-      ? `Make-good reserve moved $${Number(makeGood.shiftBudget || 0).toLocaleString()} into stronger inventory to protect pacing.`
-      : "No make-good shift was required."
+      ? `During pacing simulation, the system moved $${Number(makeGood.shiftBudget || 0).toLocaleString()} into stronger inventory to protect delivery and preserve the booked guarantee.`
+      : "No pacing correction was required because the modeled delivery stayed within the expected tolerance range."
   };
 }
 
@@ -2023,6 +2115,12 @@ function buildArchitectSystemPrompt(agentStyle = "", customArchitectPrompt = "")
     "Part 1: 4 to 6 clear plain-text lines summarizing the audience diagnosis, the scenario differences, and the recommended path. Write for a non-expert audience, define jargon when needed, and make the explanation understandable to anyone reviewing the demo.",
     "Part 2: one JSON object with keys architectSummary, recommendedVariantKey, and architectPlans.",
     "Each item in architectPlans must include: variantKey, title, strategy, why, promptTile, promptText, allocationStrategy, deliveryTiming, roiReasoning, recommended, recommendationReason, scenarioIntelligence, and plan.",
+    "Every written field must sound logical, meaningful, and internally consistent with the supplied data.",
+    "Use disciplined reasoning. First identify the audience evidence, then explain how the three scenarios differ, then recommend one path, then state the main tradeoff.",
+    "For every scenario field, make the function of the field obvious: strategy explains the route, why explains when that route makes sense, promptText explains the route in one sentence, allocationStrategy explains the opening mix, deliveryTiming explains when to lead, and roiReasoning explains why the economics work.",
+    "Do not use filler phrases like 'good fit', 'works well', or 'strong option' unless you immediately explain why with audience, inventory, delivery, timing, or cost evidence.",
+    "If the data does not support a claim, do not invent it. Prefer a precise modest statement over a confident vague one.",
+    "Before answering, silently check that each claim can be defended by the supplied data and that the recommended scenario, allocation, and narrative do not contradict each other.",
     "scenarioIntelligence must include allocation and rankedNetworks if you reference them.",
     "plan must contain exactly six items using the provided master-agent contract with fields: nodeId, agentName, stage, systemInstruction, initialTask.",
     "Set recommended to true on exactly one plan. The same plan must also match recommendedVariantKey.",
@@ -2043,8 +2141,11 @@ function buildArchitectUserPrompt({ problemText = "", dataset = {}, agentContrac
     "3. Tie every scenario to the supplied data, especially audience age, viewing habit, platform usage, network lift, and behavioral tags.",
     "4. Recommend exactly one scenario and explain why it wins for this prompt in clear, plain English that a non-domain expert can still follow.",
     "5. The written summary must be informative, not terse. Give enough detail for a reviewer to understand what the data said, how the options differ, and why the recommendation is sensible.",
-    "6. Keep the plan realistic for the WBD ecosystem and preserve all six master-agent stages.",
-    "7. Output Part 1 plain text followed by Part 2 JSON only."
+    "6. Every line must sound logical and meaningful. Avoid generic business filler, avoid unexplained adjectives, and connect claims to data, supply, delivery, or cost.",
+    "7. If a scenario choice is uncertain, state the tradeoff clearly instead of pretending the data is stronger than it is.",
+    "8. Keep the plan realistic for the WBD ecosystem and preserve all six master-agent stages.",
+    "9. In Part 1, prefer this order: audience evidence, scenario A difference, scenario B difference, scenario C difference, recommendation, main tradeoff.",
+    "10. Output Part 1 plain text followed by Part 2 JSON only."
   ].join("\n");
 }
 
@@ -2137,10 +2238,21 @@ function formatPlanOutputDetails(variant, campaignPrompt, existing = {}) {
     ...(existing.scenarioIntelligence || {})
   };
   const budget = extractBudgetUsd(campaignPrompt);
-  const allocationStrategy = (existing.allocationStrategy || blueprint.allocationStrategy || variant.allocationStrategy || "")
+  const allocationStrategyFallback = (blueprint.allocationStrategy || variant.allocationStrategy || "")
     .replace(/\$BUDGET_USD/g, budget.toLocaleString());
-  const deliveryTiming = (existing.deliveryTiming || blueprint.deliveryTiming || variant.deliveryTiming || "").trim();
-  const roiReasoning = (existing.roiReasoning || blueprint.roiReasoning || variant.roiReasoning || "").trim();
+  const allocationStrategy = preferMeaningfulText(
+    (existing.allocationStrategy || "").replace(/\$BUDGET_USD/g, budget.toLocaleString()),
+    allocationStrategyFallback,
+    { minWords: 10, requireEvidence: true }
+  );
+  const deliveryTiming = preferMeaningfulText(existing.deliveryTiming || "", blueprint.deliveryTiming || variant.deliveryTiming || "", {
+    minWords: 8,
+    requireEvidence: true
+  });
+  const roiReasoning = preferMeaningfulText(existing.roiReasoning || "", blueprint.roiReasoning || variant.roiReasoning || "", {
+    minWords: 10,
+    requireEvidence: true
+  });
   const complianceValidation = evaluatePlanCompliance({
     campaignPrompt,
     allocationStrategy,
@@ -2151,18 +2263,33 @@ function formatPlanOutputDetails(variant, campaignPrompt, existing = {}) {
     deliveryTiming,
     roiReasoning,
     complianceValidation,
-    strategy: (existing.strategy || blueprint.strategy || variant.strategy || "").trim(),
-    why: (existing.why || blueprint.why || variant.why || "").trim(),
-    promptTile: existing.promptTile || blueprint.promptTile || variant.promptTile,
-    promptText: existing.promptText || blueprint.promptText || variant.promptText,
+    strategy: preferMeaningfulText(existing.strategy || "", blueprint.strategy || variant.strategy || "", {
+      minWords: 12,
+      requireEvidence: true
+    }),
+    why: preferMeaningfulText(existing.why || "", blueprint.why || variant.why || "", {
+      minWords: 10,
+      requireEvidence: true
+    }),
+    promptTile: preferMeaningfulText(existing.promptTile || "", blueprint.promptTile || variant.promptTile || "", {
+      titleMode: true
+    }),
+    promptText: preferMeaningfulText(existing.promptText || "", blueprint.promptText || variant.promptText || "", {
+      minWords: 10,
+      requireEvidence: true
+    }),
     recommended: existing.recommended ?? blueprint.recommended ?? false,
-    recommendationReason: existing.recommendationReason || blueprint.recommendationReason || "",
+    recommendationReason: preferMeaningfulText(existing.recommendationReason || "", blueprint.recommendationReason || "", {
+      minWords: 10,
+      requireEvidence: true
+    }),
     scenarioIntelligence: Object.keys(mergedScenarioIntelligence).length ? mergedScenarioIntelligence : null
   };
 }
 
 function normalizeArchitectPlans(rawPlans, demo, maxAgents) {
   const campaignPrompt = demo?.problem || demo?.body || "";
+  const scenarioCatalog = buildScenarioBlueprints(campaignPrompt);
   const normalized = (Array.isArray(rawPlans) ? rawPlans : [])
     .map((entry, index) => {
       if (!entry || typeof entry !== "object") return null;
@@ -2175,12 +2302,13 @@ function normalizeArchitectPlans(rawPlans, demo, maxAgents) {
       const variantIndex = PLAN_VARIANTS.findIndex((item) => item.key === variantKey);
       const optionIndex = variantIndex >= 0 ? variantIndex : index;
       const fallbackTitle = buildArchitectPlanTitle(demo, optionIndex);
+      const blueprint = scenarioCatalog.options.find((option) => option.variantKey === variantKey) || {};
       const normalizedEntry = { ...entry, variantKey };
       const enrichedPlan = expandAndEnrichPlan(normalizedPlan, maxAgents, campaignPrompt, variantKey, normalizedEntry);
       const details = formatPlanOutputDetails(variant, campaignPrompt, normalizedEntry);
       return {
         id: Utils.uniqueId("architect-plan"),
-        title: (entry.title || fallbackTitle).toString().trim(),
+        title: preferMeaningfulText(entry.title || "", blueprint.title || fallbackTitle, { titleMode: true }),
         strategy: (details.strategy || entry.summary || variant.strategy).toString().trim(),
         why: (details.why || entry.rationale || variant.why).toString().trim(),
         promptTile: details.promptTile || variant.promptTile,
@@ -2287,8 +2415,24 @@ function expandAndEnrichPlan(plan = [], maxAgents = TARGET_ARCHITECT_AGENTS, cam
         agentName,
         phase,
         phaseLabel: `Stage ${phase}`,
-        systemInstruction: ensureWordRange(agent.systemInstruction, detailedInstruction, 16, 36),
-        initialTask: ensureWordRange(agent.initialTask, detailedTask, 14, 28)
+        systemInstruction: ensureWordRange(
+          preferMeaningfulText(agent.systemInstruction, detailedInstruction, {
+            minWords: 12,
+            rejectGenericPraise: false
+          }),
+          detailedInstruction,
+          16,
+          36
+        ),
+        initialTask: ensureWordRange(
+          preferMeaningfulText(agent.initialTask, detailedTask, {
+            minWords: 12,
+            rejectGenericPraise: false
+          }),
+          detailedTask,
+          14,
+          28
+        )
       };
     });
 
@@ -2324,13 +2468,114 @@ function trimToWords(text, maxWords) {
   return `${words.slice(0, maxWords).join(" ")}.`;
 }
 
+const LOW_QUALITY_NARRATIVE_PATTERNS = [
+  /\b(?:tbd|n\/a|none provided|not provided|placeholder|lorem ipsum|to be determined|coming soon)\b/i,
+  /\.\.\./,
+  /\betc\.?\b/i,
+  /\bno (?:summary|details?|data|output) (?:provided|returned|available)\b/i
+];
+
+const GENERIC_PRAISE_PATTERNS = [
+  /\b(?:good|great|nice|strong|best|better|effective|efficient|useful|helpful|appropriate|sensible|logical|meaningful)\b/i,
+  /\bworks well\b/i,
+  /\bgood fit\b/i,
+  /\bstrong strategy\b/i
+];
+
+const BANNED_SCENARIO_TITLE_PATTERNS = [
+  /\bstreaming[-\s]*heavy\b/i,
+  /\blinear[-\s]*heavy\b/i,
+  /\bbalanced\b/i
+];
+
+function extractNarrativeTokens(text = "") {
+  return (stripMarkdown(text).toLowerCase().match(/[a-z0-9%$]+/g) || []).filter(Boolean);
+}
+
+function tokenOverlapCount(source = "", reference = "") {
+  const referenceSet = new Set(extractNarrativeTokens(reference));
+  if (!referenceSet.size) return 0;
+  return new Set(extractNarrativeTokens(source).filter((token) => referenceSet.has(token))).size;
+}
+
+function hasEvidenceSignal(text = "") {
+  return /\d/.test(text) || /\b(audience|households?|users?|reach|inventory|impressions?|cpm|roi|budget|streaming|linear|network|networks|delivery|cohort|segment|frequency|overlap|allocation|reserve|placement|placements|match rate|sales lift|revenue|device|devices|market|markets|timing|yield|compliance|scenario|signals?)\b/i.test(text);
+}
+
+function isLowQualityNarrative(text = "", options = {}) {
+  const {
+    minWords = 6,
+    requireEvidence = false,
+    fallbackText = "",
+    rejectGenericPraise = true,
+    titleMode = false
+  } = options;
+  const clean = normalizeWhitespace(stripMarkdown(text || ""));
+  const tokenList = extractNarrativeTokens(clean);
+  if (!clean) return true;
+
+  if (titleMode) {
+    if (BANNED_SCENARIO_TITLE_PATTERNS.some((pattern) => pattern.test(clean))) return true;
+    const words = wordCount(clean);
+    return words < 2 || words > 6;
+  }
+
+  if (LOW_QUALITY_NARRATIVE_PATTERNS.some((pattern) => pattern.test(clean))) return true;
+  if (/[:;,/-]\s*$/.test(clean)) return true;
+  if (wordCount(clean) < minWords) return true;
+  if (tokenList.length >= 8) {
+    const uniqueRatio = new Set(tokenList).size / tokenList.length;
+    if (uniqueRatio < 0.45) return true;
+  }
+  if (rejectGenericPraise && GENERIC_PRAISE_PATTERNS.some((pattern) => pattern.test(clean)) && !hasEvidenceSignal(clean)) {
+    return true;
+  }
+  if (requireEvidence && !hasEvidenceSignal(clean) && tokenOverlapCount(clean, fallbackText) < 3) {
+    return true;
+  }
+  return false;
+}
+
+function preferMeaningfulText(candidate = "", fallback = "", options = {}) {
+  const cleanCandidate = normalizeWhitespace(candidate);
+  const cleanFallback = normalizeWhitespace(fallback);
+  if (!cleanCandidate) return cleanFallback;
+  if (isLowQualityNarrative(cleanCandidate, { ...options, fallbackText: cleanFallback })) {
+    return cleanFallback || cleanCandidate;
+  }
+  return cleanCandidate;
+}
+
+function normalizeMeaningfulTextList(value, fallback = [], options = {}) {
+  const source = Array.isArray(value)
+    ? value
+    : typeof value === "string"
+      ? [value]
+      : [];
+  const fallbackNext = (Array.isArray(fallback) ? fallback : [])
+    .map((item) => normalizeWhitespace(item))
+    .filter(Boolean);
+  if (!source.length) return fallbackNext;
+
+  const chosen = source
+    .map((item, index) => preferMeaningfulText(item, fallbackNext[index] || fallbackNext[0] || "", options))
+    .filter(Boolean);
+
+  const minMeaningful = options.minMeaningful || 1;
+  const meaningfulCount = chosen.filter((item) => !isLowQualityNarrative(item, { ...options, fallbackText: "" })).length;
+  if (fallbackNext.length && meaningfulCount < Math.min(minMeaningful, fallbackNext.length)) {
+    return fallbackNext;
+  }
+  return chosen.length ? chosen : fallbackNext;
+}
+
 function buildDetailedSystemInstruction(agent, template, campaign, phase, scenarioBlueprint = null) {
   const role = agent.agentName || template.agentName;
   const focus = template.focus;
   const scenarioTitle = scenarioBlueprint?.title || "selected scenario";
   const allocation = scenarioBlueprint?.allocationStrategy || "Follow the recommended cross-platform allocation.";
   const subAgents = getSubAgentsForNode(template?.nodeId, scenarioBlueprint?.variantKey).map((item) => item.name).join(", ");
-  return `You are ${role}, the stage ${phase} owner. Coordinate ${subAgents || "the active worker agents"}, use the shared Campaign_State_Object, stay aligned to "${scenarioTitle}" and "${allocation}", cite evidence, explain your reasoning in plain English, avoid unexplained jargon, and end with one sentence that starts with "Why this matters:".`;
+  return `You are ${role}, the stage ${phase} owner. Coordinate ${subAgents || "the active worker agents"}, use the shared Campaign_State_Object, stay aligned to "${scenarioTitle}" and "${allocation}", cite evidence, explain your reasoning in plain English, avoid unexplained jargon, avoid vague filler, and structure the explanation as evidence, finding, decision, and business implication. End with one sentence that starts with "Why this matters:".`;
 }
 
 function buildDetailedInitialTask(agent, template, campaign, phase, scenarioBlueprint = null) {
@@ -2338,7 +2583,7 @@ function buildDetailedInitialTask(agent, template, campaign, phase, scenarioBlue
   const focus = template.focus;
   const scenarioTitle = scenarioBlueprint?.title || "selected scenario";
   const recommendation = scenarioBlueprint?.recommendationReason || "Use the audience evidence to justify the path.";
-  return `Complete stage ${phase} for ${role} on brief "${campaign}". Prioritize ${focus}, make one master decision for "${scenarioTitle}", record the data used, capture what each sub-agent contributed, explain the findings in plain language a non-expert can follow, state one risk with mitigation, and hand off the next action. Recommendation context: ${recommendation}`;
+  return `Complete stage ${phase} for ${role} on brief "${campaign}". Prioritize ${focus}, make one master decision for "${scenarioTitle}", record the data used, capture what each sub-agent contributed, explain the findings in plain language a non-expert can follow, state one risk with mitigation, and hand off the next action. Present the reasoning in this order: what data was used, what it showed, what decision was made, and why that decision helps the campaign. Keep every statement logical, data-grounded, and specific enough that it does not read like generic filler. Recommendation context: ${recommendation}`;
 }
 
 async function runArchitect() {
@@ -3308,17 +3553,33 @@ function normalizeLiveSubAgentResults(rawItems = [], fallbackItems = []) {
   return template.map((fallbackItem, index) => {
     const key = fallbackItem?.id || fallbackItem?.name || `sub-${index}`;
     const rawItem = sourceMap.get(key) || source[index] || {};
-    const details = normalizeStageTextList(rawItem.details || rawItem.notes, fallbackItem?.details || []);
+    const details = normalizeMeaningfulTextList(rawItem.details || rawItem.notes, fallbackItem?.details || [], {
+      minWords: 7,
+      requireEvidence: true,
+      minMeaningful: 2
+    });
+    const whyMatters = preferMeaningfulText(rawItem.whyMatters || rawItem.why_matters || rawItem.why || "", fallbackItem?.whyMatters || "", {
+      minWords: 8,
+      rejectGenericPraise: false
+    });
+    const narrativeFallback = fallbackItem?.text || buildSubAgentNarrative({
+      name: rawItem.name || fallbackItem?.name || `Sub-Agent ${index + 1}`,
+      details,
+      whyMatters
+    });
     return {
       ...(fallbackItem || {}),
       id: rawItem.id || fallbackItem?.id || `sub-agent-${index + 1}`,
       name: normalizeWhitespace(rawItem.name || fallbackItem?.name || `Sub-Agent ${index + 1}`),
       status: rawItem.status || fallbackItem?.status || "done",
       details: details.length ? details.slice(0, 5) : ["No detailed note returned by the language model."],
-      text: rawItem.text || fallbackItem?.text || "",
+      text: preferMeaningfulText(rawItem.text || "", narrativeFallback, {
+        minWords: 12,
+        rejectGenericPraise: false
+      }),
       inputData: mergeStructuredObjects(fallbackItem?.inputData || {}, rawItem.inputData || rawItem.input_data || {}),
       outputData: mergeStructuredObjects(fallbackItem?.outputData || {}, rawItem.outputData || rawItem.output_data || {}),
-      whyMatters: normalizeWhitespace(rawItem.whyMatters || rawItem.why_matters || rawItem.why || fallbackItem?.whyMatters || ""),
+      whyMatters,
       fallbackUsed: rawItem.fallbackUsed ?? fallbackItem?.fallbackUsed ?? false
     };
   });
@@ -3352,9 +3613,14 @@ function createPendingSubAgentResult(masterOutput, subAgent = {}, index = 0) {
 
 function normalizeSingleLiveSubAgentResult(raw = {}, fallback = {}) {
   const payload = raw?.result || raw?.subAgentResult || raw?.output || raw;
-  const details = normalizeStageTextList(
+  const details = normalizeMeaningfulTextList(
     payload.details || payload.notes || payload.summaryLines || payload.summary_lines,
-    fallback.details || []
+    fallback.details || [],
+    {
+      minWords: 7,
+      requireEvidence: true,
+      minMeaningful: 2
+    }
   ).slice(0, 5);
   const next = {
     ...(fallback || {}),
@@ -3364,10 +3630,16 @@ function normalizeSingleLiveSubAgentResult(raw = {}, fallback = {}) {
     details: details.length ? details : ["No detailed note returned by the language model."],
     inputData: mergeStructuredObjects(fallback.inputData || {}, payload.inputData || payload.input_data || {}),
     outputData: mergeStructuredObjects(fallback.outputData || {}, payload.outputData || payload.output_data || payload.stateUpdate || payload.state_update || {}),
-    whyMatters: normalizeWhitespace(payload.whyMatters || payload.why_matters || payload.why || fallback.whyMatters || ""),
+    whyMatters: preferMeaningfulText(payload.whyMatters || payload.why_matters || payload.why || "", fallback.whyMatters || "", {
+      minWords: 8,
+      rejectGenericPraise: false
+    }),
     fallbackUsed: payload.fallbackUsed ?? fallback.fallbackUsed ?? false
   };
-  next.text = normalizeWhitespace(payload.text || fallback.text || buildSubAgentNarrative(next));
+  next.text = preferMeaningfulText(payload.text || "", fallback.text || buildSubAgentNarrative(next), {
+    minWords: 12,
+    rejectGenericPraise: false
+  });
   return next;
 }
 
@@ -3375,10 +3647,21 @@ function normalizeLiveMasterStageResult(raw = {}, baseline = {}) {
   const payload = raw?.result || raw?.stageResult || raw?.output || raw;
   return {
     inputData: mergeStructuredObjects(baseline.inputData || {}, payload.inputData || payload.input_data || {}),
-    summaryLines: normalizeStageTextList(payload.summaryLines || payload.summary_lines, baseline.summaryLines || []).slice(0, 6),
+    summaryLines: normalizeMeaningfulTextList(payload.summaryLines || payload.summary_lines, baseline.summaryLines || [], {
+      minWords: 9,
+      requireEvidence: true,
+      minMeaningful: 2
+    }).slice(0, 6),
     subAgentResults: normalizeLiveSubAgentResults(payload.subAgentResults || payload.sub_agent_results || payload.subAgents || payload.sub_agents, baseline.subAgentResults || []),
-    whyMatters: normalizeWhitespace(payload.whyMatters || payload.why_matters || payload.why || baseline.whyMatters || ""),
-    handoff: normalizeWhitespace(payload.handoff || baseline.handoff || ""),
+    whyMatters: preferMeaningfulText(payload.whyMatters || payload.why_matters || payload.why || "", baseline.whyMatters || "", {
+      minWords: 10,
+      rejectGenericPraise: false
+    }),
+    handoff: preferMeaningfulText(payload.handoff || "", baseline.handoff || "", {
+      minWords: 9,
+      requireEvidence: true,
+      rejectGenericPraise: false
+    }),
     stateUpdate: mergeStructuredObjects(baseline.stateUpdate || {}, payload.stateUpdate || payload.state_update || payload.campaignStateUpdate || payload.campaign_state_update || {})
   };
 }
@@ -3393,7 +3676,14 @@ function buildMasterStageLiveSystemPrompt(out, baselineResult, agentStyle = "") 
     "summaryLines must be an array of 4 to 6 clear, informative plain-English statements.",
     "The summary must be understandable to a non-domain expert and should not assume media-planning jargon is already known.",
     "Across the summaryLines, explain what data this stage used, what it found, what the sub-agents contributed, what decision was made, and why that decision matters.",
+    "Use this order whenever possible: line 1 data used, line 2 key finding, line 3 sub-agent contribution, line 4 decision, line 5 risk or tradeoff, line 6 why it matters.",
     "Do not make the summary terse. Give enough detail that a reviewer can understand the stage without opening the raw output.",
+    "Every sentence must sound logical and meaningful when read on its own.",
+    "Do not use vague filler such as 'good fit', 'works well', 'strong option', or 'important result' unless you immediately explain why with specific evidence from the provided data.",
+    "Keep the logic internally consistent. Do not contradict the selected scenario, the reference JSON, or the supplied stage inputs.",
+    "If the data does not support a strong claim, write a precise conservative statement instead of inventing confidence.",
+    "When you reference a number, pull it from the provided inputs or reference JSON only. Do not fabricate new metrics or unsupported percentages.",
+    "Before returning JSON, silently check that each summary line answers both what happened and why it matters.",
     "subAgentResults must preserve the sub-agent structure from the reference schema and each item must contain id, name, and details.",
     "details must be an array of 3 to 5 concrete plain-English statements grounded in the provided data.",
     "stateUpdate must preserve the exact nested shape of the reference schema so downstream agents can consume it.",
@@ -3424,6 +3714,9 @@ function buildMasterStageLiveUserPrompt(out, campaignState, selectedPlan, baseli
     supplementalContext ? `\nAdditional Context:\n${supplementalContext}` : "",
     `\nReference JSON Shape And Fallback Values:\n${JSON.stringify(baselineResult, null, 2)}`,
     "\nWrite the summary for a broad audience, not just a domain expert. Use simple language, explain the important numbers, and make the stage result detailed enough to stand on its own.",
+    "\nUse an evidence-first structure: what the stage looked at, what it found, what the sub-agents added, what decision was made, what risk remains, and why that matters.",
+    "\nMake sure the wording sounds logical and meaningful. Avoid generic praise, unsupported claims, and incomplete thoughts.",
+    "\nIf the best answer is a measured tradeoff, say that clearly rather than overselling certainty.",
     "\nGenerate the live stage result now."
   ].filter(Boolean).join("\n");
 }
@@ -3436,6 +3729,10 @@ function buildSubAgentLiveSystemPrompt(masterOutput, subAgent, agentStyle = "") 
     "Top-level keys must be: details, inputData, outputData, whyMatters, and optional text.",
     "details must contain 3 to 5 clear plain-English statements grounded in the supplied synthetic data and upstream stage context.",
     "Write so a non-expert reader can understand what you checked, what you found, and how your work helped the master agent.",
+    "Use this order whenever possible: what data you checked, what you found, what it means for the parent agent, and any risk or limitation that still matters.",
+    "Each statement must sound logical and meaningful on its own. Avoid filler like 'good', 'strong', or 'effective' unless you explain why with evidence.",
+    "If the evidence is mixed, state the tradeoff clearly instead of pretending the answer is cleaner than it is.",
+    "Do not invent metrics or unsupported numbers.",
     "inputData should summarize what this sub-agent used.",
     "outputData should capture the structured result this sub-agent is handing back to its master agent.",
     "whyMatters should be one concise business sentence.",
@@ -3459,6 +3756,8 @@ function buildSubAgentLiveUserPrompt(masterOutput, subAgent, campaignState, sele
     `\nRelevant Dataset Excerpt:\n${datasetBlock}`,
     supplementalContext ? `\nAdditional Context:\n${supplementalContext}` : "",
     "\nUse simple language and enough detail that someone outside the media domain can still understand what this sub-agent accomplished.",
+    "\nUse an evidence-first answer: what you checked, what it showed, how it affects the parent agent, and any meaningful risk or limit.",
+    "\nMake every line logical, specific, and grounded in the supplied data. Avoid vague praise or generic business wording.",
     "\nGenerate the live sub-agent result now."
   ].filter(Boolean).join("\n");
 }
@@ -3961,12 +4260,12 @@ async function runSyntheticAgent(out, opts) {
         messages: [
           {
             role: "system",
-            content: `${out.instruction}\n${agentStyle}\nWrite Markdown between 220 and 420 words. Make it clear, informative, and understandable to non-experts. Explain important terms in simple language, include enough detail to stand on its own, include one explicit heading named "Why this matters", and keep it grounded in the provided dataset.`
+            content: `${out.instruction}\n${agentStyle}\nWrite Markdown between 220 and 420 words. Make it clear, informative, and understandable to non-experts. Explain important terms in simple language, include enough detail to stand on its own, include one explicit heading named "Why this matters", and keep it grounded in the provided dataset. Every paragraph should sound logical and meaningful, avoid vague filler, and avoid unsupported claims. Use claim, evidence, and implication as the core pattern for each section. If the evidence is mixed, explain the tradeoff clearly instead of overselling certainty.`
           },
           {
             role: "user",
             content:
-              `Campaign Brief:\n${campaignPrompt}\n\nTask:\n${out.task}\n\nRelevant Dataset:\n${datasetBlock}${supplementalContext ? `\n\nAdditional Yield Intelligence:\n${supplementalContext}` : ""}\n\nSupplemental Inputs:\n${inputBlob}\n\nPrior Outputs:\n${priorContext}\n\nWrite the explanation so a general business stakeholder can follow it without domain expertise.`
+              `Campaign Brief:\n${campaignPrompt}\n\nTask:\n${out.task}\n\nRelevant Dataset:\n${datasetBlock}${supplementalContext ? `\n\nAdditional Yield Intelligence:\n${supplementalContext}` : ""}\n\nSupplemental Inputs:\n${inputBlob}\n\nPrior Outputs:\n${priorContext}\n\nWrite the explanation so a general business stakeholder can follow it without domain expertise. Make every claim logical, specific, and tied to the provided evidence. For each section, explain what happened, what evidence supports it, and why it matters.`
           }
         ]
       },
@@ -3975,8 +4274,13 @@ async function runSyntheticAgent(out, opts) {
         updateAgent(out.id, narrative, "running");
       }
     });
-    updateAgent(out.id, narrative, "done");
-    return narrative;
+    const fallback = buildSyntheticAgentNarrative(out, campaignPrompt, context);
+    const finalNarrative = isLowQualityNarrative(narrative, {
+      minWords: 60,
+      rejectGenericPraise: false
+    }) ? fallback : narrative;
+    updateAgent(out.id, finalNarrative, "done");
+    return finalNarrative;
   } catch (e) {
     // LLM fallback keeps the run alive, but marks the response clearly.
     if (!narrative) {
@@ -4020,18 +4324,22 @@ async function buildVisualizationNarrative({ creds, model, campaignPrompt, dashb
         messages: [
           {
             role: "system",
-            content: "You are an analytics narrator. Explain visualization outputs in detailed plain language for both domain experts and non-experts. Every section must contain a sentence that starts with 'Why this matters:'. Define abbreviations when first used and give enough context that the explanation stands on its own."
+            content: "You are an analytics narrator. Explain visualization outputs in detailed plain language for both domain experts and non-experts. Every section must contain a sentence that starts with 'Why this matters:'. Define abbreviations when first used and give enough context that the explanation stands on its own. The writing must sound logical, meaningful, and grounded in the supplied numbers. Avoid generic praise, filler, and unsupported claims. Use a consistent pattern in each section: what happened, which numbers prove it, what decision or implication follows."
           },
           {
             role: "user",
-            content: `Use this dashboard summary and write a detailed Markdown explanation with sections for Delivery Pacing, Reach Distribution, Make-Good Decision, and Action Traceability.\nExplain what happened, what the key numbers mean, and why each section matters in simple language.\n\nDashboard JSON:\n${JSON.stringify(summaryPayload, null, 2)}`
+            content: `Use this dashboard summary and write a detailed Markdown explanation with sections for Delivery Pacing, Reach Distribution, Make-Good Decision, and Action Traceability.\nExplain what happened, what the key numbers mean, and why each section matters in simple language.\nIf a metric suggests a tradeoff or uncertainty, explain that directly instead of smoothing it over.\nIn each section, connect the claim to the exact numbers and then explain the business implication.\n\nDashboard JSON:\n${JSON.stringify(summaryPayload, null, 2)}`
           }
         ]
       },
       onChunk: (chunk) => { buffer += chunk; }
     });
 
-    return buffer.trim();
+    const finalNarrative = buffer.trim();
+    if (!isLowQualityNarrative(finalNarrative, { minWords: 70, rejectGenericPraise: false })) {
+      return finalNarrative;
+    }
+    throw new Error("Visualization narrative was too weak to use directly.");
   } catch {
     return [
       "### Delivery Pacing",
