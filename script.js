@@ -5142,7 +5142,7 @@ function syncCustomButton() {
 
 // Queue scrolling
 let scrollSched = false;
-let scrollState = { key: null, height: 0 };
+let scrollState = { key: null };
 
 function scheduleScrollToRunningSection() {
   if (scrollSched) return;
@@ -5151,28 +5151,20 @@ function scheduleScrollToRunningSection() {
     scrollSched = false;
     const key = getRunningScrollKey();
     if (!key) {
-      scrollState = { key: null, height: 0 };
+      scrollState = { key: null };
       return;
     }
 
     const target = document.querySelector(`[data-running-key="${key}"]`);
     if (!target) return;
 
-    // Force scroll if the key changed implies we moved to a new step
+    // Only jump when the active stage changes. Continuous follow-on-scroll
+    // makes it hard to read surrounding content while agents are streaming.
     const keyChanged = scrollState.key !== key;
 
-    if (keyChanged) {
-      // Scroll to the new active element immediately
-      target.scrollIntoView({ behavior: "smooth", block: "center" });
-    } else {
-      // If same key, only scroll if it's pushed off screen bottom (content growing)
-      const rect = target.getBoundingClientRect();
-      const viewHeight = window.innerHeight || document.documentElement.clientHeight;
-      if (rect.bottom > viewHeight) {
-        target.scrollIntoView({ behavior: "smooth", block: "nearest" });
-      }
-    }
-    scrollState = { key, height: target.scrollHeight };
+    if (keyChanged) target.scrollIntoView({ behavior: "smooth", block: "start" });
+
+    scrollState = { key };
   });
 }
 
