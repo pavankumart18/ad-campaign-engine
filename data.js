@@ -64,7 +64,7 @@ export const datasetMeta = {
       "spike_window",
       "signal_strength",
       "recommended_channel",
-      "expected_roi_lift_pct",
+      "expected_response_lift_pct",
     ],
   },
   complianceRulebook: {
@@ -718,7 +718,7 @@ for (let i = 1; i <= 36; i += 1) {
     spike_window: `${pad(startHour, 2)}:00-${pad(endHour, 2)}:59`,
     signal_strength: intBetween(55, 99),
     recommended_channel: pick(intelligenceChannels),
-    expected_roi_lift_pct: intBetween(4, 22),
+    expected_response_lift_pct: intBetween(3, 14),
   });
 }
 
@@ -1306,7 +1306,7 @@ for (let i = 0; i < 5; i += 1) {
     platform_type: "linear",
     daypart: "Primetime",
     program_genre: "Live Sports",
-    avail_impressions_30s: intBetween(180000, 520000),
+    avail_impressions_30s: intBetween(28000, 76000),
     cpm_30s: intBetween(28, 45),
     fill_rate_pct: intBetween(72, 94),
     country_code: "US",
@@ -1321,8 +1321,8 @@ for (let i = 0; i < 3; i += 1) {
     platform_type: "digital",
     daypart: "Primetime",
     program_genre: pick(genres),
-    avail_impressions_30s: intBetween(140000, 360000),
-    cpm_30s: intBetween(60, 65),
+    avail_impressions_30s: intBetween(22000, 62000),
+    cpm_30s: intBetween(58, 72),
     fill_rate_pct: intBetween(70, 90),
     country_code: "US",
     scte35_signal_status: "active",
@@ -1335,7 +1335,7 @@ pushInventoryRow({
   platform_type: "linear",
   daypart: "Primetime",
   program_genre: "Breaking News",
-  avail_impressions_30s: intBetween(90000, 180000),
+  avail_impressions_30s: intBetween(18000, 42000),
   cpm_30s: intBetween(30, 52),
   fill_rate_pct: intBetween(65, 88),
   country_code: "SA",
@@ -1352,8 +1352,8 @@ while (inventoryMatrix.length < 80) {
     platform_type,
     daypart: pick(dayparts),
     program_genre: pick(genres),
-    avail_impressions_30s: intBetween(50000, 880000),
-    cpm_30s: intBetween(8, 58),
+    avail_impressions_30s: intBetween(12000, 110000),
+    cpm_30s: intBetween(14, 68),
     fill_rate_pct: intBetween(45, 98),
     country_code: pick(countries),
     scte35_signal_status: chance(0.12) ? pick(["degraded", "missing"]) : "active",
@@ -1423,7 +1423,7 @@ for (let hour = 1; hour <= 24; hour += 1) {
     const platform_type = network === "Max ad-lite" || network === "Discovery+"
       ? "digital"
       : "linear";
-    const planned = intBetween(9000, 28000);
+    const planned = intBetween(1200, 5200);
     let delivered = Math.round(planned * (0.85 + rand() * 0.3));
     let delivery_pct = Math.round((delivered / planned) * 100);
     let scte35_signal_fired = platform_type === "digital" ? true : chance(0.9);

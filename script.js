@@ -13,13 +13,21 @@ function sanitizeDisplayText(value = "") {
     .replace(/\bolli_household_id\b/gi, "audience_household_id")
     .replace(/\bneo_order_id\b/gi, "booking_order_id")
     .replace(/\bstreamx_delivery_pct\b/gi, "delivery_pct")
+    .replace(/\bexpected_roi_lift_pct\b/gi, "expected_response_lift_pct")
+    .replace(/\broiReasoning\b/gi, "channelLogic")
+    .replace(/\bbefore_roi\b/gi, "before_outcome")
+    .replace(/\bafter_roi\b/gi, "after_outcome")
+    .replace(/\bdeterministic_roi\b/gi, "outcome_signal")
     .replace(/\bOlli Household ID\b/gi, "Audience Household ID")
     .replace(/\bNeo Order ID\b/gi, "Booking Order ID")
     .replace(/\bStreamx Delivery %\b/gi, "Delivery %")
+    .replace(/\bMeasurement and Attribution\b/gi, "Measurement and Learning")
     .replace(/\bDemo\s*Direct\b/gi, "Booking")
     .replace(/\bOlli\b/gi, "Audience Identity")
     .replace(/\bNEO\b/gi, "Planning")
     .replace(/\bNeo\b/gi, "Planning")
+    .replace(/\breturn on investment\b/gi, "measured outcome")
+    .replace(/\broi\b/gi, "outcome")
     .replace(/\bStreamX\b/gi, "Delivery");
 }
 
@@ -63,42 +71,132 @@ const WORKFLOW_AGENTS = [
   },
   {
     nodeId: "measurement-agent",
-    agentName: "Measurement and Attribution Master Agent",
+    agentName: "Measurement and Learning Master Agent",
     phase: 6,
-    focus: "clean-room matching, deterministic return on investment analysis, and post-campaign learning"
+    focus: "household match validation, cross-channel outcome reading, and next-flight planning"
   }
 ];
 
 const MASTER_AGENT_SUBAGENTS = {
   "planning-identity-agent": [
-    { id: "audience-segmentation", name: "Audience Segmentation", summary: "Scores the natural-language brief against WBD viewer profiles to isolate high-fit cohorts." },
-    { id: "cross-platform-id-resolver", name: "Cross-Platform ID Resolver", summary: "Uses the audience identity graph to deduplicate households across streaming and linear touchpoints." },
-    { id: "behavioral-indexer", name: "Behavioral Indexer", summary: "Ranks behavioral tags, dayparts, and networks that over-index for the brief." }
+    {
+      id: "audience-segmentation",
+      name: "Audience Segmentation",
+      summary: "Scores the natural-language brief against WBD viewer profiles to isolate high-fit cohorts.",
+      definition: "Identifies which audience groups best match the campaign brief before any channel decisions are made."
+    },
+    {
+      id: "cross-platform-id-resolver",
+      name: "Cross-Platform ID Resolver",
+      summary: "Uses the audience identity graph to deduplicate households across streaming and linear touchpoints.",
+      definition: "Connects streaming and linear identifiers so the same household is not counted multiple times."
+    },
+    {
+      id: "behavioral-indexer",
+      name: "Behavioral Indexer",
+      summary: "Ranks behavioral tags, dayparts, and networks that over-index for the brief.",
+      definition: "Translates raw audience behavior into the viewing habits, networks, and tags that matter most for planning."
+    }
   ],
   "inventory-yield-agent": [
-    { id: "predictive-capacity", name: "Predictive Capacity", summary: "Checks whether the recommended mix can be fulfilled without overselling future avails." },
-    { id: "yield-optimizer", name: "Yield Optimizer", summary: "Sets premium versus blended CPM guidance across streaming and linear inventory." },
-    { id: "signal-forecaster", name: "Signal Forecaster", summary: "Applies trend, news, and external-feed signals to recommend timing windows." }
+    {
+      id: "predictive-capacity",
+      name: "Predictive Capacity",
+      summary: "Checks whether the recommended mix can be fulfilled without overselling future avails.",
+      definition: "Tests whether the selected route has enough believable supply to launch without forcing weak inventory."
+    },
+    {
+      id: "yield-optimizer",
+      name: "Yield Optimizer",
+      summary: "Sets premium versus blended CPM guidance across streaming and linear inventory.",
+      definition: "Turns audience fit and market pressure into realistic pricing guidance for each channel."
+    },
+    {
+      id: "signal-forecaster",
+      name: "Signal Forecaster",
+      summary: "Applies trend, news, and external-feed signals to recommend timing windows.",
+      definition: "Reads timing signals to show when audience attention is most likely to be strongest."
+    }
   ],
   "booking-proposals-agent": [
-    { id: "deal-structurer", name: "Booking Structurer", summary: "Builds a converged contract structure across the chosen networks and platforms." },
-    { id: "global-compliance-bot", name: "Global Compliance Bot", summary: "Screens the product, audience, and markets for regulatory risk before booking." },
-    { id: "proposal-assembler", name: "Proposal Assembler", summary: "Turns yield and compliance outputs into a buyer-ready proposal package." }
+    {
+      id: "deal-structurer",
+      name: "Booking Structurer",
+      summary: "Builds a converged contract structure across the chosen networks and platforms.",
+      definition: "Shapes the plan into bookable placements, channel commitments, and guarantee logic."
+    },
+    {
+      id: "global-compliance-bot",
+      name: "Global Compliance Bot",
+      summary: "Screens the product, audience, and markets for regulatory risk before booking.",
+      definition: "Checks whether the proposed audience, markets, and creative path stay inside policy guardrails."
+    },
+    {
+      id: "proposal-assembler",
+      name: "Proposal Assembler",
+      summary: "Turns yield and compliance outputs into a buyer-ready proposal package.",
+      definition: "Packages the scenario into a proposal that a sales or planning team could actually review."
+    }
   ],
   "trafficking-signals-agent": [
-    { id: "asset-qa", name: "Asset QA", summary: "Validates that creative and metadata are ready across TV, CTV, and mobile surfaces." },
-    { id: "streamx-router", name: "Delivery Signal Router", summary: "Sets routing and SCTE-35 handling for live and on-demand delivery paths." },
-    { id: "launch-readiness", name: "Launch Readiness", summary: "Finalizes the trafficking checklist and escalation points before activation." }
+    {
+      id: "asset-qa",
+      name: "Asset QA",
+      summary: "Validates that creative and metadata are ready across TV, CTV, and mobile surfaces.",
+      definition: "Checks that the creative package and metadata are ready before the campaign goes live."
+    },
+    {
+      id: "streamx-router",
+      name: "Delivery Signal Router",
+      summary: "Sets routing and SCTE-35 handling for live and on-demand delivery paths.",
+      definition: "Validates the delivery path so signals, routing, and ad markers fire correctly in each environment."
+    },
+    {
+      id: "launch-readiness",
+      name: "Launch Readiness",
+      summary: "Finalizes the trafficking checklist and escalation points before activation.",
+      definition: "Confirms the campaign can launch cleanly and flags anything operations still needs to watch."
+    }
   ],
   "inflight-operations-agent": [
-    { id: "real-time-pacing", name: "Real-Time Pacing", summary: "Monitors line-item delivery risk and channel under-performance as the campaign runs." },
-    { id: "autonomous-make-good", name: "Autonomous Make-Good", summary: "Reallocates spend from weak channels into stronger inventory when guarantees are at risk." },
-    { id: "ops-alerting", name: "Ops Alerting", summary: "Logs root causes and recovery instructions for human review." }
+    {
+      id: "real-time-pacing",
+      name: "Real-Time Pacing",
+      summary: "Monitors line-item delivery risk and channel under-performance as the campaign runs.",
+      definition: "Tracks whether the live campaign is pacing toward its delivery target or starting to slip."
+    },
+    {
+      id: "autonomous-make-good",
+      name: "Autonomous Make-Good",
+      summary: "Reallocates spend from weak channels into stronger inventory when guarantees are at risk.",
+      definition: "Shifts budget when needed so the plan can recover before an under-delivery problem grows."
+    },
+    {
+      id: "ops-alerting",
+      name: "Ops Alerting",
+      summary: "Logs root causes and recovery instructions for human review.",
+      definition: "Documents what went wrong, what changed, and what a human operator should know next."
+    }
   ],
   "measurement-agent": [
-    { id: "clean-room-matcher", name: "Clean Room Matcher", summary: "Matches synthetic exposure logs against sales outcomes in a privacy-safe workflow." },
-    { id: "deterministic-roi", name: "Deterministic ROI Calculator", summary: "Calculates lift, efficiency, and payback from the converged campaign." },
-    { id: "learning-agenda", name: "Learning Agenda", summary: "Translates the measured outcome into next-flight recommendations." }
+    {
+      id: "household-match-validator",
+      name: "Household Match Validator",
+      summary: "Confirms how many deduplicated households can be matched back to the privacy-safe exposure records.",
+      definition: "Validates the measurable household base before any outcome readout is interpreted."
+    },
+    {
+      id: "outcome-pattern-reader",
+      name: "Outcome Pattern Reader",
+      summary: "Explains which audience pockets, channels, and delivery conditions produced the strongest measured response signals.",
+      definition: "Translates matched delivery results into a clear explanation of what changed and where the strongest signals appeared."
+    },
+    {
+      id: "next-flight-planner",
+      name: "Next Flight Planner",
+      summary: "Turns the measurement readout into the clearest next-step recommendation for the next campaign cycle.",
+      definition: "Converts the measured response pattern into an actionable follow-up plan for the next flight."
+    }
   ]
 };
 
@@ -115,6 +213,7 @@ const AGENT_DATASET_MAP = {
   "In-Flight Operations Master Agent": "liveDeliveryLog",
   "measurement-agent": "liveDeliveryLog",
   "Measurement and Attribution Master Agent": "liveDeliveryLog",
+  "Measurement and Learning Master Agent": "liveDeliveryLog",
   "planning-identity": "unifiedAudienceDataset",
   "inventory-yield": "inventoryMatrix",
   "booking-proposals": "inventoryMatrix",
@@ -141,7 +240,7 @@ const AGENT_ACTION_SUMMARY = {
   "booking-proposals-agent": "Structured the converged proposal and aligned it with compliance and guarantee logic.",
   "trafficking-signals-agent": "Confirmed asset readiness, routing setup, and signal handling before launch.",
   "inflight-operations-agent": "Simulated pacing, executed make-good logic, and protected the delivery guarantee.",
-  "measurement-agent": "Matched outcomes, calculated deterministic ROI, and wrote the learning agenda.",
+  "measurement-agent": "Validated matched households, interpreted cross-channel outcome signals, and wrote the next-flight learning package.",
   [PARALLEL_COMPLIANCE_NODE_ID]: "Validated campaign parameters against compliance rules and provided compliant alternatives when restrictions were detected."
 };
 
@@ -173,63 +272,63 @@ const PLAN_VARIANTS = [
     key: "scenario-a",
     routeType: "precision",
     planLabel: "Scenario A",
-    title: "Audience Precision Route",
+    title: "Streaming-Heavy Route",
     promptTile: "Scenario A",
-    promptText: "Lead with the highest-fit cohort and let the early evidence decide how far the plan should broaden.",
-    strategy: "Precision-led route designed to convert or learn from the highest-fit audience pocket before broadening spend.",
-    why: "This route is strongest when the matched audience has a concentrated pocket of high-intent households that should outperform the broader pool quickly.",
-    allocationStrategy: "Initial allocation: lead with the highest-fit premium inventory, keep selective reinforcement across channels, and preserve an optimization reserve.",
-    deliveryTiming: "Lean into the strongest high-attention windows first, then expand only when outcome quality stays strong.",
-    roiReasoning: "Return on investment improves when the first dollars land on the highest-fit cohort and the system delays broadening until performance is proven.",
+    promptText: "Lead with a streaming-heavy mix when the audience leans on-demand and the strongest lift sits in streaming inventory.",
+    strategy: "Streaming-heavy route designed to let on-demand viewing behavior carry the opening weight while linear supports reinforcement and reach control.",
+    why: "This route is strongest when streaming-heavy households, younger viewers, or binge-oriented behaviors are doing more of the work than the linear signals.",
+    allocationStrategy: "Initial allocation: let streaming carry the majority of delivery, keep a lighter linear support layer, and preserve reserve budget for pacing corrections.",
+    deliveryTiming: "Lean into the strongest streaming attention windows first, then widen linear support only where overlap and frequency stay controlled.",
+    channelLogic: "Use this route when the matched audience clearly skews toward streaming-heavy behavior and the top streaming networks hold the strongest audience fit.",
     priorities: {
       "planning-identity-agent": "Prioritize high-intent multi-device households and the tightest behavioral cohort fit.",
       "inventory-yield-agent": "Prioritize premium inventory pockets and yield windows that can convert quickly.",
       "booking-proposals-agent": "Structure the proposal around the highest-fit placements first, with lighter support layers.",
       "trafficking-signals-agent": "Optimize routing for fast swaps, strong metadata, and responsive cross-screen delivery.",
       "inflight-operations-agent": "Protect the best-performing pockets first and reallocate quickly when weaker inventory slips.",
-      "measurement-agent": "Emphasize incremental lift, response quality, and fast learning."
+      "measurement-agent": "Emphasize household match quality, outcome signal clarity, and fast learning."
     }
   },
   {
     key: "scenario-b",
     routeType: "scale",
     planLabel: "Scenario B",
-    title: "Household Scale Route",
+    title: "Linear-Heavy Route",
     promptTile: "Scenario B",
-    promptText: "Start with the broadest trusted household reach the data supports, then reinforce only where incremental lift is needed.",
-    strategy: "Scale-led route designed to build efficient household reach before layering precision support.",
-    why: "This route is strongest when the matched audience is distributed across broad household viewing behavior and reach efficiency matters more than narrow concentration.",
-    allocationStrategy: "Initial allocation: anchor on the most reliable reach inventory, add targeted support where it improves duplication or frequency, and keep a reserve for protection.",
-    deliveryTiming: "Prioritize the steadiest high-capacity windows first, then add support layers where incremental lift is available.",
-    roiReasoning: "Return on investment improves when the campaign secures efficient broad reach first and only pays for added precision when it creates incremental value.",
+    promptText: "Start with a linear-heavy mix when the audience is broad, older-skewing, or more reachable through dependable linear inventory.",
+    strategy: "Linear-heavy route designed to build stable household coverage first, then use streaming as a support layer for reinforcement and duplication control.",
+    why: "This route is strongest when the matched audience is spread across broad household viewing behavior and the linear signals are stronger than the streaming ones.",
+    allocationStrategy: "Initial allocation: anchor on the most reliable linear reach inventory, add streaming where it sharpens frequency control, and keep a reserve for protection.",
+    deliveryTiming: "Prioritize the steadiest high-capacity linear windows first, then add streaming support where incremental reach is still available.",
+    channelLogic: "Use this route when the linear-heavy share, linear affinity, and strongest-fit linear networks all point to broader television coverage as the cleanest opening move.",
     priorities: {
       "planning-identity-agent": "Prioritize broad household clusters, stable audiences, and the markets where scale is efficient.",
       "inventory-yield-agent": "Prioritize high-capacity avails and dependable reach windows before adding support layers.",
       "booking-proposals-agent": "Structure the proposal around broad reach with efficient reinforcement layers.",
       "trafficking-signals-agent": "Harden signal readiness and metadata quality across the largest reach surfaces.",
       "inflight-operations-agent": "Protect guarantees first and use support channels only when scale needs help.",
-      "measurement-agent": "Emphasize deduplicated reach, household penetration, and efficient scale."
+      "measurement-agent": "Emphasize deduplicated reach, household penetration, and what the scale path actually taught the team."
     }
   },
   {
     key: "scenario-c",
     routeType: "adaptive",
     planLabel: "Scenario C",
-    title: "Adaptive Outcome Route",
+    title: "Balanced Route",
     promptTile: "Scenario C",
-    promptText: "Balance fit, scale, and reserve so the system can pivot once pacing and outcome signals appear.",
-    strategy: "Adaptive route designed to preserve flexibility across channels, markets, and pacing conditions.",
-    why: "This route is strongest when multiple audience signals are credible and the plan should stay responsive instead of locking into an extreme opening move.",
+    promptText: "Keep the opening mix balanced when streaming and linear both show credible audience fit and the brief needs flexibility more than a hard bias.",
+    strategy: "Balanced route designed to keep both channels credible from the start so pacing and response evidence can decide where extra weight should go.",
+    why: "This route is strongest when the audience evidence is mixed or when streaming and linear both have believable reasons to stay in the plan.",
     allocationStrategy: "Initial allocation: keep both major channels viable, hold a meaningful reserve, and let in-flight evidence decide the final weight.",
-    deliveryTiming: "Split delivery across the best attention windows, then rebalance every pacing cycle using readiness and outcome signals.",
-    roiReasoning: "Return on investment improves when the system can pivot between scale and precision without paying the cost of restarting the plan.",
+    deliveryTiming: "Split delivery across the best shared attention windows, then rebalance every pacing cycle using readiness and response signals.",
+    channelLogic: "Use this route when the streaming-heavy and linear-heavy signals are close enough that a balanced opening is safer than forcing an extreme channel bias.",
     priorities: {
       "planning-identity-agent": "Balance high-fit cohorts and broader households so downstream stages can pivot without rebuilding the audience.",
       "inventory-yield-agent": "Maintain comparable visibility across reach, cost, and timing so the system can rebalance confidently.",
       "booking-proposals-agent": "Build a flexible proposal with explicit pivot points by channel and market.",
       "trafficking-signals-agent": "Maintain symmetric launch readiness across all candidate delivery paths.",
       "inflight-operations-agent": "Rebalance calmly between channels and reserve based on live delivery quality.",
-      "measurement-agent": "Evaluate channel interaction, resilience, and the next best move."
+      "measurement-agent": "Evaluate channel interaction, resilience, and the clearest next move."
     }
   }
 ];
@@ -241,7 +340,7 @@ const VARIANT_SUBAGENT_IDS = {
     "booking-proposals-agent": ["deal-structurer", "proposal-assembler"],
     "trafficking-signals-agent": ["asset-qa", "streamx-router"],
     "inflight-operations-agent": ["real-time-pacing", "autonomous-make-good"],
-    "measurement-agent": ["clean-room-matcher", "deterministic-roi"]
+    "measurement-agent": ["household-match-validator", "outcome-pattern-reader"]
   },
   "scenario-b": {
     "planning-identity-agent": ["audience-segmentation", "cross-platform-id-resolver"],
@@ -249,7 +348,7 @@ const VARIANT_SUBAGENT_IDS = {
     "booking-proposals-agent": ["deal-structurer", "global-compliance-bot"],
     "trafficking-signals-agent": ["launch-readiness"],
     "inflight-operations-agent": ["real-time-pacing", "ops-alerting"],
-    "measurement-agent": ["deterministic-roi", "learning-agenda"]
+    "measurement-agent": ["outcome-pattern-reader", "next-flight-planner"]
   },
   "scenario-c": {
     "planning-identity-agent": ["audience-segmentation", "cross-platform-id-resolver", "behavioral-indexer"],
@@ -257,7 +356,7 @@ const VARIANT_SUBAGENT_IDS = {
     "booking-proposals-agent": ["deal-structurer", "global-compliance-bot", "proposal-assembler"],
     "trafficking-signals-agent": ["asset-qa", "streamx-router", "launch-readiness"],
     "inflight-operations-agent": ["real-time-pacing", "autonomous-make-good", "ops-alerting"],
-    "measurement-agent": ["clean-room-matcher", "deterministic-roi", "learning-agenda"]
+    "measurement-agent": ["household-match-validator", "outcome-pattern-reader", "next-flight-planner"]
   }
 };
 
@@ -315,15 +414,27 @@ function getSubAgentsForNode(nodeId = "", context = null) {
 function buildScopedSubAgentResults(nodeId = "", context = null, factories = {}) {
   const activeSubAgents = getSubAgentsForNode(nodeId, context);
   return activeSubAgents.map((subAgent, index) => {
-    const factory = factories[subAgent.id] || factories[`index-${index}`];
-    if (typeof factory === "function") {
-      return factory(subAgent, index);
-    }
-    return {
+    const baseline = {
       id: subAgent.id,
       name: subAgent.name,
+      summary: subAgent.summary || "",
+      definition: subAgent.definition || subAgent.summary || "",
       details: [subAgent.summary || `${subAgent.name} completed its scoped task.`]
     };
+    const factory = factories[subAgent.id] || factories[`index-${index}`];
+    if (typeof factory === "function") {
+      const result = factory(subAgent, index) || {};
+      return {
+        ...baseline,
+        ...result,
+        id: result.id || baseline.id,
+        name: result.name || baseline.name,
+        summary: result.summary || baseline.summary,
+        definition: result.definition || baseline.definition,
+        details: Array.isArray(result.details) && result.details.length ? result.details : baseline.details
+      };
+    }
+    return baseline;
   });
 }
 
@@ -864,9 +975,7 @@ function buildRunProfile(agentOutputs = [], runContext = {}) {
     makeGoodHour: seededInt(seed, 10, 15, 8),
     linearDipFactor: seededRange(seed, 0.48, 0.82, 9),
     digitalBoostFactor: seededRange(seed, 1.07, 1.3, 10),
-    makeGoodBudget: inflight.shift_budget_usd || seededInt(seed, 2400, 4300, 11),
-    roiBase: inflight.before_roi ? Number(inflight.before_roi) - 1.58 : seededRange(seed, -0.08, 0.22, 12),
-    roiLift: inflight.after_roi && inflight.before_roi ? Number(inflight.after_roi) - Number(inflight.before_roi) : seededRange(seed, 0.02, 0.22, 13)
+    makeGoodBudget: inflight.shift_budget_usd || seededInt(seed, 1200, 2800, 11)
   };
 }
 
@@ -954,16 +1063,27 @@ function buildPacingSeries(logs, profile = {}) {
 function buildReachSummary(audience, logs, profile = {}, campaignState = null) {
   if (campaignState) {
     const planning = campaignState.stageOutputs?.["planning-identity-agent"]?.audience_summary || {};
+    const booking = campaignState.stageOutputs?.["booking-proposals-agent"]?.booking_summary || {};
     const inflight = campaignState.stageOutputs?.["inflight-operations-agent"]?.inflight_summary || {};
     const finalAllocation = inflight.final_allocation || campaignState.selectedScenario?.allocation || {};
-    const uniqueHouseholds = Math.max(1, Number(planning.unique_households || campaignState.intelligence?.uniqueHouseholds || 1));
-    const deviceCount = Math.max(1, Number(campaignState.intelligence?.matchedRows?.length || uniqueHouseholds * 2));
+    const sampleHouseholds = Math.max(1, Number(planning.unique_households || campaignState.intelligence?.uniqueHouseholds || 1));
     const linearPct = Math.round(clampNumber(finalAllocation.linearPct || 40, 10, 80));
     const overlapPct = Math.round(clampNumber(Number(planning.overlap_pct || campaignState.intelligence?.overlapPct || 18), 4, 64));
+    const totalImpressions = (booking.line_items || []).reduce((sum, row) => sum + Number(row.impressions || 0), 0);
+    const targetFrequency = clampNumber(
+      2.4 + (Number(finalAllocation.streamingPct || 50) / 160) + (overlapPct / 140),
+      2.2,
+      4.1
+    );
+    const modeledHouseholds = totalImpressions
+      ? Math.max(sampleHouseholds * 600, Math.round((totalImpressions / targetFrequency) / 100) * 100)
+      : sampleHouseholds * 2100;
+    const deviceCount = Math.max(1, Math.round(modeledHouseholds * clampNumber(1.62 + (overlapPct / 100), 1.6, 2.25)));
     return {
-      uniqueHouseholds,
+      uniqueHouseholds: sampleHouseholds,
+      modeledHouseholds,
       deviceCount,
-      scaledReach: uniqueHouseholds * 2100,
+      scaledReach: modeledHouseholds,
       linearPct,
       digitalPct: 100 - linearPct,
       overlapPct
@@ -1015,7 +1135,7 @@ function buildExecutiveCampaignSummary(campaignState = null, reach = null, makeG
   const lineItems = booking.line_items || [];
   const matchedProfiles = Math.max(0, Number(planning.matched_profiles || campaignState.intelligence?.matchedRows?.length || 0));
   const uniqueUsers = Math.max(0, Number(planning.unique_households || campaignState.intelligence?.uniqueHouseholds || 0));
-  const reachedHouseholds = Math.max(0, Number(measurement.matched_households || reach?.uniqueHouseholds || uniqueUsers));
+  const reachedHouseholds = Math.max(0, Number(reach?.modeledHouseholds || reach?.scaledReach || reach?.uniqueHouseholds || measurement.matched_households || uniqueUsers));
   const totalImpressions = lineItems.reduce((sum, row) => sum + Number(row.impressions || 0), 0);
   const totalSpend = lineItems.reduce((sum, row) => sum + Number(row.spend_usd || 0), 0);
   const blendedCpm = totalImpressions
@@ -1066,7 +1186,7 @@ function buildExecutiveCampaignSummary(campaignState = null, reach = null, makeG
     : "Frequency will appear once the plan has both projected reach and booked impressions.";
   const frequencyLabel = frequencyPerUser ? `${frequencyPerUser} times per reached household` : "Pending";
   const frequencySource = frequencyPerUser
-    ? `This comes from dividing ${totalImpressionsLabel} total booked impressions by ${reachedHouseholdsLabel} households expected to be reached.`
+    ? `This comes from dividing ${totalImpressionsLabel} total booked impressions by ${reachedHouseholdsLabel} projected households expected to be reached.`
     : "This metric is waiting for both booked impression totals and projected reached households.";
   const lineItemLabel = `${lineItems.length} placements covering ${totalImpressions.toLocaleString()} booked impressions`;
   const planMix = [
@@ -1241,8 +1361,8 @@ function fallbackWhyForRole(agent) {
   if (role === "inventory-yield") return "This inventory yield decision matters because timing and demand signals directly influence conversion efficiency.";
   if (role === "booking-proposals") return "This booking decision matters because allocation structure drives reach, cost efficiency, and outcome potential.";
   if (role === "trafficking-signals") return "This trafficking decision matters because signal integrity and routing quality determine whether delivery can execute as planned.";
-  if (role === "inflight-operations") return "This in-flight operations decision matters because pacing correction protects return on investment during live execution.";
-  if (role === "measurement") return "This measurement decision matters because reliable attribution is required to improve return on investment in the next cycle.";
+  if (role === "inflight-operations") return "This in-flight operations decision matters because pacing correction protects delivery quality during live execution.";
+  if (role === "measurement") return "This measurement decision matters because reliable attribution is required to carry useful learning into the next cycle.";
   if (role === "compliance-agent") return "This compliance decision matters because non-compliant placements create legal risk and force avoidable rework.";
   return "This action matters because it influences downstream orchestration quality and execution reliability.";
 }
@@ -1284,7 +1404,7 @@ function buildApprovedPlanRows(inventory) {
   if (!inventory.length) return [];
   const approved = inventory.filter((row) => row.country_code !== "SA");
   const rows = approved.slice(0, 12).map((row, idx) => {
-    const impressions = Math.round(row.avail_impressions_30s * 0.6);
+    const impressions = Math.round(row.avail_impressions_30s * 0.35);
     const spend = Math.round((impressions / 1000) * row.cpm_30s);
     return {
       line_item_id: `LINE-${String(idx + 1).padStart(3, "0")}`,
@@ -1307,8 +1427,8 @@ function buildApprovedPlanRows(inventory) {
       platform_type: filler.platform_type,
       country_code: "US",
       daypart: filler.daypart,
-      impressions: 120000,
-      spend_usd: 8400,
+      impressions: 18000,
+      spend_usd: Math.round((18000 / 1000) * Number(filler.cpm_30s || 40)),
       cpm_30s: filler.cpm_30s,
       status: "approved"
     });
@@ -1321,22 +1441,11 @@ function buildMakeGoodSummary(logs, profile = {}, campaignState = null) {
   if (campaignState?.stageOutputs?.["inflight-operations-agent"]?.inflight_summary) {
     const inflight = campaignState.stageOutputs["inflight-operations-agent"].inflight_summary;
     return {
-      shiftBudget: Math.round(inflight.shift_budget_usd || 0),
-      beforeRoi: roundToTwo(inflight.before_roi || productRoiBaseline(campaignState.productFamily?.key || ""), 2),
-      afterRoi: roundToTwo(inflight.after_roi || productRoiBaseline(campaignState.productFamily?.key || ""), 2)
+      shiftBudget: Math.round(inflight.shift_budget_usd || 0)
     };
   }
-  const linear = logs.filter((row) => row.platform_type === "linear");
-  const linearPlanned = linear.reduce((sum, row) => sum + row.planned_impressions, 0);
-  const linearDelivered = linear.reduce((sum, row) => sum + row.delivered_impressions, 0) * clampNumber(1 + (profile.linearDeliveryShift || 0), 0.65, 1.25);
-  const linearPct = linearPlanned ? linearDelivered / linearPlanned : 1;
-  const beforeRoi = roundToTwo(1.58 + (profile.roiBase || 0), 2);
-  const lift = linearPct < 0.9 ? (0.18 + (profile.roiLift || 0)) : (0.08 + (profile.roiLift || 0) * 0.5);
-  const afterRoi = roundToTwo(beforeRoi + lift, 2);
   return {
-    shiftBudget: Math.round(profile.makeGoodBudget || 3200),
-    beforeRoi,
-    afterRoi
+    shiftBudget: Math.round(profile.makeGoodBudget || 1800)
   };
 }
 
@@ -1423,7 +1532,7 @@ function extractBudgetUsd(prompt = "") {
   if (kMatch) return Math.round(Number(kMatch[1]) * 1000);
   const usdMatch = compact.match(/\$?\s*(\d{4,9}(?:\.\d+)?)/);
   if (usdMatch) return Math.round(Number(usdMatch[1]));
-  return 50000;
+  return 25000;
 }
 
 function splitPipeValue(value = "") {
@@ -1515,7 +1624,7 @@ function buildCampaignProfile(prompt = "") {
     wantsSports: /\b(sports|finals|playoff|tournament)\b/.test(lower),
     wantsOrganic: /\b(organic|healthy|natural)\b/.test(lower),
     wantsReach: /\b(reach|awareness|launch|premiere|broad)\b/.test(lower),
-    wantsEfficiency: /\b(roi|return on investment|efficiency|sales|conversion|performance)\b/.test(lower),
+    wantsEfficiency: /\b(efficiency|sales|conversion|performance|response|cost control)\b/.test(lower),
   };
 }
 
@@ -1813,19 +1922,18 @@ function buildDeliveryTiming(intelligence, variantKey = "") {
 
 function buildScenarioRecommendationReason(intelligence, variantKey = "") {
   const routeType = getVariantRouteType(variantKey);
-  const tag = intelligence.indexedTag;
   const rankedNetworks = rankedNetworksForVariant(intelligence, variantKey);
   const leadNetwork = rankedNetworks[0];
-  const tagText = tag?.label || intelligence.topSegments[0]?.label || "matched viewers";
-  const liftText = tag?.lift ? `${roundToTwo(tag.lift, 1)}x` : `${roundToTwo(leadNetwork?.lift || 1, 1)}x`;
+  const demographicReadout = buildDemographicReadout(intelligence);
+  const behavioralReadout = buildBehavioralReadout(intelligence);
 
   if (routeType === "precision") {
-    return `${tagText} over-index ${liftText} on ${leadNetwork?.name || "Max"}, so a precision-led opening move gives the cleanest path to fast outcome lift.`;
+    return `${intelligence.streamingHeavyShare}% of matched households lean streaming-heavy versus ${intelligence.linearHeavyShare}% linear-heavy, ${demographicReadout}, and ${leadNetwork?.name || "Max"} is the strongest first network, so a streaming-heavy opening is the cleanest first move.`;
   }
   if (routeType === "scale") {
-    return `${tagText} are spread across broader household behavior, with ${leadNetwork?.name || "CNN"} offering the most efficient first step for scaled reach.`;
+    return `${intelligence.linearHeavyShare}% of matched households lean linear-heavy, ${demographicReadout}, and ${leadNetwork?.name || "CNN"} provides the steadiest opening lane for linear-weighted reach.`;
   }
-  return `The matched audience splits credibly across multiple behaviors, so an adaptive route reduces miss-risk while preserving room to rebalance in flight.`;
+  return `Streaming-heavy behavior sits at ${intelligence.streamingHeavyShare}% and linear-heavy behavior sits at ${intelligence.linearHeavyShare}%, ${demographicReadout}, and ${behavioralReadout}, so a balanced opening keeps both behaviors covered without forcing an early bias.`;
 }
 
 function compactScenarioLabel(value = "", fallback = "Audience") {
@@ -1874,20 +1982,41 @@ function deriveCampaignGoalLabel(campaign = {}) {
   return "market momentum";
 }
 
+function buildDemographicReadout(intelligence = {}) {
+  const avgAge = intelligence.avgAge || 0;
+  const youngShare = intelligence.youngShare || 0;
+  const olderShare = intelligence.olderShare || 0;
+  const parentShare = intelligence.parentShare || 0;
+  if (parentShare >= 24) {
+    return `${parentShare}% of the matched audience indexes as parents and the average matched age is ${avgAge}`;
+  }
+  if (youngShare >= olderShare + 8) {
+    return `${youngShare}% of the matched audience is under 40 and the average matched age is ${avgAge}`;
+  }
+  if (olderShare >= youngShare + 8) {
+    return `${olderShare}% of the matched audience is age 45 or older and the average matched age is ${avgAge}`;
+  }
+  return `the average matched age is ${avgAge}, with ${youngShare}% under 40 and ${olderShare}% age 45 or older`;
+}
+
+function buildBehavioralReadout(intelligence = {}) {
+  const topPlatform = intelligence.topPlatforms?.[0]?.label || "connected TV";
+  const topTag = intelligence.indexedTag?.label || intelligence.topTags?.[0]?.label || "multi-platform viewing";
+  return `${topPlatform} is the strongest platform signal and ${topTag} is the clearest behavioral tag`;
+}
+
 function buildScenarioTitle(intelligence = {}, variantKey = "") {
   const routeType = getVariantRouteType(variantKey);
   const audienceLabel = deriveScenarioAudienceLabel(intelligence);
   const marketLabel = deriveScenarioMarketLabel(intelligence);
   const productLabel = deriveScenarioProductLabel(intelligence);
   if (routeType === "precision") {
-    const suffix = intelligence.campaign?.wantsEfficiency ? "Conversion Sprint" : "Precision Sprint";
-    return `${audienceLabel} ${suffix}`;
+    return `${audienceLabel} Streaming-Heavy Route`;
   }
   if (routeType === "scale") {
-    const suffix = intelligence.campaign?.wantsReach ? "Reach Builder" : "Scale Builder";
-    return `${marketLabel} ${suffix}`;
+    return `${marketLabel} Linear-Heavy Route`;
   }
-  return `${productLabel} Adaptive Momentum`;
+  return `${productLabel} Balanced Route`;
 }
 
 function buildScenarioPromptText(intelligence = {}, variantKey = "", networks = []) {
@@ -1897,13 +2026,14 @@ function buildScenarioPromptText(intelligence = {}, variantKey = "", networks = 
   const goalLabel = deriveCampaignGoalLabel(intelligence.campaign || {});
   const leadNetwork = networks[0]?.name || "Max";
   const supportNetwork = networks[1]?.name || "CNN";
+  const demographicReadout = buildDemographicReadout(intelligence);
   if (routeType === "precision") {
-    return `Lead with ${audienceLabel} because the brief is chasing ${goalLabel} and ${leadNetwork} gives this cohort the strongest opening signal.`;
+    return `Lead with a streaming-heavy mix because ${audienceLabel} skews on-demand, ${demographicReadout}, and ${leadNetwork} gives this audience the strongest opening signal for ${goalLabel}.`;
   }
   if (routeType === "scale") {
-    return `Build household coverage in ${marketLabel} with ${leadNetwork} as the opening reach lane, then use ${supportNetwork} only where incremental lift stays clean.`;
+    return `Build household coverage in ${marketLabel} with a linear-heavy opening on ${leadNetwork} because ${demographicReadout}, then use ${supportNetwork} only where it extends the audience cleanly.`;
   }
-  return `Keep ${leadNetwork} and ${supportNetwork} both live so the campaign can pursue ${goalLabel} without locking into one lane before pacing evidence arrives.`;
+  return `Keep ${leadNetwork} and ${supportNetwork} both live in a balanced mix because ${demographicReadout}, so the campaign can pursue ${goalLabel} without forcing an early channel bias.`;
 }
 
 function buildScenarioStrategyText(intelligence = {}, variantKey = "") {
@@ -1911,13 +2041,14 @@ function buildScenarioStrategyText(intelligence = {}, variantKey = "") {
   const audienceLabel = deriveScenarioAudienceLabel(intelligence);
   const marketLabel = deriveScenarioMarketLabel(intelligence);
   const overlapPct = intelligence.overlapPct || 0;
+  const behavioralReadout = buildBehavioralReadout(intelligence);
   if (routeType === "precision") {
-    return `Use ${audienceLabel} as the control cohort, keep the opening window tight, and rely on ${overlapPct}% cross-platform overlap to manage frequency while the highest-fit placements prove themselves.`;
+    return `Use ${audienceLabel} as the anchor audience, let streaming carry the opening weight, and rely on ${overlapPct}% cross-platform overlap plus the fact that ${behavioralReadout} to keep reinforcement efficient while the strongest on-demand placements prove themselves.`;
   }
   if (routeType === "scale") {
-    return `Use ${marketLabel} and the strongest adjacent markets to build efficient household penetration first, then add precision support only where the reach curve starts to flatten.`;
+    return `Use ${marketLabel} and the strongest adjacent markets to build linear-led household penetration first, then add streaming support only where the reach curve starts to flatten and the audience still needs incremental younger or lighter-viewing households.`;
   }
-  return `Keep precision and scale both viable because the matched audience shows ${intelligence.streamingHeavyShare}% streaming-heavy and ${intelligence.linearHeavyShare}% linear-heavy behavior, making rebalancing a real advantage instead of a fallback.`;
+  return `Keep both channels viable because the matched audience shows ${intelligence.streamingHeavyShare}% streaming-heavy and ${intelligence.linearHeavyShare}% linear-heavy behavior, and ${behavioralReadout}, making a balanced reallocation path a genuine advantage instead of a fallback.`;
 }
 
 function buildScenarioAllocationStrategy(intelligence = {}, variantKey = "", allocation = null, networks = []) {
@@ -1926,7 +2057,7 @@ function buildScenarioAllocationStrategy(intelligence = {}, variantKey = "", all
   const streamingNetworks = networks.filter((item) => ["Max", "discovery+"].includes(item.name)).map((item) => item.name).join(" and ") || "Max";
   const linearNetworks = networks.filter((item) => !["Max", "discovery+"].includes(item.name)).map((item) => item.name).join(" and ") || "CNN";
   if (routeType === "precision") {
-    return `Open with ${plan.streamingPct}% in ${streamingNetworks}, keep ${plan.linearPct}% in ${linearNetworks} as support reach, and protect ${plan.reservePct}% for outcome-led shifts.`;
+    return `Open with ${plan.streamingPct}% in ${streamingNetworks}, keep ${plan.linearPct}% in ${linearNetworks} as support reach, and protect ${plan.reservePct}% for pacing-led shifts.`;
   }
   if (routeType === "scale") {
     return `Open with ${plan.linearPct}% in ${linearNetworks} for household scale, keep ${plan.streamingPct}% in ${streamingNetworks} for reinforcement and frequency control, and hold ${plan.reservePct}% in reserve.`;
@@ -1934,17 +2065,18 @@ function buildScenarioAllocationStrategy(intelligence = {}, variantKey = "", all
   return `Open with ${plan.streamingPct}% streaming across ${streamingNetworks}, ${plan.linearPct}% linear across ${linearNetworks}, and keep ${plan.reservePct}% flexible so pacing can decide the final mix.`;
 }
 
-function buildScenarioRoiReasoning(intelligence = {}, variantKey = "", networks = []) {
+function buildScenarioChannelLogic(intelligence = {}, variantKey = "", networks = []) {
   const routeType = getVariantRouteType(variantKey);
   const leadNetwork = networks[0]?.name || "Max";
   const leadLift = roundToTwo(networks[0]?.lift || 1, 1);
+  const demographicReadout = buildDemographicReadout(intelligence);
   if (routeType === "precision") {
-    return `${leadNetwork} is the strongest precision lane at ${leadLift}x audience fit, so the route concentrates early spend where the brief should learn or convert fastest.`;
+    return `${leadNetwork} is the strongest streaming lead at ${leadLift}x audience fit, ${demographicReadout}, and the audience shows higher streaming-heavy behavior than linear-heavy behavior, so the mix opens with streaming in front.`;
   }
   if (routeType === "scale") {
-    return `${leadNetwork} provides the most efficient opening scale lane at ${leadLift}x fit, so the plan earns broad household coverage before it buys extra refinement.`;
+    return `${leadNetwork} is the strongest linear lead at ${leadLift}x audience fit, ${demographicReadout}, and the audience shows broader linear behavior, so the plan opens with linear weight before adding streaming reinforcement.`;
   }
-  return `${leadNetwork} anchors the route at ${leadLift}x fit, but the real ROI advantage comes from staying flexible enough to move dollars as pacing quality changes.`;
+  return `${demographicReadout}, and the streaming-heavy share (${intelligence.streamingHeavyShare}%) and linear-heavy share (${intelligence.linearHeavyShare}%) are close enough that a balanced mix is safer than forcing a hard bias, with ${leadNetwork} still available as the strongest first lane.`;
 }
 
 function buildScenarioBlueprints(campaignPrompt = "") {
@@ -1975,7 +2107,7 @@ function buildScenarioBlueprints(campaignPrompt = "") {
       allocation,
       allocationStrategy: buildScenarioAllocationStrategy(intelligence, variant.key, allocation, networks),
       deliveryTiming: buildDeliveryTiming(intelligence, variant.key),
-      roiReasoning: buildScenarioRoiReasoning(intelligence, variant.key, networks),
+      channelLogic: buildScenarioChannelLogic(intelligence, variant.key, networks),
       recommendationReason,
       recommended: variant.key === recommendedVariantKey,
       scenarioIntelligence: {
@@ -2019,12 +2151,16 @@ function buildScenarioDatasetInput(campaignPrompt = "", selectedPlan = null) {
         average_age: catalog.intelligence.avgAge,
         streaming_heavy_share_pct: catalog.intelligence.streamingHeavyShare,
         linear_heavy_share_pct: catalog.intelligence.linearHeavyShare,
-        overlap_pct: catalog.intelligence.overlapPct
+        overlap_pct: catalog.intelligence.overlapPct,
+        young_share_pct: catalog.intelligence.youngShare,
+        older_share_pct: catalog.intelligence.olderShare,
+        parent_share_pct: catalog.intelligence.parentShare
       },
       selected_scenario: {
         variant_key: picked.variantKey,
         allocation: picked.allocation || picked.scenarioIntelligence?.allocation,
-        recommendation_reason: picked.recommendationReason || picked.scenarioIntelligence?.recommendationReason
+        recommendation_reason: picked.recommendationReason || picked.scenarioIntelligence?.recommendationReason,
+        channel_logic: picked.channelLogic || ""
       }
     }, null, 2)
   };
@@ -2044,7 +2180,7 @@ function buildArchitectRealtimeDataset(campaignPrompt = "", scenarioCatalog = nu
     spike_window: item.spike_window,
     signal_strength: item.signal_strength,
     recommended_channel: item.recommended_channel,
-    expected_roi_lift_pct: item.expected_roi_lift_pct
+    expected_response_lift_pct: item.expected_response_lift_pct
   }));
 
   return {
@@ -2097,7 +2233,8 @@ function buildArchitectAgentContract() {
     sub_agents: (MASTER_AGENT_SUBAGENTS[agent.nodeId] || []).map((item) => ({
       id: item.id,
       name: item.name,
-      summary: item.summary
+      summary: item.summary,
+      definition: item.definition || item.summary
     }))
   }));
 }
@@ -2110,7 +2247,9 @@ function buildArchitectFallbackSummary(problemText = "", scenarioCatalog = null)
     "Architecting scenarios from the natural-language brief.",
     `Detected product family: ${intelligence.campaign?.productFamily?.displayLabel || deriveProductFamily(problemText).displayLabel}.`,
     `Matched ${(intelligence.uniqueHouseholds || 0).toLocaleString()} deduplicated households across ${(intelligence.topStates || []).map((item) => item.label).slice(0, 3).join(", ") || "core markets"}.`,
+    `Demographic readout: average age ${intelligence.avgAge || 0}, ${intelligence.youngShare || 0}% under 40, ${intelligence.olderShare || 0}% age 45+, and ${intelligence.parentShare || 0}% parent-skewing households.`,
     `Top behavioral tags: ${(intelligence.topTags || []).map((item) => item.label).slice(0, 3).join(", ") || "no dominant tags detected"}.`,
+    `Audience channel tilt: ${intelligence.streamingHeavyShare || 0}% streaming-heavy and ${intelligence.linearHeavyShare || 0}% linear-heavy households.`,
     `Recommended scenario: ${recommended?.title || ARCHITECT_PLAN_FALLBACK_TITLES[0]}.`
   ];
 }
@@ -2122,16 +2261,17 @@ function buildArchitectSystemPrompt(agentStyle = "", customArchitectPrompt = "")
     "You are the WBD Scenario Architect.",
     "Analyze the supplied synthetic WBD first-party audience intelligence and generate three materially different campaign scenarios in real time.",
     "The scenarios must feel product-specific, not templated, and they must map to these exact variant keys: scenario-a, scenario-b, and scenario-c.",
-    "Treat those keys as slot IDs only. The visible titles must be brief-specific and must not default to generic labels like streaming-heavy, linear-heavy, or balanced.",
+    "Treat those keys as slot IDs only. The visible titles should clearly signal whether the route is streaming-heavy, linear-heavy, or balanced, while still grounding that title in the brief and audience evidence.",
     "Use the supplied audience, network, and yield signals to justify every scenario and recommend exactly one option.",
     "Keep the six-stage master-agent plan intact. Use the exact node IDs and stage numbers provided in the agent contract.",
     "Respond in two parts only:",
     "Part 1: 4 to 6 clear plain-text lines summarizing the audience diagnosis, the scenario differences, and the recommended path. Write for a non-expert audience, define jargon when needed, and make the explanation understandable to anyone reviewing the demo.",
     "Part 2: one JSON object with keys architectSummary, recommendedVariantKey, and architectPlans.",
-    "Each item in architectPlans must include: variantKey, title, strategy, why, promptTile, promptText, allocationStrategy, deliveryTiming, roiReasoning, recommended, recommendationReason, scenarioIntelligence, and plan.",
+    "Each item in architectPlans must include: variantKey, title, strategy, why, promptTile, promptText, allocationStrategy, deliveryTiming, channelLogic, recommended, recommendationReason, scenarioIntelligence, and plan.",
     "Every written field must sound logical, meaningful, and internally consistent with the supplied data.",
     "Use disciplined reasoning. First identify the audience evidence, then explain how the three scenarios differ, then recommend one path, then state the main tradeoff.",
-    "For every scenario field, make the function of the field obvious: strategy explains the route, why explains when that route makes sense, promptText explains the route in one sentence, allocationStrategy explains the opening mix, deliveryTiming explains when to lead, and roiReasoning explains why the economics work.",
+    "For every scenario field, make the function of the field obvious: strategy explains the route, why explains when that route makes sense, promptText explains the route in one sentence, allocationStrategy explains the opening mix, deliveryTiming explains when to lead, and channelLogic explains why the channel bias fits the audience evidence.",
+    "Do not mention ROI or return on investment anywhere in the response.",
     "Do not use filler phrases like 'good fit', 'works well', or 'strong option' unless you immediately explain why with audience, inventory, delivery, timing, or cost evidence.",
     "If the data does not support a claim, do not invent it. Prefer a precise modest statement over a confident vague one.",
     "Before answering, silently check that each claim can be defended by the supplied data and that the recommended scenario, allocation, and narrative do not contradict each other.",
@@ -2150,16 +2290,17 @@ function buildArchitectUserPrompt({ problemText = "", dataset = {}, agentContrac
     `\nSynthetic WBD Intelligence:\n${JSON.stringify(dataset, null, 2)}`,
     `\nSix-Stage Master-Agent Contract:\n${JSON.stringify(agentContract, null, 2)}`,
     "\nRequirements:",
-    "1. Generate three genuinely different scenarios that attack the goal from distinct angles: one precision-led, one scale-led, and one adaptive/resilient.",
-    "2. Do not title or summarize the scenarios as streaming-heavy, linear-heavy, or balanced. Name them from the actual brief, audience, and goal.",
+    "1. Generate three genuinely different scenarios that attack the goal from distinct channel angles: one streaming-heavy, one linear-heavy, and one balanced.",
+    "2. Make the scenario naming and explanation visibly reflect that channel bias, but tie it directly to the audience, market, and platform evidence.",
     "3. Tie every scenario to the supplied data, especially audience age, viewing habit, platform usage, network lift, and behavioral tags.",
     "4. Recommend exactly one scenario and explain why it wins for this prompt in clear, plain English that a non-domain expert can still follow.",
     "5. The written summary must be informative, not terse. Give enough detail for a reviewer to understand what the data said, how the options differ, and why the recommendation is sensible.",
     "6. Every line must sound logical and meaningful. Avoid generic business filler, avoid unexplained adjectives, and connect claims to data, supply, delivery, or cost.",
-    "7. If a scenario choice is uncertain, state the tradeoff clearly instead of pretending the data is stronger than it is.",
-    "8. Keep the plan realistic for the WBD ecosystem and preserve all six master-agent stages.",
-    "9. In Part 1, prefer this order: audience evidence, scenario A difference, scenario B difference, scenario C difference, recommendation, main tradeoff.",
-    "10. Output Part 1 plain text followed by Part 2 JSON only."
+    "7. Do not mention ROI or return on investment anywhere.",
+    "8. If a scenario choice is uncertain, state the tradeoff clearly instead of pretending the data is stronger than it is.",
+    "9. Keep the plan realistic for the WBD ecosystem and preserve all six master-agent stages.",
+    "10. In Part 1, prefer this order: audience evidence, scenario A difference, scenario B difference, scenario C difference, recommendation, main tradeoff.",
+    "11. Output Part 1 plain text followed by Part 2 JSON only."
   ].join("\n");
 }
 
@@ -2263,7 +2404,7 @@ function formatPlanOutputDetails(variant, campaignPrompt, existing = {}) {
     minWords: 8,
     requireEvidence: true
   });
-  const roiReasoning = preferMeaningfulText(existing.roiReasoning || "", blueprint.roiReasoning || variant.roiReasoning || "", {
+  const channelLogic = preferMeaningfulText(existing.channelLogic || existing.roiReasoning || "", blueprint.channelLogic || blueprint.roiReasoning || variant.channelLogic || variant.roiReasoning || "", {
     minWords: 10,
     requireEvidence: true
   });
@@ -2275,7 +2416,7 @@ function formatPlanOutputDetails(variant, campaignPrompt, existing = {}) {
   return {
     allocationStrategy,
     deliveryTiming,
-    roiReasoning,
+    channelLogic,
     complianceValidation,
     strategy: preferMeaningfulText(existing.strategy || "", blueprint.strategy || variant.strategy || "", {
       minWords: 12,
@@ -2332,7 +2473,7 @@ function normalizeArchitectPlans(rawPlans, demo, maxAgents) {
         allocationStrategy: details.allocationStrategy,
         allocation: details.scenarioIntelligence?.allocation || entry.allocation || null,
         deliveryTiming: details.deliveryTiming,
-        roiReasoning: details.roiReasoning,
+        channelLogic: details.channelLogic,
         complianceValidation: details.complianceValidation,
         inputs: buildDatasetInputs({ campaignPrompt, selectedPlan: normalizedEntry }),
         recommended: details.recommended,
@@ -2377,7 +2518,7 @@ function buildFallbackArchitectPlans(demo, maxAgents) {
       allocationStrategy: details.allocationStrategy,
       allocation: details.scenarioIntelligence?.allocation || blueprint.allocation || null,
       deliveryTiming: details.deliveryTiming,
-      roiReasoning: details.roiReasoning,
+      channelLogic: details.channelLogic,
       complianceValidation: details.complianceValidation,
       inputs: buildDatasetInputs({ campaignPrompt: campaign, selectedPlan: blueprint }),
       recommended: details.recommended,
@@ -2513,7 +2654,7 @@ function tokenOverlapCount(source = "", reference = "") {
 }
 
 function hasEvidenceSignal(text = "") {
-  return /\d/.test(text) || /\b(audience|households?|users?|reach|inventory|impressions?|cpm|roi|budget|streaming|linear|network|networks|delivery|cohort|segment|frequency|overlap|allocation|reserve|placement|placements|match rate|sales lift|revenue|device|devices|market|markets|timing|yield|compliance|scenario|signals?)\b/i.test(text);
+  return /\d/.test(text) || /\b(audience|households?|users?|reach|inventory|impressions?|cpm|budget|streaming|linear|network|networks|delivery|cohort|segment|frequency|overlap|allocation|reserve|placement|placements|match rate|sales lift|response|device|devices|market|markets|timing|yield|compliance|scenario|signals?)\b/i.test(text);
 }
 
 function isLowQualityNarrative(text = "", options = {}) {
@@ -2785,7 +2926,7 @@ function formatExecutionLabel(value = "") {
     .replace(/\bUsd\b/g, "USD")
     .replace(/\bPct\b/g, "%")
     .replace(/\bCpm\b/g, "CPM")
-    .replace(/\bRoi\b/g, "ROI")
+    .replace(/\bRoi\b/g, "Outcome")
     .replace(/\bScte35\b/gi, "SCTE-35"));
 }
 
@@ -2922,6 +3063,7 @@ function buildInitialCampaignState({ campaignPrompt = "", selectedPlan = null, e
       title: scenario?.title || "Recommended scenario",
       variantKey: normalizeVariantKey(scenario?.variantKey || PLAN_VARIANTS[0].key),
       allocationStrategy: scenario?.allocationStrategy || "",
+      channelLogic: scenario?.channelLogic || "",
       allocation: scenario?.allocation || intelligence?.allocation || { streamingPct: 50, linearPct: 40, reservePct: 10 },
       recommendationReason: scenario?.recommendationReason || intelligence?.recommendationReason || "",
       rankedNetworks: intelligence?.rankedNetworks || []
@@ -2941,8 +3083,8 @@ function buildInitialCampaignState({ campaignPrompt = "", selectedPlan = null, e
 function selectRelevantYieldSignals(campaignState, limit = 3) {
   const vertical = campaignState.productFamily?.key || "general_brand";
   const signals = (datasets.yieldIntelligenceFeed || [])
-    .filter((item) => item.vertical_tag === vertical || (vertical === "general_brand" && item.expected_roi_lift_pct >= 10))
-    .sort((a, b) => (Number(b.expected_roi_lift_pct || 0) - Number(a.expected_roi_lift_pct || 0)) || (Number(b.signal_strength || 0) - Number(a.signal_strength || 0)));
+    .filter((item) => item.vertical_tag === vertical || (vertical === "general_brand" && item.expected_response_lift_pct >= 6))
+    .sort((a, b) => (Number(b.expected_response_lift_pct || 0) - Number(a.expected_response_lift_pct || 0)) || (Number(b.signal_strength || 0) - Number(a.signal_strength || 0)));
   return (signals.length ? signals : (datasets.yieldIntelligenceFeed || [])).slice(0, limit);
 }
 
@@ -2991,7 +3133,7 @@ function selectRelevantInventoryRows(campaignState, limit = 8) {
 }
 
 function buildBookingLineItems(campaignState, inventoryRows = []) {
-  const budgetUsd = Number(campaignState.budgetUsd || 50000);
+  const budgetUsd = Number(campaignState.budgetUsd || 25000);
   const allocation = campaignState.selectedScenario?.allocation || { streamingPct: 50, linearPct: 40, reservePct: 10 };
   const streamingBudget = Math.round(budgetUsd * (allocation.streamingPct / 100));
   const linearBudget = Math.round(budgetUsd * (allocation.linearPct / 100));
@@ -3007,11 +3149,12 @@ function buildBookingLineItems(campaignState, inventoryRows = []) {
       const share = index === rows.length - 1
         ? totalBudget - lineItems.filter((item) => item._lane === label).reduce((sum, item) => sum + item.spend_usd, 0)
         : Math.round(totalBudget * (Math.max(1, Number(row.fill_rate_pct || 0)) / totalWeight));
-      const spend = Math.max(0, share);
+      const spendCap = Math.max(0, share);
       const impressions = Math.min(
-        Math.round((spend / Math.max(Number(row.cpm_30s || 1), 1)) * 1000),
-        Math.round(Number(row.avail_impressions_30s || 0) * 0.78)
+        Math.round((spendCap / Math.max(Number(row.cpm_30s || 1), 1)) * 1000),
+        Math.round(Number(row.avail_impressions_30s || 0) * 0.58)
       );
+      const spend = Math.round((impressions / 1000) * Number(row.cpm_30s || 0));
       lineItems.push({
         line_item_id: `LINE-${String(lineItems.length + 1).padStart(3, "0")}`,
         network: row.network,
@@ -3032,14 +3175,18 @@ function buildBookingLineItems(campaignState, inventoryRows = []) {
 
   if (reserveBudget > 0 && lineItems.length) {
     const bestItem = [...lineItems].sort((a, b) => b.impressions - a.impressions)[0];
+    const reserveImpressions = Math.min(
+      Math.round((reserveBudget / Math.max(Number(bestItem.cpm_30s || 1), 1)) * 1000),
+      Math.round((bestItem.impressions || 0) * 0.45)
+    );
     lineItems.push({
       line_item_id: `LINE-${String(lineItems.length + 1).padStart(3, "0")}`,
       network: bestItem.network,
       platform_type: bestItem.platform_type,
       country_code: bestItem.country_code,
       daypart: bestItem.daypart,
-      impressions: Math.round((reserveBudget / Math.max(Number(bestItem.cpm_30s || 1), 1)) * 1000),
-      spend_usd: reserveBudget,
+      impressions: reserveImpressions,
+      spend_usd: Math.round((reserveImpressions / 1000) * Number(bestItem.cpm_30s || 0)),
       cpm_30s: bestItem.cpm_30s,
       status: "approved",
       _lane: "reserve"
@@ -3047,17 +3194,6 @@ function buildBookingLineItems(campaignState, inventoryRows = []) {
   }
 
   return lineItems.map(({ _lane, ...item }) => item);
-}
-
-function productRoiBaseline(productKey = "") {
-  if (productKey === "toddler_snacks") return 1.68;
-  if (productKey === "insurance") return 1.42;
-  if (productKey === "automotive") return 1.54;
-  if (productKey === "financial_services") return 1.38;
-  if (productKey === "retail") return 1.58;
-  if (productKey === "entertainment") return 1.48;
-  if (productKey === "sports") return 1.46;
-  return 1.44;
 }
 
 function runPlanningIdentityStage(agent, campaignState) {
@@ -3110,8 +3246,10 @@ function runPlanningIdentityStage(agent, campaignState) {
       sample_profiles: intelligence.sampleRows.slice(0, 6)
     },
     summaryLines: [
-      `Matched ${intelligence.uniqueHouseholds.toLocaleString()} deduplicated households, led by ${intelligence.topSegments[0]?.label || "the top cohort"} in ${intelligence.topStates[0]?.label || "core markets"}.`,
-      `${intelligence.topTags[0]?.label || "High-fit viewers"} and ${intelligence.topTags[1]?.label || "multi-platform users"} are pulling the scenario toward ${campaignState.selectedScenario.title}.`
+      `The audience match pulled ${intelligence.matchedRows.length.toLocaleString()} viewer profiles into ${intelligence.uniqueHouseholds.toLocaleString()} deduplicated households, with ${(intelligence.topStates || []).map((item) => item.label).slice(0, 2).join(" and ") || "the core markets"} carrying the heaviest concentration.`,
+      `Demographically, the matched audience centers on average age ${intelligence.avgAge}, with ${intelligence.streamingHeavyShare}% streaming-heavy behavior and ${intelligence.linearHeavyShare}% linear-heavy behavior.`,
+      `The sub-agents isolated ${intelligence.topSegments[0]?.label || "the lead segment"}, confirmed ${intelligence.overlapPct}% cross-platform overlap, and elevated ${(campaignState.selectedScenario.rankedNetworks || []).map((item) => item.name).slice(0, 3).join(", ") || "the strongest WBD networks"} as the cleanest opening lane.`,
+      `That evidence is what pushed the workflow toward ${campaignState.selectedScenario.title}, so every downstream stage inherits the same audience story instead of reinterpreting the brief from scratch.`
     ],
     subAgentResults,
     whyMatters: "Stage 1 determines who the system should actually reach. Every later decision, from yield pricing to measurement, depends on whether this audience definition is behaviorally right and de-duplicated correctly.",
@@ -3124,9 +3262,9 @@ function runInventoryYieldStage(agent, campaignState) {
   const intelligence = campaignState.intelligence;
   const inventoryRows = selectRelevantInventoryRows(campaignState, 8);
   const yieldSignals = selectRelevantYieldSignals(campaignState, 3);
-  const budgetUsd = Number(campaignState.budgetUsd || 50000);
-  const capacityImpressions = inventoryRows.reduce((sum, row) => sum + Math.round(Number(row.avail_impressions_30s || 0) * 0.72), 0);
-  const capacitySpend = inventoryRows.reduce((sum, row) => sum + Math.round((Number(row.avail_impressions_30s || 0) * 0.72 / 1000) * Number(row.cpm_30s || 0)), 0);
+  const budgetUsd = Number(campaignState.budgetUsd || 25000);
+  const capacityImpressions = inventoryRows.reduce((sum, row) => sum + Math.round(Number(row.avail_impressions_30s || 0) * 0.55), 0);
+  const capacitySpend = inventoryRows.reduce((sum, row) => sum + Math.round((Number(row.avail_impressions_30s || 0) * 0.55 / 1000) * Number(row.cpm_30s || 0)), 0);
   const streamingRows = inventoryRows.filter((row) => row.platform_type === "digital");
   const linearRows = inventoryRows.filter((row) => row.platform_type === "linear");
   const allInventory = datasets.inventoryMatrix || [];
@@ -3142,7 +3280,7 @@ function runInventoryYieldStage(agent, campaignState) {
       yield_signals: yieldSignals.map((item) => ({
         topic: item.topic,
         channel: item.recommended_channel,
-        expected_roi_lift_pct: item.expected_roi_lift_pct
+        expected_response_lift_pct: item.expected_response_lift_pct
       }))
     }
   };
@@ -3155,8 +3293,10 @@ function runInventoryYieldStage(agent, campaignState) {
       yield_signals: yieldSignals
     },
     summaryLines: [
-      `Capacity check shows ${capacityImpressions.toLocaleString()} fulfillable impressions and ${capacitySpend.toLocaleString()} dollars of workable supply against a ${budgetUsd.toLocaleString()} dollar brief.`,
-      `Streaming is priced at roughly ${premiumStreamingCpm} CPM versus ${blendedLinearCpm} CPM on linear, with yield spikes led by ${yieldSignals[0]?.topic || "the strongest signal"}.`
+      `The inventory scan found ${capacityImpressions.toLocaleString()} fulfillable impressions and about ${capacitySpend.toLocaleString()} dollars of workable supply against a ${budgetUsd.toLocaleString()} dollar brief.`,
+      `Pricing settled at roughly ${premiumStreamingCpm} CPM for premium streaming and ${blendedLinearCpm} CPM for linear, which gives the channel split a believable cost tradeoff instead of a decorative one.`,
+      `The sub-agents highlighted ${inventoryRows.slice(0, 3).map((row) => `${row.network} ${row.daypart}`).join(", ") || "the lead avails"} as the strongest available supply, while ${yieldSignals[0]?.topic || "the lead signal"} was the clearest timing trigger.`,
+      `${capacitySpend >= budgetUsd ? "The selected route can be booked without forcing low-quality inventory." : "Supply is tight enough that the booking stage needs to protect reserve and stay disciplined about weaker avails."}`
     ],
     subAgentResults: buildScopedSubAgentResults(agent.nodeId, campaignState, {
       "predictive-capacity": (subAgent) => ({
@@ -3180,7 +3320,7 @@ function runInventoryYieldStage(agent, campaignState) {
       "signal-forecaster": (subAgent) => ({
         id: subAgent.id,
         name: subAgent.name,
-        details: yieldSignals.map((item) => `${item.topic} suggests ${item.expected_roi_lift_pct}% lift with ${item.recommended_channel} during ${item.spike_window}.`)
+        details: yieldSignals.map((item) => `${item.topic} suggests about ${item.expected_response_lift_pct}% response lift with ${item.recommended_channel} during ${item.spike_window}.`)
       })
     }),
     whyMatters: "Stage 2 translates audience fit into inventory reality. If the system cannot fulfill the brief at the right price, every downstream recommendation becomes decorative instead of executable.",
@@ -3198,6 +3338,12 @@ function runBookingProposalStage(agent, campaignState) {
     variantKey: campaignState.selectedScenario.variantKey
   });
   const guaranteeImpressions = lineItems.reduce((sum, row) => sum + Number(row.impressions || 0), 0);
+  const streamingSpend = lineItems
+    .filter((item) => item.platform_type === "digital")
+    .reduce((sum, item) => sum + Number(item.spend_usd || 0), 0);
+  const linearSpend = lineItems
+    .filter((item) => item.platform_type === "linear")
+    .reduce((sum, item) => sum + Number(item.spend_usd || 0), 0);
   const stateUpdate = {
     booking_summary: {
       line_items: lineItems,
@@ -3215,7 +3361,9 @@ function runBookingProposalStage(agent, campaignState) {
     },
     summaryLines: [
       `The booking package assembled ${lineItems.length} converged line items and ${guaranteeImpressions.toLocaleString()} guaranteed impressions around the selected scenario.`,
-      `${compliance.status === "Passed" ? "Compliance cleared the structure without blockers." : `Compliance returned ${compliance.findings.length} adjustments before launch.`}`
+      `Spend is leaning ${streamingSpend >= linearSpend ? "streaming-first" : "linear-first"} at ${streamingSpend.toLocaleString()} streaming dollars versus ${linearSpend.toLocaleString()} linear dollars, which keeps the contract aligned to the selected route instead of diluting it.`,
+      `${compliance.status === "Passed" ? "Compliance cleared the structure without blockers." : `Compliance returned ${compliance.findings.length} adjustments before launch, so the proposal had to absorb those policy changes before it could move forward.`}`,
+      `The proposal now hands trafficking a bookable plan with clear guarantees, channel intent, and a reserve lane that operations can still use later if delivery shifts.`
     ],
     subAgentResults: buildScopedSubAgentResults(agent.nodeId, campaignState, {
       "deal-structurer": (subAgent) => ({
@@ -3278,8 +3426,10 @@ function runTraffickingSignalsStage(agent, campaignState) {
       signal_inventory: signalRiskRows.slice(0, 4)
     },
     summaryLines: [
-      `Launch readiness scored ${readinessScore}/100 after asset QA, metadata review, and delivery routing checks.`,
-      `${signalRiskRows.length ? `Signal attention is needed on ${signalRiskRows[0]?.network || "one network"} before activation.` : "No critical signal blockers were found in the selected inventory path."}`
+      `Launch readiness scored ${readinessScore}/100 after asset QA, metadata review, and delivery routing checks across the selected booking package.`,
+      `${signalRiskRows.length ? `Signal attention is still needed on ${signalRiskRows[0]?.network || "one network"} ${signalRiskRows[0]?.daypart || ""} because the SCTE-35 status is not fully clean.` : "No critical signal blockers were found in the selected inventory path."}`,
+      `The sub-agents cleared the creative package, checked routing behavior, and wrote an explicit watchlist so live operations know exactly what needs monitoring at launch.`,
+      `${readinessScore >= 85 ? "The stage is comfortable launching with normal monitoring." : "The stage can still launch, but only with elevated operational watchlists and faster escalation if pacing starts to drift."}`
     ],
     subAgentResults: buildScopedSubAgentResults(agent.nodeId, campaignState, {
       "asset-qa": (subAgent) => ({
@@ -3325,8 +3475,6 @@ function runInFlightOperationsStage(agent, campaignState) {
   const shiftBudget = makeGoodTriggered
     ? Math.round(Math.min(campaignState.budgetUsd * 0.08, campaignState.budgetUsd * ((allocation.reservePct || 10) / 100)))
     : 0;
-  const beforeRoi = roundToTwo(productRoiBaseline(campaignState.productFamily.key) + (campaignState.intelligence.streamingScore - campaignState.intelligence.linearScore) / 1000, 2);
-  const afterRoi = roundToTwo(beforeRoi + (makeGoodTriggered ? 0.17 : 0.06), 2);
   const finalAllocation = {
     streamingPct: allocation.streamingPct + (makeGoodTriggered ? Math.round((shiftBudget / campaignState.budgetUsd) * 100) : 0),
     linearPct: Math.max(0, allocation.linearPct - (makeGoodTriggered ? Math.round((shiftBudget / campaignState.budgetUsd) * 100) : 0)),
@@ -3338,8 +3486,6 @@ function runInFlightOperationsStage(agent, campaignState) {
       digital_delivery_rate_pct: roundToTwo(digitalDeliveryRate * 100, 1),
       make_good_triggered: makeGoodTriggered,
       shift_budget_usd: shiftBudget,
-      before_roi: beforeRoi,
-      after_roi: afterRoi,
       final_allocation: finalAllocation,
       trafficked_line_items: booking.line_items || []
     }
@@ -3352,8 +3498,10 @@ function runInFlightOperationsStage(agent, campaignState) {
       scenario_allocation: allocation
     },
     summaryLines: [
-      `Linear pacing is projected at ${roundToTwo(linearDeliveryRate * 100, 1)}% versus ${roundToTwo(digitalDeliveryRate * 100, 1)}% on streaming.`,
-      `${makeGoodTriggered ? `The autonomous make-good shifted ${shiftBudget.toLocaleString()} dollars into streaming to protect the guarantee.` : "No make-good was required because both channels stayed within tolerance."}`
+      `The pacing model projected ${roundToTwo(linearDeliveryRate * 100, 1)}% delivery on linear versus ${roundToTwo(digitalDeliveryRate * 100, 1)}% on streaming, which immediately showed where the weaker lane sat.`,
+      `${makeGoodTriggered ? `The autonomous make-good shifted ${shiftBudget.toLocaleString()} dollars into streaming to protect the guarantee before the linear shortfall widened.` : "No make-good was required because both channels stayed close enough to tolerance."}`,
+      `The sub-agents translated that pacing read into a final mix of ${finalAllocation.streamingPct}% streaming, ${finalAllocation.linearPct}% linear, and ${finalAllocation.reservePct}% reserve, then logged the intervention trace for the ops team.`,
+      `Measurement now inherits the corrected delivery path rather than the original paper plan, which makes the final readout sound like operations actually touched the campaign.`
     ],
     subAgentResults: buildScopedSubAgentResults(agent.nodeId, campaignState, {
       "real-time-pacing": (subAgent) => ({
@@ -3372,11 +3520,11 @@ function runInFlightOperationsStage(agent, campaignState) {
           ? [
             `Shifted ${shiftBudget.toLocaleString()} dollars from the reserve or weak linear lane into Max ad-lite and discovery+ coverage.`,
             `Final allocation moved to ${finalAllocation.streamingPct}% streaming and ${finalAllocation.linearPct}% linear.`,
-            `Projected ROI improved from ${beforeRoi} to ${afterRoi}.`
+            "The reallocation was made to stabilize delivery before the linear shortfall widened."
           ]
           : [
             "No autonomous budget shift was required.",
-            `Projected ROI still improved from ${beforeRoi} to ${afterRoi} through stable pacing and scenario fit.`,
+            "Delivery stayed close enough to plan that the original split could hold.",
             "Reserve budget remains available for live intervention if needed."
           ]
       }),
@@ -3391,7 +3539,7 @@ function runInFlightOperationsStage(agent, campaignState) {
       })
     }),
     whyMatters: "Stage 5 is where the system proves it can act, not just describe. The demo feels like a multi-agent operating system when the scenario can autonomously recover from delivery risk instead of watching the shortfall happen.",
-    handoff: "Pass final allocation, pacing outcomes, and make-good traces into Measurement and Attribution for outcome calculation.",
+    handoff: "Pass final allocation, pacing outcomes, and make-good traces into Measurement and Learning for the matched-readout and next-flight recommendation.",
     stateUpdate
   };
 }
@@ -3401,21 +3549,27 @@ function runMeasurementStage(agent, campaignState) {
   const inflight = campaignState.stageOutputs["inflight-operations-agent"]?.inflight_summary || {};
   const matchedHouseholds = Math.round((planning.unique_households || campaignState.intelligence.uniqueHouseholds || 0) * 0.72);
   const cleanRoomMatchRate = roundToTwo(74 + (campaignState.intelligence.overlapPct / 4), 1);
-  const salesLiftPct = roundToTwo(4.2 + ((inflight.after_roi || 1.4) - 1.3) * 6, 1);
-  const incrementalRevenue = Math.round((campaignState.budgetUsd || 50000) * (inflight.after_roi || 1.5));
+  const strongestChannel = Number(inflight.digital_delivery_rate_pct || 0) >= Number(inflight.linear_delivery_rate_pct || 0) ? "streaming" : "linear";
+  const deliveryStrength = (Number(inflight.digital_delivery_rate_pct || 94) + Number(inflight.linear_delivery_rate_pct || 90)) / 2;
+  const salesLiftPct = roundToTwo(
+    2.8
+    + Math.max(0, deliveryStrength - 88) * 0.08
+    + (campaignState.intelligence.overlapPct / 45)
+    + (inflight.make_good_triggered ? 0.6 : 0.3),
+    1
+  );
   const selectedRouteType = getVariantRouteType(campaignState.selectedScenario.variantKey);
   const nextBestAction = selectedRouteType === "precision"
-    ? "Keep the next flight precision-led, but widen the support lane only if household reach begins to plateau."
+    ? "Keep the next flight streaming-heavy, but widen the linear support lane only if household reach begins to plateau."
     : selectedRouteType === "scale"
-      ? "Preserve the scale route for the next flight and use precision support only where younger or incremental reach is still available."
-      : "Keep the adaptive structure and let in-flight pacing decide which channel earns the extra dollars next time.";
+      ? "Preserve the linear-heavy route for the next flight and use streaming support only where younger or incremental reach is still available."
+      : "Keep the balanced structure and let in-flight pacing decide which channel earns the extra dollars next time.";
   const stateUpdate = {
     measurement_summary: {
       matched_households: matchedHouseholds,
       clean_room_match_rate_pct: cleanRoomMatchRate,
       sales_lift_pct: salesLiftPct,
-      deterministic_roi: inflight.after_roi || productRoiBaseline(campaignState.productFamily.key),
-      incremental_revenue_usd: incrementalRevenue,
+      strongest_channel: strongestChannel,
       next_best_action: nextBestAction
     }
   };
@@ -3427,39 +3581,44 @@ function runMeasurementStage(agent, campaignState) {
       pacing_outcome: inflight
     },
     summaryLines: [
-      `The synthetic clean room matched ${matchedHouseholds.toLocaleString()} households at a ${cleanRoomMatchRate}% match rate and estimated ${salesLiftPct}% sales lift.`,
-      `Deterministic ROI landed at ${inflight.after_roi || productRoiBaseline(campaignState.productFamily.key)}, with ${incrementalRevenue.toLocaleString()} dollars of modeled incremental revenue.`
+      `The synthetic clean room matched ${matchedHouseholds.toLocaleString()} households at a ${cleanRoomMatchRate}% match rate, which means roughly ${Math.round(cleanRoomMatchRate)} out of every 100 measurable households could be connected back to privacy-safe exposure data.`,
+      `Within that matched group, the clearest response signal came from ${strongestChannel} and the modeled sales lift landed at ${salesLiftPct}%, so the readout points to a real difference between channels rather than a vague wrap-up.`,
+      `The sub-agents separated the job cleanly: one validated the measurable household base, one interpreted the response pattern, and one converted that pattern into a next-flight recommendation.`,
+      `The next-flight guidance is to ${nextBestAction.charAt(0).toLowerCase() + nextBestAction.slice(1)}, which keeps the route tied to measured behavior instead of defaulting back to generic planning language.`
     ],
     subAgentResults: buildScopedSubAgentResults(agent.nodeId, campaignState, {
-      "clean-room-matcher": (subAgent) => ({
+      "household-match-validator": (subAgent) => ({
         id: subAgent.id,
         name: subAgent.name,
         details: [
           `${matchedHouseholds.toLocaleString()} households were matched through the privacy-safe exposure workflow.`,
           `Cross-platform match rate: ${cleanRoomMatchRate}%.`,
           "Exposure logs were matched against synthetic sales outcomes without re-identifying households."
-        ]
+        ],
+        definition: subAgent.definition || subAgent.summary || ""
       }),
-      "deterministic-roi": (subAgent) => ({
+      "outcome-pattern-reader": (subAgent) => ({
         id: subAgent.id,
         name: subAgent.name,
         details: [
           `Sales lift: ${salesLiftPct}%.`,
-          `Deterministic ROI: ${inflight.after_roi || productRoiBaseline(campaignState.productFamily.key)}.`,
-          `Modeled incremental revenue: ${incrementalRevenue.toLocaleString()} dollars.`
-        ]
+          `Strongest response signal came from ${strongestChannel}.`,
+          `${inflight.make_good_triggered ? "The make-good helped protect the weaker channel before measurement was finalized." : "No make-good was needed before measurement was finalized."}`
+        ],
+        definition: subAgent.definition || subAgent.summary || ""
       }),
-      "learning-agenda": (subAgent) => ({
+      "next-flight-planner": (subAgent) => ({
         id: subAgent.id,
         name: subAgent.name,
         details: [
           nextBestAction,
           `Best-performing scenario signal: ${campaignState.selectedScenario.recommendationReason || "Use the selected scenario again until audience behavior shifts."}`,
           "Stage 1 audience definitions are now available to seed the next campaign without starting from scratch."
-        ]
+        ],
+        definition: subAgent.definition || subAgent.summary || ""
       })
     }),
-    whyMatters: "Stage 6 closes the loop. It proves the audience selected in Stage 1 and the intervention taken in Stage 5 actually matter to a business outcome, which is the core promise of the shared Campaign_State_Object design.",
+    whyMatters: "Stage 6 closes the loop. It shows what was measurable, which channel behavior actually showed up, and what the next flight should do differently.",
     handoff: "Measurement writes the final learning package back into the Campaign_State_Object so the next run can start with evidence instead of assumptions.",
     stateUpdate
   };
@@ -3578,6 +3737,7 @@ function normalizeLiveSubAgentResults(rawItems = [], fallbackItems = []) {
     });
     const narrativeFallback = fallbackItem?.text || buildSubAgentNarrative({
       name: rawItem.name || fallbackItem?.name || `Sub-Agent ${index + 1}`,
+      definition: rawItem.definition || fallbackItem?.definition || rawItem.summary || fallbackItem?.summary || "",
       details,
       whyMatters
     });
@@ -3586,6 +3746,7 @@ function normalizeLiveSubAgentResults(rawItems = [], fallbackItems = []) {
       id: rawItem.id || fallbackItem?.id || `sub-agent-${index + 1}`,
       name: normalizeWhitespace(rawItem.name || fallbackItem?.name || `Sub-Agent ${index + 1}`),
       status: rawItem.status || fallbackItem?.status || "done",
+      definition: normalizeWhitespace(rawItem.definition || fallbackItem?.definition || rawItem.summary || fallbackItem?.summary || ""),
       details: details.length ? details.slice(0, 5) : ["No detailed note returned by the language model."],
       text: preferMeaningfulText(rawItem.text || "", narrativeFallback, {
         minWords: 12,
@@ -3600,10 +3761,11 @@ function normalizeLiveSubAgentResults(rawItems = [], fallbackItems = []) {
 }
 
 function buildSubAgentNarrative(subAgent = {}) {
-  const detailLines = normalizeStageTextList(subAgent.details || [], []).slice(0, 3);
+  const detailLines = normalizeStageTextList(subAgent.details || [], []);
   const summary = detailLines.length ? detailLines.map((line) => `- ${line}`).join("\n") : "- No live sub-agent summary was returned.";
+  const definition = normalizeWhitespace(subAgent.definition || "");
   const why = normalizeWhitespace(subAgent.whyMatters || "");
-  return `${subAgent.name || "Sub-Agent"}\n${summary}${why ? `\n\nWhy this matters: ${why}` : ""}`;
+  return `${subAgent.name || "Sub-Agent"}${definition ? `\nDefinition: ${definition}` : ""}\n${summary}${why ? `\n\nWhy this matters: ${why}` : ""}`;
 }
 
 function createPendingSubAgentResult(masterOutput, subAgent = {}, index = 0) {
@@ -3612,6 +3774,7 @@ function createPendingSubAgentResult(masterOutput, subAgent = {}, index = 0) {
   return {
     id: subAgent.id || `sub-agent-${index + 1}`,
     name,
+    definition: normalizeWhitespace(subAgent.definition || subAgent.summary || ""),
     status: "pending",
     details,
     text: "",
@@ -3641,6 +3804,7 @@ function normalizeSingleLiveSubAgentResult(raw = {}, fallback = {}) {
     id: payload.id || fallback.id,
     name: normalizeWhitespace(payload.name || fallback.name || "Sub-Agent"),
     status: payload.status === "error" ? "error" : "done",
+    definition: normalizeWhitespace(payload.definition || payload.summary || fallback.definition || ""),
     details: details.length ? details : ["No detailed note returned by the language model."],
     inputData: mergeStructuredObjects(fallback.inputData || {}, payload.inputData || payload.input_data || {}),
     outputData: mergeStructuredObjects(fallback.outputData || {}, payload.outputData || payload.output_data || payload.stateUpdate || payload.state_update || {}),
@@ -3692,6 +3856,8 @@ function buildMasterStageLiveSystemPrompt(out, baselineResult, agentStyle = "") 
     "Across the summaryLines, explain what data this stage used, what it found, what the sub-agents contributed, what decision was made, and why that decision matters.",
     "Use this order whenever possible: line 1 data used, line 2 key finding, line 3 sub-agent contribution, line 4 decision, line 5 risk or tradeoff, line 6 why it matters.",
     "Do not make the summary terse. Give enough detail that a reviewer can understand the stage without opening the raw output.",
+    "Keep every finding tied to this stage's actual responsibility. Do not drift into another stage's work unless it is clearly supporting context.",
+    "Each summary line must be a complete sentence. Do not use clipped fragments, shorthand, or unfinished points.",
     "Every sentence must sound logical and meaningful when read on its own.",
     "Do not use vague filler such as 'good fit', 'works well', 'strong option', or 'important result' unless you immediately explain why with specific evidence from the provided data.",
     "Keep the logic internally consistent. Do not contradict the selected scenario, the reference JSON, or the supplied stage inputs.",
@@ -3699,7 +3865,8 @@ function buildMasterStageLiveSystemPrompt(out, baselineResult, agentStyle = "") 
     "When you reference a number, pull it from the provided inputs or reference JSON only. Do not fabricate new metrics or unsupported percentages.",
     "When you mention an average, rate, ratio, or percentage, explain what numbers it came from or what it is comparing, then restate the meaning in simple everyday language.",
     "Before returning JSON, silently check that each summary line answers both what happened and why it matters.",
-    "subAgentResults must preserve the sub-agent structure from the reference schema and each item must contain id, name, and details.",
+    "Do not mention ROI or return on investment anywhere.",
+    "subAgentResults must preserve the sub-agent structure from the reference schema and each item must contain id, name, definition, and details.",
     "details must be an array of 3 to 5 concrete plain-English statements grounded in the provided data.",
     "stateUpdate must preserve the exact nested shape of the reference schema so downstream agents can consume it.",
     "Do not invent non-WBD channels or unsupported entities. Keep all values plausible and tied to the synthetic data."
@@ -3730,6 +3897,8 @@ function buildMasterStageLiveUserPrompt(out, campaignState, selectedPlan, baseli
     `\nReference JSON Shape And Fallback Values:\n${JSON.stringify(baselineResult, null, 2)}`,
     "\nWrite the summary for a broad audience, not just a domain expert. Use simple language, explain the important numbers, and make the stage result detailed enough to stand on its own.",
     "\nIf you mention a calculated metric such as frequency, overlap, match rate, or CPM, say where the number came from and then translate it into plain language a non-expert would understand.",
+    "\nDo not trim or compress distinct findings into vague umbrella statements. Preserve the real points that matter for this stage in complete sentences.",
+    "\nDo not mention ROI or return on investment anywhere in the stage write-up.",
     "\nUse an evidence-first structure: what the stage looked at, what it found, what the sub-agents added, what decision was made, what risk remains, and why that matters.",
     "\nMake sure the wording sounds logical and meaningful. Avoid generic praise, unsupported claims, and incomplete thoughts.",
     "\nIf the best answer is a measured tradeoff, say that clearly rather than overselling certainty.",
@@ -3742,12 +3911,14 @@ function buildSubAgentLiveSystemPrompt(masterOutput, subAgent, agentStyle = "") 
     `You are ${subAgent.name}, a live sub-agent operating under ${masterOutput.name} in a hierarchical WBD campaign workflow.`,
     normalizeWhitespace(agentStyle),
     "Return one JSON object only. Do not use markdown fences.",
-    "Top-level keys must be: details, inputData, outputData, whyMatters, and optional text.",
+    "Top-level keys must be: definition, details, inputData, outputData, whyMatters, and optional text.",
+    "definition must be one clear plain-English sentence explaining what this sub-agent is responsible for.",
     "details must contain 3 to 5 clear plain-English statements grounded in the supplied synthetic data and upstream stage context.",
     "Write so a non-expert reader can understand what you checked, what you found, and how your work helped the master agent.",
     "Use this order whenever possible: what data you checked, what you found, what it means for the parent agent, and any risk or limitation that still matters.",
     "Each statement must sound logical and meaningful on its own. Avoid filler like 'good', 'strong', or 'effective' unless you explain why with evidence.",
     "If the evidence is mixed, state the tradeoff clearly instead of pretending the answer is cleaner than it is.",
+    "Do not mention ROI or return on investment anywhere.",
     "Do not invent metrics or unsupported numbers.",
     "inputData should summarize what this sub-agent used.",
     "outputData should capture the structured result this sub-agent is handing back to its master agent.",
@@ -3765,6 +3936,7 @@ function buildSubAgentLiveUserPrompt(masterOutput, subAgent, campaignState, sele
     `\nParent Master Agent:\n${masterOutput.name}`,
     `\nSub-Agent:\n${subAgent.name}`,
     `\nSub-Agent Summary:\n${subAgent.summary || fallbackSubAgent?.details?.[0] || "No summary provided."}`,
+    `\nSub-Agent Definition:\n${subAgent.definition || subAgent.summary || "No definition provided."}`,
     `\nSelected Scenario:\n${JSON.stringify(campaignState.selectedScenario || {}, null, 2)}`,
     `\nPrior Stage Outputs:\n${JSON.stringify(campaignState.stageOutputs || {}, null, 2)}`,
     `\nCurrent Stage Input Snapshot:\n${stageSnapshot?.content || JSON.stringify(baselineResult.inputData || {}, null, 2)}`,
@@ -3772,6 +3944,7 @@ function buildSubAgentLiveUserPrompt(masterOutput, subAgent, campaignState, sele
     `\nRelevant Dataset Excerpt:\n${datasetBlock}`,
     supplementalContext ? `\nAdditional Context:\n${supplementalContext}` : "",
     "\nUse simple language and enough detail that someone outside the media domain can still understand what this sub-agent accomplished.",
+    "\nStart by defining the sub-agent's role clearly, then describe what it checked and what it found.",
     "\nUse an evidence-first answer: what you checked, what it showed, how it affects the parent agent, and any meaningful risk or limit.",
     "\nMake every line logical, specific, and grounded in the supplied data. Avoid vague praise or generic business wording.",
     "\nGenerate the live sub-agent result now."
@@ -4193,7 +4366,7 @@ function buildComplianceNarrative(evaluation, selectedPlan) {
     "### Compliance Validation Result",
     `Status: ${evaluation?.status || "Passed"}. ${evaluation?.summary || ""}`,
     "",
-    "Why this matters: parallel compliance validation prevents non-compliant spend from entering activation while preserving return on investment objectives."
+    "Why this matters: parallel compliance validation prevents non-compliant spend from entering activation while preserving delivery quality and legal safety."
   ];
 
   if (selectedPlan?.allocationStrategy) {
@@ -4398,19 +4571,19 @@ function buildSyntheticAgentNarrative(out, campaignPrompt) {
   const reach = buildReachSummary(datasets.audienceGraph || [], datasets.liveDeliveryLog || [], fallbackProfile);
   const makeGood = buildMakeGoodSummary(datasets.liveDeliveryLog || [], fallbackProfile);
   const delivered = (datasets.liveDeliveryLog || []).reduce((sum, row) => sum + (row.delivered_impressions || 0), 0);
-  const effectiveCostPerThousandImpressions = delivered ? ((50000 / delivered) * 1000) : 0;
+  const effectiveCostPerThousandImpressions = delivered ? ((extractBudgetUsd(campaignPrompt) / delivered) * 1000) : 0;
   const quality = state.dataQuality || computeDataQuality(datasets.audienceGraph || []);
   const compliance = buildComplianceDetails();
 
   if (role === "planning-identity") {
     return `### Planning and Identity Narrative
-For the campaign prompt "${campaignPrompt}", the planning and identity stage used the unified audience base dataset to resolve high-value audience cohorts by state. The deterministic output identifies ${reach.uniqueHouseholds.toLocaleString()} unique households and ${reach.deviceCount.toLocaleString()} connected devices that can be activated across channels.
+For the campaign prompt "${campaignPrompt}", the planning and identity stage used the unified audience base dataset to resolve high-value audience cohorts by state. The deterministic output identifies ${(reach.scaledReach || reach.modeledHouseholds || reach.uniqueHouseholds).toLocaleString()} projected households and ${reach.deviceCount.toLocaleString()} connected devices that can be activated across channels.
 
 ### Data Quality Review
 This stage explicitly documented data quality signals before allocation. The synthetic audience base includes ${quality.duplicateCount} duplicate household identifiers and ${quality.nullDmaCount} records with missing designated market area values, which were flagged to avoid overstating addressable reach.
 
 ### Why this matters
-Accurate identity resolution determines whether downstream allocation decisions improve return on investment or simply increase unproductive delivery volume.`;
+Accurate identity resolution determines whether downstream allocation decisions extend useful reach or simply add unproductive delivery volume.`;
   }
 
   if (role === "inventory-yield") {
@@ -4419,15 +4592,15 @@ Accurate identity resolution determines whether downstream allocation decisions 
 This stage merged unified audience context with Yield Intelligence signals to identify timing windows with higher demand probability. The signal review included sources such as Twitter trends, news signals, and external feed indicators so that delivery can be timed around audience spikes.
 
 ### Yield Intelligence Highlights
-${intelligence.map((item) => `- ${item.source_type} signal "${item.topic}" in ${item.region} indicates ${item.expected_roi_lift_pct} percent expected return on investment lift with ${item.recommended_channel} emphasis during ${item.spike_window}.`).join("\n")}
+${intelligence.map((item) => `- ${item.source_type} signal "${item.topic}" in ${item.region} indicates about ${item.expected_response_lift_pct} percent expected response lift with ${item.recommended_channel} emphasis during ${item.spike_window}.`).join("\n")}
 
 ### Why this matters
-Yield-aware timing decisions improve return on investment by shifting spend toward periods where audience attention and conversion likelihood are measurably stronger.`;
+Yield-aware timing decisions improve delivery quality by shifting spend toward periods where audience attention and response likelihood are measurably stronger.`;
   }
 
   if (role === "booking-proposals") {
     return `### Booking and Proposals Narrative
-The booking stage converted yield and audience recommendations into channel proposals with deterministic allocation logic. The proposal uses return on investment as the decision objective and keeps fallback paths available when inventory quality changes by state.
+The booking stage converted yield and audience recommendations into channel proposals with deterministic allocation logic. The proposal uses audience fit, delivery reliability, and cost control as the decision objective and keeps fallback paths available when inventory quality changes by state.
 
 ### Allocation and Cost Logic
 Each booking recommendation ties spend to expected impression quality, demand timing, and inventory reliability. The current effective cost per thousand impressions estimate is ${effectiveCostPerThousandImpressions.toFixed(2)} United States dollars based on synthetic delivery totals.
@@ -4441,7 +4614,7 @@ Proposal quality directly controls whether budget is deployed into inventory tha
 The trafficking stage prepared activation instructions and validated signal pathways before launch. Signal checks emphasized routing consistency, placement metadata quality, and execution readiness under variable daypart demand.
 
 ### Signal Reliability Interpretation
-Potential signal risk points were documented with explicit mitigation instructions so operations can respond before pacing degradation affects return on investment.
+Potential signal risk points were documented with explicit mitigation instructions so operations can respond before pacing degradation affects delivery quality.
 
 ### Why this matters
 Even strong allocation strategy fails without reliable trafficking and signal execution, so this step protects delivery quality before budget goes live.`;
@@ -4451,22 +4624,22 @@ Even strong allocation strategy fails without reliable trafficking and signal ex
     return `### In-Flight Operations Narrative
 The operations stage evaluated pacing trends and identified deterministic under-delivery pressure in the linear lane during the mid-campaign window. A make-good reallocation of ${makeGood.shiftBudget.toLocaleString()} United States dollars was triggered to protect delivery against target outcomes.
 
-### Financial Interpretation
-Before intervention, modeled return on investment measured ${makeGood.beforeRoi.toFixed(2)}. After intervention, modeled return on investment rose to ${makeGood.afterRoi.toFixed(2)} as pacing variance was reduced.
+### Intervention Interpretation
+The make-good shifted budget away from the weaker lane before the shortfall widened, which helped stabilize the final delivery path.
 
 ### Why this matters
-In-flight correction protects campaign value by preventing prolonged under-delivery from eroding final return on investment.`;
+In-flight correction protects campaign value by preventing prolonged under-delivery from eroding the final delivery result.`;
   }
 
   if (role === "measurement") {
     return `### Measurement Narrative
-The measurement stage consolidated cross-channel outcomes and quantified performance with deterministic attribution indicators. Reported reach includes ${reach.uniqueHouseholds.toLocaleString()} unique households, ${reach.deviceCount.toLocaleString()} devices, and ${reach.overlapPct} percent cross-platform overlap.
+The measurement stage consolidated cross-channel outcomes and quantified performance with deterministic attribution indicators. Reported reach includes ${(reach.scaledReach || reach.modeledHouseholds || reach.uniqueHouseholds).toLocaleString()} projected households, ${reach.deviceCount.toLocaleString()} devices, and ${reach.overlapPct} percent cross-platform overlap.
 
-### Return on Investment Interpretation
+### Outcome Interpretation
 Measurement output links delivery behavior, channel mix, and corrective actions to final outcome quality so optimization decisions can be replicated in future cycles.
 
 ### Why this matters
-Without clear measurement traceability, return on investment improvements cannot be validated or scaled across campaigns.`;
+Without clear measurement traceability, the team cannot tell which audience and channel choices should be repeated in the next campaign.`;
   }
 
   if (role === "compliance-agent") {
@@ -4478,7 +4651,7 @@ Source one: ${compliance.sources[0]?.policy || "Financial services restriction p
 Source two: ${compliance.sources[1]?.policy || "Pharmaceutical disclaimer policy"}. Source dataset: ${compliance.sources[1]?.source || "Global Compliance Policy Engine"}. Reason applied: ${compliance.sources[1]?.why || "Creative category requires disclaimer handling."}
 
 ### Why this matters
-Parallel compliance validation prevents non-compliant activation while preserving campaign pacing and return on investment goals.`;
+Parallel compliance validation prevents non-compliant activation while preserving campaign pacing and delivery goals.`;
   }
 
   return `### Agent Narrative
@@ -4609,7 +4782,7 @@ function buildStageRawDataEntry(agent, campaignState = null, selectedPlan = null
 
   if (role === "measurement") {
     return {
-      title: "Measurement and Attribution Inputs",
+      title: "Measurement and Learning Inputs",
       type: "json",
       content: JSON.stringify({
         audience_summary: campaignState?.stageOutputs?.["planning-identity-agent"] || null,
@@ -5077,9 +5250,10 @@ function renderReachChartD3() {
   if (!container) return;
   const reach = state.dashboard?.reach;
   if (!reach) return;
+  const projectedHouseholds = Number(reach.modeledHouseholds || reach.scaledReach || reach.uniqueHouseholds || 0);
 
   const sig = JSON.stringify({
-    reach: reach.uniqueHouseholds,
+    reach: projectedHouseholds,
     overlap: reach.overlapPct,
     deviceCount: reach.deviceCount,
     runToken: state.runToken || 0
@@ -5193,7 +5367,7 @@ const FLOW_GRAPH_LABELS = {
   "booking-proposals-agent": "Stage 3\nBooking & Proposal",
   "trafficking-signals-agent": "Stage 4\nTrafficking & Signals",
   "inflight-operations-agent": "Stage 5\nIn-Flight Operations",
-  "measurement-agent": "Stage 6\nMeasurement",
+  "measurement-agent": "Stage 6\nMeasurement & Learning",
   "audience-segmentation": "Audience\nSegmentation",
   "cross-platform-id-resolver": "Cross-Platform\nID Resolver",
   "behavioral-indexer": "Behavioral\nIndexer",
@@ -5209,9 +5383,12 @@ const FLOW_GRAPH_LABELS = {
   "real-time-pacing": "Real-Time\nPacing",
   "autonomous-make-good": "Autonomous\nMake-Good",
   "ops-alerting": "Ops\nAlerting",
-  "clean-room-matcher": "Clean Room\nMatcher",
-  "deterministic-roi": "Deterministic\nROI",
-  "learning-agenda": "Learning\nAgenda"
+  "household-match-validator": "Household Match\nValidator",
+  "outcome-pattern-reader": "Outcome Pattern\nReader",
+  "next-flight-planner": "Next Flight\nPlanner",
+  "clean-room-matcher": "Household Match\nValidator",
+  "deterministic-roi": "Outcome Pattern\nReader",
+  "learning-agenda": "Next Flight\nPlanner"
 };
 
 function getFlowGraphLabel(id, fallback = "") {

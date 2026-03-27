@@ -20,13 +20,21 @@ function sanitizeDisplayText(value = "") {
     .replace(/\bolli_household_id\b/gi, "audience_household_id")
     .replace(/\bneo_order_id\b/gi, "booking_order_id")
     .replace(/\bstreamx_delivery_pct\b/gi, "delivery_pct")
+    .replace(/\bexpected_roi_lift_pct\b/gi, "expected_response_lift_pct")
+    .replace(/\broiReasoning\b/gi, "channelLogic")
+    .replace(/\bbefore_roi\b/gi, "before_outcome")
+    .replace(/\bafter_roi\b/gi, "after_outcome")
+    .replace(/\bdeterministic_roi\b/gi, "outcome_signal")
     .replace(/\bOlli Household ID\b/gi, "Audience Household ID")
     .replace(/\bNeo Order ID\b/gi, "Booking Order ID")
     .replace(/\bStreamx Delivery %\b/gi, "Delivery %")
+    .replace(/\bMeasurement and Attribution\b/gi, "Measurement and Learning")
     .replace(/\bDemo\s*Direct\b/gi, "Booking")
     .replace(/\bOlli\b/gi, "Audience Identity")
     .replace(/\bNEO\b/gi, "Planning")
     .replace(/\bNeo\b/gi, "Planning")
+    .replace(/\breturn on investment\b/gi, "measured outcome")
+    .replace(/\broi\b/gi, "outcome")
     .replace(/\bStreamX\b/gi, "Delivery");
 }
 
@@ -40,7 +48,7 @@ function formatPrettyLabel(value = "") {
     .replace(/\bUsd\b/g, "USD")
     .replace(/\bPct\b/g, "%")
     .replace(/\bCpm\b/g, "CPM")
-    .replace(/\bRoi\b/g, "ROI")
+    .replace(/\bRoi\b/g, "Outcome")
     .replace(/\bScte35\b/gi, "SCTE-35"));
 }
 
@@ -201,6 +209,16 @@ function summaryDedupKey(text = "") {
     .trim();
 }
 
+function normalizeSummarySentence(text = "") {
+  return stripMarkdownToText(text)
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function resolveReachHouseholds(reach = {}) {
+  return Number(reach?.modeledHouseholds || reach?.scaledReach || reach?.uniqueHouseholds || 0);
+}
+
 function buildStagePreviewText(agent) {
   if (!agent?.text) return "";
   const raw = String(agent.text).trim();
@@ -322,9 +340,9 @@ function buildAgentSummaryMetrics(agent = {}, state = {}) {
 
   if (role === "measurement") {
     return [
-      { label: "Households Reached", value: measurement.matched_households ? Number(measurement.matched_households).toLocaleString() : "Pending" },
-      { label: "Hit Rate", value: measurement.clean_room_match_rate_pct != null ? `${measurement.clean_room_match_rate_pct}%` : "Pending" },
-      { label: "Cross-Platform Reach", value: reach.overlapPct != null ? `${reach.overlapPct}% overlap` : "Pending" }
+      { label: "Measured Households", value: measurement.matched_households ? Number(measurement.matched_households).toLocaleString() : "Pending" },
+      { label: "Clean-Room Match Rate", value: measurement.clean_room_match_rate_pct != null ? `${measurement.clean_room_match_rate_pct}%` : "Pending" },
+      { label: "Overlap Estimate", value: reach.overlapPct != null ? `${reach.overlapPct}% overlap` : "Pending" }
     ];
   }
 
@@ -408,7 +426,7 @@ function buildStageMetricNarrative(agent = {}, state = {}) {
       : `It projected ${inflight.digital_delivery_rate_pct || 0}% streaming delivery versus ${inflight.linear_delivery_rate_pct || 0}% linear delivery and kept the original allocation intact because no make-good was required.`;
   }
   if (role === "measurement" && (measurement.matched_households || measurement.clean_room_match_rate_pct != null)) {
-    return `It matched ${Number(measurement.matched_households || 0).toLocaleString()} households at a ${measurement.clean_room_match_rate_pct || 0}% hit rate, with ${reach.overlapPct != null ? `${reach.overlapPct}%` : "measured"} cross-platform overlap.`;
+    return `It validated ${Number(measurement.matched_households || 0).toLocaleString()} measurable households at a ${measurement.clean_room_match_rate_pct || 0}% clean-room hit rate, with ${reach.overlapPct != null ? `${reach.overlapPct}%` : "measured"} cross-platform overlap informing the readout.`;
   }
   if (role === "compliance" && state?.complianceDetails) {
     return `It completed the compliance pass with status ${state.complianceDetails.status || "pending"} and ${state.complianceDetails.findings?.length || 0} recorded findings.`;
@@ -417,40 +435,41 @@ function buildStageMetricNarrative(agent = {}, state = {}) {
 }
 
 function buildStageFindingLines(agent = {}, state = {}, simple = false) {
-  const previewText = buildStagePreviewText(agent);
+  const summaryLines = (agent?.summaryLines || [])
+    .map((line) => normalizeSummarySentence(line))
+    .filter((line) => line.length >= 20);
   const candidates = [
     buildStageMetricNarrative(agent, state),
-    ...(agent?.summaryLines || []),
-    ...splitSummaryFragments(agent?.summary || ""),
-    ...splitSummaryFragments(previewText)
+    ...summaryLines,
+    ...(summaryLines.length ? [] : splitSummaryFragments(agent?.summary || "")),
+    ...(summaryLines.length ? [] : splitSummaryFragments(agent?.text || ""))
   ];
   const seen = new Set();
   const lines = [];
   candidates.forEach((candidate) => {
-    const compact = truncateCardText(candidate, simple ? 150 : 220);
-    const key = summaryDedupKey(compact);
-    if (!compact || compact.length < 20 || seen.has(key)) return;
+    const sentence = normalizeSummarySentence(candidate);
+    const key = summaryDedupKey(sentence);
+    if (!sentence || sentence.length < 20 || seen.has(key)) return;
     seen.add(key);
-    lines.push(compact);
+    lines.push(sentence);
   });
-  return lines.slice(0, simple ? 3 : 4);
+  return lines.slice(0, 5);
 }
 
 function buildStageSubAgentSummaryLines(agent = {}, simple = false) {
   const subAgents = agent?.subAgentResults || [];
   if (!subAgents.length) return [];
-  const visibleCount = simple ? 2 : 3;
-  const lines = subAgents.slice(0, visibleCount).map((item) => {
+  return subAgents.map((item) => {
+    const definition = normalizeSummarySentence(item?.definition || item?.summary || "");
     const details = (item?.details || [])
-      .map((detail) => stripMarkdownToText(detail))
+      .map((detail) => normalizeSummarySentence(detail))
       .filter(Boolean);
-    const detailText = truncateCardText(details.slice(0, simple ? 1 : 2).join(" "), simple ? 120 : 180);
-    return `${item.name}: ${detailText || "Completed its scoped task and updated the shared stage output."}`;
+    const parts = [
+      definition ? `Definition: ${definition}` : "",
+      details.length ? `What it reported: ${details.join(" ")}` : ""
+    ].filter(Boolean);
+    return `${item.name}: ${parts.join(" ") || "Completed its scoped task and updated the shared stage output."}`;
   });
-  if (subAgents.length > visibleCount) {
-    lines.push(`Additional sub-agent output is available in the detailed breakdown (${subAgents.length - visibleCount} more recorded).`);
-  }
-  return lines;
 }
 
 function buildStageImpactLines(agent = {}, simple = false) {
@@ -461,11 +480,11 @@ function buildStageImpactLines(agent = {}, simple = false) {
   const seen = new Set();
   const lines = [];
   candidates.forEach((candidate) => {
-    const compact = truncateCardText(candidate, simple ? 160 : 240);
-    const key = summaryDedupKey(compact);
-    if (!compact || compact.length < 20 || seen.has(key)) return;
+    const sentence = normalizeSummarySentence(candidate);
+    const key = summaryDedupKey(sentence);
+    if (!sentence || sentence.length < 20 || seen.has(key)) return;
     seen.add(key);
-    lines.push(compact);
+    lines.push(sentence);
   });
   return lines;
 }
@@ -597,8 +616,14 @@ function renderPrettySubAgents(items = [], state = {}, actions = {}, options = {
             <div class="detail-card-title mb-0">${selected.name || "Sub-Agent"}</div>
             <span class="badge text-bg-${selectedMeta.tone}">${selectedMeta.label}</span>
           </div>
+          ${selected.definition || selected.summary ? html`
+            <div class="detail-section">
+              <div class="detail-section-label">Definition</div>
+              <div class="detail-text-panel">${selected.definition || selected.summary}</div>
+            </div>
+          ` : null}
           ${(selected.details || []).length
-            ? html`<ul class="detail-list mb-0">${(selected.details || []).slice(0, 4).map((detail) => html`<li>${detail}</li>`)}</ul>`
+            ? html`<ul class="detail-list mb-0">${(selected.details || []).map((detail) => html`<li>${detail}</li>`)}</ul>`
             : selected.summary
               ? html`<div class="detail-text-panel">${selected.summary}</div>`
               : html`<span class="detail-null">No notes recorded.</span>`}
@@ -925,8 +950,8 @@ function renderArchitectScenarioCard(option, index, state, actions) {
                 <p class="architect-param-copy mb-0">${option.deliveryTiming || "Not provided."}</p>
               </div>
               <div class="architect-param-card">
-                <div class="architect-param-label">ROI Logic</div>
-                <p class="architect-param-copy mb-0">${option.roiReasoning || "Not provided."}</p>
+                <div class="architect-param-label">Channel Logic</div>
+                <p class="architect-param-copy mb-0">${option.channelLogic || "Not provided."}</p>
               </div>
             </div>
 
@@ -1415,7 +1440,7 @@ function resolveFlowNodeDetail(state, nodeId) {
       detail: {
         summaryLines: state.dashboard
           ? (executive?.summaryLines || [
-            `Unique households: ${state.dashboard.reach?.uniqueHouseholds || 0}.`,
+            `Projected households reached: ${resolveReachHouseholds(state.dashboard.reach || {}).toLocaleString()}.`,
             `Make-good shift: ${state.dashboard.makeGood?.shiftBudget?.toLocaleString?.() || 0} dollars.`
           ])
           : ["The final dashboard will populate after campaign execution finishes."],
@@ -1446,7 +1471,10 @@ function resolveFlowNodeDetail(state, nodeId) {
       subtitle: parent?.agentName || "Sub-Agent",
       status,
       detail: {
-        summaryLines: (subAgent.details || []).slice(0, 2),
+        summaryLines: [
+          ...(subAgent.definition ? [subAgent.definition] : []),
+          ...(subAgent.details || [])
+        ],
         subAgentResults: [],
         inputData: subAgent.inputData || {
           parent_master_agent: parent?.agentName || masterId,
@@ -1472,7 +1500,7 @@ function resolveFlowNodeDetail(state, nodeId) {
       subtitle: parent?.agentName || "Sub-Agent",
       status: { l: "Pending", c: "secondary" },
       detail: {
-        summaryLines: [subAgent.summary || "This sub-agent is configured and waiting for its master agent to run."],
+        summaryLines: [subAgent.definition || subAgent.summary || "This sub-agent is configured and waiting for its master agent to run."],
         inputData: {
           parent_master_agent: parent?.agentName || masterId,
           node_id: nodeId
@@ -1543,12 +1571,17 @@ function renderStructuredFlowDetail(detail, state = {}, actions = {}, liveSwitch
 function renderFlowOutputPanel(state, actions = {}) {
   const liveCandidates = getFlowLiveCandidates(state);
   const candidateIds = new Set(liveCandidates.map((item) => item.id));
+  const defaultCandidateId = liveCandidates.find((item) => item.id !== "parallel-compliance-agent")?.id || null;
   const selectedCandidateId = state.flowPanelNodeId && candidateIds.has(state.flowPanelNodeId)
     ? state.flowPanelNodeId
-    : liveCandidates[0]?.id || null;
+    : defaultCandidateId;
+  const defaultLatestId = state.latestNodeId && state.latestNodeId !== "parallel-compliance-agent"
+    ? state.latestNodeId
+    : null;
   const liveId = state.focusedNodeId
     ?? selectedCandidateId
-    ?? (state.latestNodeId || state.orchestratorNodeId || (state.plan[0]?.nodeId));
+    ?? defaultLatestId
+    ?? (state.plan[0]?.nodeId || state.orchestratorNodeId || liveCandidates[0]?.id || null);
   const resolved = resolveFlowNodeDetail(state, liveId);
   if (!resolved) {
     return html`<div class="flow-output-panel h-100 d-flex flex-column"><div class="agent-stream border rounded-3 p-3 bg-body flex-grow-1 overflow-auto"><div class="text-body-secondary small">Build agents to stream output.</div></div></div>`;
@@ -1798,7 +1831,7 @@ function renderDashboard(state, actions) {
           </div>
         ` : null}
         ${renderDashboardExecutiveSummary(state.dashboard?.executive)}
-        <div class="dashboard-grid"><div class="chart-card"><div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2"><h6 class="mb-0">Delivery Pacing (Linear versus Digital)</h6><div class="btn-group btn-group-sm" role="group"><button class="btn btn-outline-warning ${state.pacingMode === "pct" ? "active" : ""}" @click=${() => actions.setPacingMode("pct")}>Delivery Rate (%)</button><button class="btn btn-outline-warning ${state.pacingMode === "imp" ? "active" : ""}" @click=${() => actions.setPacingMode("imp")}>Delivered Impressions</button></div></div>${renderPacingChart()}<div class="d-flex gap-3 small mt-2 text-body-secondary"><span class="d-flex align-items-center gap-2"><span class="legend-swatch linear"></span>Linear</span><span class="d-flex align-items-center gap-2"><span class="legend-swatch digital"></span>Digital</span></div></div><div class="donut-card"><h6 class="mb-3">Cross-Platform Reach</h6>${renderReachDonut(reach)}<div class="reach-metrics mt-3"><div><div class="metric-label">Unique Households</div><div class="metric-value">${formatNumber(reach.uniqueHouseholds)}</div></div><div><div class="metric-label">Devices Touched</div><div class="metric-value">${formatNumber(reach.deviceCount)}</div></div><div><div class="metric-label">Cross-Platform Overlap</div><div class="metric-value">${reach.overlapPct}%</div></div></div></div></div>
+        <div class="dashboard-grid"><div class="chart-card"><div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2"><h6 class="mb-0">Delivery Pacing (Linear versus Digital)</h6><div class="btn-group btn-group-sm" role="group"><button class="btn btn-outline-warning ${state.pacingMode === "pct" ? "active" : ""}" @click=${() => actions.setPacingMode("pct")}>Delivery Rate (%)</button><button class="btn btn-outline-warning ${state.pacingMode === "imp" ? "active" : ""}" @click=${() => actions.setPacingMode("imp")}>Delivered Impressions</button></div></div>${renderPacingChart()}<div class="d-flex gap-3 small mt-2 text-body-secondary"><span class="d-flex align-items-center gap-2"><span class="legend-swatch linear"></span>Linear</span><span class="d-flex align-items-center gap-2"><span class="legend-swatch digital"></span>Digital</span></div></div><div class="donut-card"><h6 class="mb-3">Cross-Platform Reach</h6>${renderReachDonut(reach)}<div class="reach-metrics mt-3"><div><div class="metric-label">Projected Households Reached</div><div class="metric-value">${formatNumber(resolveReachHouseholds(reach))}</div></div><div><div class="metric-label">Devices Touched</div><div class="metric-value">${formatNumber(reach.deviceCount)}</div></div><div><div class="metric-label">Cross-Platform Overlap</div><div class="metric-value">${reach.overlapPct}%</div></div></div></div></div>
         ${renderMakeGood(state)}
         ${state.visualizationExplanationOpen ? renderVisualizationExplanation(state) : null}
         <div class="mt-4"><h6 class="mb-3">Agent Actions</h6>${renderActionTable(actionRows)}</div>
