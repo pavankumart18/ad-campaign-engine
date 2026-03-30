@@ -216,7 +216,7 @@ function normalizeSummarySentence(text = "") {
 }
 
 function resolveReachHouseholds(reach = {}) {
-  return Number(reach?.modeledHouseholds || reach?.scaledReach || reach?.uniqueHouseholds || 0);
+  return Number(reach?.projectedHouseholds || reach?.modeledHouseholds || reach?.scaledReach || reach?.uniqueHouseholds || 0);
 }
 
 function buildStagePreviewText(agent) {
@@ -292,8 +292,8 @@ function buildAgentSummaryMetrics(agent = {}, state = {}) {
 
   if (role === "planning") {
     return [
-      { label: "Users Identified", value: audience.matched_profiles ? Number(audience.matched_profiles).toLocaleString() : "Pending" },
-      { label: "Unique Users", value: audience.unique_households ? Number(audience.unique_households).toLocaleString() : "Pending" },
+      { label: "Matched Sample Profiles", value: audience.matched_profiles ? Number(audience.matched_profiles).toLocaleString() : "Pending" },
+      { label: "Unique Households", value: audience.unique_households ? Number(audience.unique_households).toLocaleString() : "Pending" },
       { label: "Lead Cohort", value: audience.top_segments?.[0]?.label || "Pending" },
       { label: "Overlap", value: audience.overlap_pct != null ? `${audience.overlap_pct}%` : "Pending" }
     ];
@@ -339,10 +339,12 @@ function buildAgentSummaryMetrics(agent = {}, state = {}) {
   }
 
   if (role === "measurement") {
+    const projectedHouseholds = resolveReachHouseholds(reach);
     return [
+      { label: "Projected Reach", value: projectedHouseholds ? projectedHouseholds.toLocaleString() : "Pending" },
       { label: "Measured Households", value: measurement.matched_households ? Number(measurement.matched_households).toLocaleString() : "Pending" },
       { label: "Clean-Room Match Rate", value: measurement.clean_room_match_rate_pct != null ? `${measurement.clean_room_match_rate_pct}%` : "Pending" },
-      { label: "Overlap Estimate", value: reach.overlapPct != null ? `${reach.overlapPct}% overlap` : "Pending" }
+      { label: "Avg Frequency", value: measurement.average_frequency ? `${measurement.average_frequency}x` : "Pending" }
     ];
   }
 
@@ -409,7 +411,7 @@ function buildStageMetricNarrative(agent = {}, state = {}) {
   const reach = state?.dashboard?.reach || {};
 
   if (role === "planning" && (audience.matched_profiles || audience.unique_households)) {
-    return `It narrowed ${Number(audience.matched_profiles || 0).toLocaleString()} matched profiles into ${Number(audience.unique_households || 0).toLocaleString()} unique households and elevated ${audience.top_segments?.[0]?.label || "the top cohort"} as the operating audience.`;
+    return `It narrowed ${Number(audience.matched_profiles || 0).toLocaleString()} matched profiles into ${Number(audience.unique_households || 0).toLocaleString()} modeled unique households${audience.seed_households ? ` from ${Number(audience.seed_households || 0).toLocaleString()} seed households` : ""} and elevated ${audience.top_segments?.[0]?.label || "the top cohort"} as the operating audience.`;
   }
   if (role === "inventory" && (inventory.capacity_impressions || inventory.capacity_spend_usd)) {
     return `It found ${Number(inventory.capacity_impressions || 0).toLocaleString()} fulfillable impressions with premium streaming CPM around $${inventory.premium_streaming_cpm || "0"} and linear CPM around $${inventory.blended_linear_cpm || "0"}.`;
@@ -426,7 +428,11 @@ function buildStageMetricNarrative(agent = {}, state = {}) {
       : `It projected ${inflight.digital_delivery_rate_pct || 0}% streaming delivery versus ${inflight.linear_delivery_rate_pct || 0}% linear delivery and kept the original allocation intact because no make-good was required.`;
   }
   if (role === "measurement" && (measurement.matched_households || measurement.clean_room_match_rate_pct != null)) {
-    return `It validated ${Number(measurement.matched_households || 0).toLocaleString()} measurable households at a ${measurement.clean_room_match_rate_pct || 0}% clean-room hit rate, with ${reach.overlapPct != null ? `${reach.overlapPct}%` : "measured"} cross-platform overlap informing the readout.`;
+    const projectedHouseholds = resolveReachHouseholds(reach);
+    const frequencyText = measurement.average_frequency ? `${measurement.average_frequency}x` : "pending";
+    return projectedHouseholds
+      ? `It validated ${Number(measurement.matched_households || 0).toLocaleString()} measurable households out of about ${projectedHouseholds.toLocaleString()} projected reached households at a ${measurement.clean_room_match_rate_pct || 0}% clean-room hit rate, with average frequency at ${frequencyText}.`
+      : `It validated ${Number(measurement.matched_households || 0).toLocaleString()} measurable households at a ${measurement.clean_room_match_rate_pct || 0}% clean-room hit rate, with ${reach.overlapPct != null ? `${reach.overlapPct}%` : "measured"} cross-platform overlap informing the readout.`;
   }
   if (role === "compliance" && state?.complianceDetails) {
     return `It completed the compliance pass with status ${state.complianceDetails.status || "pending"} and ${state.complianceDetails.findings?.length || 0} recorded findings.`;

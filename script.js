@@ -1066,7 +1066,7 @@ function buildReachSummary(audience, logs, profile = {}, campaignState = null) {
     const booking = campaignState.stageOutputs?.["booking-proposals-agent"]?.booking_summary || {};
     const inflight = campaignState.stageOutputs?.["inflight-operations-agent"]?.inflight_summary || {};
     const finalAllocation = inflight.final_allocation || campaignState.selectedScenario?.allocation || {};
-    const sampleHouseholds = Math.max(1, Number(planning.unique_households || campaignState.intelligence?.uniqueHouseholds || 1));
+    const audienceHouseholds = Math.max(1, Number(planning.unique_households || campaignState.intelligence?.uniqueHouseholds || 1));
     const linearPct = Math.round(clampNumber(finalAllocation.linearPct || 40, 10, 80));
     const overlapPct = Math.round(clampNumber(Number(planning.overlap_pct || campaignState.intelligence?.overlapPct || 18), 4, 64));
     const totalImpressions = (booking.line_items || []).reduce((sum, row) => sum + Number(row.impressions || 0), 0);
@@ -1075,15 +1075,31 @@ function buildReachSummary(audience, logs, profile = {}, campaignState = null) {
       2.2,
       4.1
     );
-    const modeledHouseholds = totalImpressions
-      ? Math.max(sampleHouseholds * 600, Math.round((totalImpressions / targetFrequency) / 100) * 100)
-      : sampleHouseholds * 2100;
-    const deviceCount = Math.max(1, Math.round(modeledHouseholds * clampNumber(1.62 + (overlapPct / 100), 1.6, 2.25)));
+    const addressableMultiplier = clampNumber(
+      1.08 + (overlapPct / 260) + (Math.abs(Number(finalAllocation.streamingPct || 50) - linearPct) / 320),
+      1.08,
+      1.26
+    );
+    const addressableHouseholds = Math.max(
+      audienceHouseholds,
+      Math.round((audienceHouseholds * addressableMultiplier) / 100) * 100
+    );
+    const projectedHouseholds = totalImpressions
+      ? Math.max(
+        audienceHouseholds,
+        Math.min(addressableHouseholds, Math.round((totalImpressions / targetFrequency) / 100) * 100)
+      )
+      : Math.max(audienceHouseholds, Math.round((addressableHouseholds * 0.62) / 100) * 100);
+    const deviceCount = Math.max(1, Math.round(projectedHouseholds * clampNumber(1.62 + (overlapPct / 100), 1.6, 2.25)));
     return {
-      uniqueHouseholds: sampleHouseholds,
-      modeledHouseholds,
+      uniqueHouseholds: audienceHouseholds,
+      audienceHouseholds,
+      addressableHouseholds,
+      projectedHouseholds,
+      modeledHouseholds: projectedHouseholds,
+      targetFrequency: roundToTwo(targetFrequency, 1),
       deviceCount,
-      scaledReach: modeledHouseholds,
+      scaledReach: projectedHouseholds,
       linearPct,
       digitalPct: 100 - linearPct,
       overlapPct
@@ -1117,12 +1133,47 @@ function buildReachSummary(audience, logs, profile = {}, campaignState = null) {
   ) + Math.round(profile.overlapShift || 0);
   return {
     uniqueHouseholds,
+    audienceHouseholds: uniqueHouseholds,
+    addressableHouseholds: scaledReach,
+    projectedHouseholds: scaledReach,
     deviceCount,
     scaledReach,
     linearPct,
     digitalPct: 100 - linearPct,
     overlapPct: Math.round(clampNumber(overlapPct, 4, 64))
   };
+}
+
+function resolveAudienceHouseholdCount(planning = {}, intelligence = {}) {
+  return Math.max(0, Number(planning.unique_households || intelligence?.uniqueHouseholds || 0));
+}
+
+function resolveProjectedHouseholdCount(reach = {}, measurement = {}, audienceHouseholds = 0) {
+  return Math.max(
+    0,
+    Number(
+      reach?.projectedHouseholds
+      || reach?.modeledHouseholds
+      || reach?.scaledReach
+      || measurement?.projected_households
+      || measurement?.matched_households
+      || audienceHouseholds
+      || 0
+    )
+  );
+}
+
+function resolveMeasuredHouseholdCount(measurement = {}, projectedHouseholds = 0) {
+  const matchedHouseholds = Math.max(0, Number(measurement?.matched_households || 0));
+  if (matchedHouseholds) return matchedHouseholds;
+  const cleanRoomMatchRate = Math.max(0, Number(measurement?.clean_room_match_rate_pct || 0));
+  return cleanRoomMatchRate && projectedHouseholds
+    ? Math.round(projectedHouseholds * (cleanRoomMatchRate / 100))
+    : 0;
+}
+
+function resolveFrequencyPerHousehold(totalImpressions = 0, projectedHouseholds = 0) {
+  return projectedHouseholds ? roundToTwo(totalImpressions / projectedHouseholds, 1) : 0;
 }
 
 function buildExecutiveCampaignSummary(campaignState = null, reach = null, makeGood = null) {
@@ -1134,8 +1185,9 @@ function buildExecutiveCampaignSummary(campaignState = null, reach = null, makeG
   const measurement = campaignState.stageOutputs?.["measurement-agent"]?.measurement_summary || {};
   const lineItems = booking.line_items || [];
   const matchedProfiles = Math.max(0, Number(planning.matched_profiles || campaignState.intelligence?.matchedRows?.length || 0));
-  const uniqueUsers = Math.max(0, Number(planning.unique_households || campaignState.intelligence?.uniqueHouseholds || 0));
-  const reachedHouseholds = Math.max(0, Number(reach?.modeledHouseholds || reach?.scaledReach || reach?.uniqueHouseholds || measurement.matched_households || uniqueUsers));
+  const seedHouseholds = Math.max(0, Number(planning.seed_households || campaignState.intelligence?.seedHouseholdCount || 0));
+  const uniqueHouseholds = resolveAudienceHouseholdCount(planning, campaignState.intelligence);
+  const projectedHouseholds = resolveProjectedHouseholdCount(reach, measurement, uniqueHouseholds);
   const totalImpressions = lineItems.reduce((sum, row) => sum + Number(row.impressions || 0), 0);
   const totalSpend = lineItems.reduce((sum, row) => sum + Number(row.spend_usd || 0), 0);
   const blendedCpm = totalImpressions
@@ -1147,8 +1199,9 @@ function buildExecutiveCampaignSummary(campaignState = null, reach = null, makeG
       ) / 2,
       1
     );
-  const frequencyPerUser = reachedHouseholds ? roundToTwo(totalImpressions / reachedHouseholds, 1) : 0;
   const cleanRoomMatchRate = roundToTwo(Number(measurement.clean_room_match_rate_pct || 0), 1);
+  const measuredHouseholds = resolveMeasuredHouseholdCount(measurement, projectedHouseholds);
+  const frequencyPerHousehold = resolveFrequencyPerHousehold(totalImpressions, projectedHouseholds);
   const behavioralCohort = [
     planning.top_segments?.[0]?.label,
     planning.top_tags?.[0]?.label
@@ -1165,8 +1218,11 @@ function buildExecutiveCampaignSummary(campaignState = null, reach = null, makeG
   const deliveryDetails = `${digitalDeliveryRate}% on streaming and ${linearDeliveryRate}% on linear`;
   const overlapPct = Number(reach?.overlapPct || planning.overlap_pct || 0);
   const deviceCount = Number(reach?.deviceCount || campaignState.intelligence?.matchedRows?.length || 0);
-  const crossPlatformReach = `${overlapPct}% of reached households are expected to see both channels`;
-  const reachedHouseholdsLabel = reachedHouseholds.toLocaleString();
+  const addressableHouseholds = Number(reach?.addressableHouseholds || 0);
+  const crossPlatformReach = `${overlapPct}% of projected reached households are expected to see both channels`;
+  const projectedHouseholdsLabel = projectedHouseholds.toLocaleString();
+  const measuredHouseholdsLabel = measuredHouseholds.toLocaleString();
+  const addressableHouseholdsLabel = addressableHouseholds.toLocaleString();
   const totalImpressionsLabel = totalImpressions.toLocaleString();
   const goalLabel = deriveCampaignGoalLabel(campaignState.intelligence?.campaign || {});
   const productLabel = campaignState.productFamily?.displayLabel
@@ -1177,16 +1233,16 @@ function buildExecutiveCampaignSummary(campaignState = null, reach = null, makeG
     ? routeReasonRaw.charAt(0).toLowerCase() + routeReasonRaw.slice(1)
     : "it best fits the audience behavior, supply shape, and delivery objective in this brief";
   const inventoryAvailable = Number(inventory.capacity_impressions || 0).toLocaleString();
-  const frequencyWholeViewLow = frequencyPerUser ? Math.max(1, Math.floor(frequencyPerUser)) : 0;
-  const frequencyWholeViewHigh = frequencyPerUser ? Math.max(frequencyWholeViewLow, Math.ceil(frequencyPerUser)) : 0;
-  const frequencyPlainEnglish = frequencyPerUser
+  const frequencyWholeViewLow = frequencyPerHousehold ? Math.max(1, Math.floor(frequencyPerHousehold)) : 0;
+  const frequencyWholeViewHigh = frequencyPerHousehold ? Math.max(frequencyWholeViewLow, Math.ceil(frequencyPerHousehold)) : 0;
+  const frequencyPlainEnglish = frequencyPerHousehold
     ? (frequencyWholeViewLow === frequencyWholeViewHigh
       ? `In plain English, the average reached household would see the campaign about ${frequencyWholeViewLow} time${frequencyWholeViewLow === 1 ? "" : "s"}.`
       : `In plain English, the average reached household would see the campaign about ${frequencyWholeViewLow} to ${frequencyWholeViewHigh} times.`)
     : "Frequency will appear once the plan has both projected reach and booked impressions.";
-  const frequencyLabel = frequencyPerUser ? `${frequencyPerUser} times per reached household` : "Pending";
-  const frequencySource = frequencyPerUser
-    ? `This comes from dividing ${totalImpressionsLabel} total booked impressions by ${reachedHouseholdsLabel} projected households expected to be reached.`
+  const frequencyLabel = frequencyPerHousehold ? `${frequencyPerHousehold} times per reached household` : "Pending";
+  const frequencySource = frequencyPerHousehold
+    ? `This comes from dividing ${totalImpressionsLabel} total booked impressions by ${projectedHouseholdsLabel} projected households expected to receive at least one impression.`
     : "This metric is waiting for both booked impression totals and projected reached households.";
   const lineItemLabel = `${lineItems.length} placements covering ${totalImpressions.toLocaleString()} booked impressions`;
   const planMix = [
@@ -1202,7 +1258,7 @@ function buildExecutiveCampaignSummary(campaignState = null, reach = null, makeG
     },
     {
       title: "Who the campaign is aimed at",
-      text: `The audience engine matched ${matchedProfiles.toLocaleString()} relevant audience records and removed duplicate homes to isolate ${uniqueUsers.toLocaleString()} unique households. The strongest shared behavior signal was ${behavioralCohort}, which became the control cohort for planning.`
+      text: `The audience engine matched ${matchedProfiles.toLocaleString()} sample audience records and rolled them into ${uniqueHouseholds.toLocaleString()} modeled unique households${seedHouseholds ? ` from ${seedHouseholds.toLocaleString()} seed households` : ""}. The strongest shared behavior signal was ${behavioralCohort}, which became the control cohort for planning.`
     },
     {
       title: "How the media plan is built",
@@ -1210,19 +1266,21 @@ function buildExecutiveCampaignSummary(campaignState = null, reach = null, makeG
     },
     {
       title: "What the projected result means",
-      text: `If the plan performs as modeled, it should reach about ${reachedHouseholdsLabel} households. Average frequency is ${frequencyLabel}. ${frequencySource} ${frequencyPlainEnglish} Cross-platform overlap is ${overlapPct}%, which means that share of households is expected to see the campaign in both streaming and linear, and average CPM is $${blendedCpm}.`
+      text: `If the plan performs as modeled, it should reach about ${projectedHouseholdsLabel} households.${addressableHouseholds ? ` That sits inside a modeled reachable universe of about ${addressableHouseholdsLabel} households.` : ""} Average frequency is ${frequencyLabel}. ${frequencySource} ${frequencyPlainEnglish} The clean room is expected to match about ${measuredHouseholdsLabel} of those households at a ${cleanRoomMatchRate}% match rate. Cross-platform overlap is ${overlapPct}%, which means that share of households is expected to see the campaign in both streaming and linear, and average CPM is $${blendedCpm}.`
     }
   ];
   const metrics = [
     {
-      label: "Matched Audience Records",
+      label: "Matched Sample Profiles",
       value: matchedProfiles.toLocaleString(),
-      help: "All audience rows that matched the brief before duplicate households were removed."
+      help: "Synthetic viewer-level records that matched the brief before the modeled household roll-up."
     },
     {
       label: "Unique Households",
-      value: uniqueUsers.toLocaleString(),
-      help: "The deduplicated audience that the downstream planning stages actually used."
+      value: uniqueHouseholds.toLocaleString(),
+      help: seedHouseholds
+        ? `The modeled deduplicated household base built from ${seedHouseholds.toLocaleString()} seed households before the plan is projected into reachable delivery.`
+        : "The modeled deduplicated household base before the plan is projected into reachable delivery."
     },
     {
       label: "Lead Behavioral Cohort",
@@ -1246,19 +1304,21 @@ function buildExecutiveCampaignSummary(campaignState = null, reach = null, makeG
     },
     {
       label: "Projected Households Reached",
-      value: reachedHouseholdsLabel,
-      help: "Homes expected to see the campaign at least once."
+      value: projectedHouseholdsLabel,
+      help: addressableHouseholds
+        ? `Homes expected to see the campaign at least once, modeled from a reachable universe of about ${addressableHouseholdsLabel} households.`
+        : "Homes expected to see the campaign at least once."
     },
     {
       label: "Audience-to-Delivery Match Rate",
       value: `${cleanRoomMatchRate}%`,
-      help: "How much of the modeled audience can be connected back to measurable delivery."
+      help: `About ${measuredHouseholdsLabel} of the ${projectedHouseholdsLabel} projected reached households are expected to be measurable in the clean room.`
     },
     {
       label: "Average Frequency",
       value: frequencyLabel,
-      help: frequencyPerUser
-        ? `${frequencySource} That works out to ${frequencyPerUser} times per reached household on average. ${frequencyPlainEnglish}`
+      help: frequencyPerHousehold
+        ? `${frequencySource} That works out to ${frequencyPerHousehold} times per reached household on average. ${frequencyPlainEnglish}`
         : frequencySource
     },
     {
@@ -1280,9 +1340,9 @@ function buildExecutiveCampaignSummary(campaignState = null, reach = null, makeG
     sections,
     summaryLines: [
       `This scenario was selected to drive ${goalLabel} for ${productLabel}.`,
-      `The audience engine matched ${matchedProfiles.toLocaleString()} audience records and reduced them to ${uniqueUsers.toLocaleString()} unique households led by ${behavioralCohort}.`,
+      `The audience engine matched ${matchedProfiles.toLocaleString()} sample audience records and reduced them to ${uniqueHouseholds.toLocaleString()} modeled households${seedHouseholds ? ` built from ${seedHouseholds.toLocaleString()} seed households` : ""} led by ${behavioralCohort}.`,
       `${lineItems.length} placements across ${topNetworks} are projected to deliver ${totalImpressions.toLocaleString()} impressions with ${deliveryDetails}.`,
-      `If the plan performs as modeled, it should reach about ${reachedHouseholdsLabel} households. Average frequency is ${frequencyLabel}, calculated from ${totalImpressionsLabel} impressions divided by ${reachedHouseholdsLabel} households reached. ${frequencyPlainEnglish} ${crossPlatformReach}, and average CPM is $${blendedCpm}.`
+      `If the plan performs as modeled, it should reach about ${projectedHouseholdsLabel} households. Average frequency is ${frequencyLabel}, calculated from ${totalImpressionsLabel} impressions divided by ${projectedHouseholdsLabel} households reached. ${frequencyPlainEnglish} The clean room is expected to match about ${measuredHouseholdsLabel} households at a ${cleanRoomMatchRate}% match rate. ${crossPlatformReach}, and average CPM is $${blendedCpm}.`
     ],
     metrics,
     makeGoodSummary: makeGood?.shiftBudget
@@ -1741,13 +1801,24 @@ function analyzeAudienceAgainstCampaign(prompt = "") {
   matched.forEach((row) => splitPipeValue(row.behavioral_tags).forEach((tag) => tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1)));
 
   const stateCounts = countBy(matched, (row) => row.state_code);
+  const dmaCounts = countBy(matched, (row) => row.dma_region);
   const segmentCounts = countBy(matched, (row) => row.segment_name);
   const viewingCounts = countBy(matched, (row) => row.viewing_habit);
+  const ageBucketCounts = countBy(matched, (row) => row.age_bucket);
+  const incomeCounts = countBy(matched, (row) => row.income_bracket);
   const platformCounts = new Map();
   matched.forEach((row) => splitPipeValue(row.primary_platforms).forEach((platform) => platformCounts.set(platform, (platformCounts.get(platform) || 0) + 1)));
 
-  const uniqueHouseholds = new Set(matched.map((row) => row.household_id)).size;
-  const multiPlatformHouseholds = matched.filter((row) => splitPipeValue(row.primary_platforms).length > 2).length;
+  const householdMap = new Map();
+  matched.forEach((row) => {
+    if (!householdMap.has(row.household_id)) householdMap.set(row.household_id, row);
+  });
+  const seedHouseholdCount = householdMap.size;
+  const uniqueHouseholds = roundToTwo(
+    [...householdMap.values()].reduce((sum, row) => sum + Math.max(1, Number(row.modeled_household_weight || 1)), 0),
+    0
+  );
+  const multiPlatformHouseholds = [...householdMap.values()].filter((row) => splitPipeValue(row.primary_platforms).length > 2).length;
 
   const networkScores = {
     "Max": average(matched, "max_daytime_index"),
@@ -1770,13 +1841,18 @@ function analyzeAudienceAgainstCampaign(prompt = "") {
   const topTags = mapToRankedList(tagCounts, matchedTotal, 6);
   const topSegments = mapToRankedList(segmentCounts, matchedTotal, 4);
   const topStates = mapToRankedList(stateCounts, matchedTotal, 4);
+  const topDmas = mapToRankedList(dmaCounts, matchedTotal, 4);
   const topPlatforms = mapToRankedList(platformCounts, matchedTotal, 4);
+  const topAgeBuckets = mapToRankedList(ageBucketCounts, matchedTotal, 3);
+  const topIncomeBrackets = mapToRankedList(incomeCounts, matchedTotal, 3);
   const youngShare = roundToTwo((matched.filter((row) => Number(row.age || 0) < 40).length / matchedTotal) * 100, 1);
   const olderShare = roundToTwo((matched.filter((row) => Number(row.age || 0) >= 45).length / matchedTotal) * 100, 1);
   const parentShare = roundToTwo((matched.filter((row) => tagsContain(row, ["parents of toddlers", "millennial parents"])).length / matchedTotal) * 100, 1);
   const streamingHeavyShare = roundToTwo((matched.filter((row) => (row.viewing_habit || "").toLowerCase().includes("streaming")).length / matchedTotal) * 100, 1);
   const linearHeavyShare = roundToTwo((matched.filter((row) => (row.viewing_habit || "").toLowerCase().includes("linear")).length / matchedTotal) * 100, 1);
   const avgAge = roundToTwo(average(matched, "age"), 1);
+  const avgWeeklyMediaMinutes = Math.round(average(matched, "avg_weekly_media_minutes"));
+  const avgConversionPropensity = roundToTwo(average(matched, "recent_conversion_propensity"), 1);
   const avgStreaming = average(matched, "streaming_affinity_index");
   const avgLinear = average(matched, "linear_affinity_index");
   const avgEntertainment = average(matched, "entertainment_binge_index");
@@ -1819,15 +1895,21 @@ function analyzeAudienceAgainstCampaign(prompt = "") {
     campaign,
     matchedRows: matched,
     rankedRows: ranked,
+    seedHouseholdCount,
     uniqueHouseholds,
     topTags,
     topSegments,
     topStates,
+    topDmas,
     topPlatforms,
+    topAgeBuckets,
+    topIncomeBrackets,
     viewingMix: mapToRankedList(viewingCounts, matchedTotal, 3),
     networkScores,
     networkLift,
     avgAge,
+    avgWeeklyMediaMinutes,
+    avgConversionPropensity,
     youngShare,
     olderShare,
     parentShare,
@@ -1846,10 +1928,14 @@ function analyzeAudienceAgainstCampaign(prompt = "") {
     sampleRows: matched.slice(0, 10).map((row) => ({
       device_id: row.device_id,
       household_id: row.household_id,
+      modeled_household_weight: row.modeled_household_weight,
       age: row.age,
+      age_bucket: row.age_bucket,
       income_bracket: row.income_bracket,
       viewing_habit: row.viewing_habit,
       behavioral_tags: row.behavioral_tags,
+      avg_weekly_media_minutes: row.avg_weekly_media_minutes,
+      recent_conversion_propensity: row.recent_conversion_propensity,
       max_daytime_index: row.max_daytime_index,
       discovery_plus_index: row.discovery_plus_index,
       cnn_linear_index: row.cnn_linear_index,
@@ -1926,14 +2012,33 @@ function buildScenarioRecommendationReason(intelligence, variantKey = "") {
   const leadNetwork = rankedNetworks[0];
   const demographicReadout = buildDemographicReadout(intelligence);
   const behavioralReadout = buildBehavioralReadout(intelligence);
+  const incomeReadout = buildIncomeReadout(intelligence);
+  const marketReadout = buildMarketEvidenceReadout(intelligence);
+  const viewingReadout = buildViewingReadout(intelligence);
 
   if (routeType === "precision") {
-    return `${intelligence.streamingHeavyShare}% of matched households lean streaming-heavy versus ${intelligence.linearHeavyShare}% linear-heavy, ${demographicReadout}, and ${leadNetwork?.name || "Max"} is the strongest first network, so a streaming-heavy opening is the cleanest first move.`;
+    return `${joinEvidenceClauses([
+      `${intelligence.streamingHeavyShare}% of matched households lean streaming-heavy versus ${intelligence.linearHeavyShare}% linear-heavy`,
+      demographicReadout,
+      incomeReadout || viewingReadout,
+      `${leadNetwork?.name || "Max"} is the strongest first network`
+    ])}, so a streaming-heavy opening is the cleanest first move.`;
   }
   if (routeType === "scale") {
-    return `${intelligence.linearHeavyShare}% of matched households lean linear-heavy, ${demographicReadout}, and ${leadNetwork?.name || "CNN"} provides the steadiest opening lane for linear-weighted reach.`;
+    return `${joinEvidenceClauses([
+      `${intelligence.linearHeavyShare}% of matched households lean linear-heavy`,
+      demographicReadout,
+      marketReadout || incomeReadout,
+      `${leadNetwork?.name || "CNN"} provides the steadiest opening lane for broad reach`
+    ])}.`;
   }
-  return `Streaming-heavy behavior sits at ${intelligence.streamingHeavyShare}% and linear-heavy behavior sits at ${intelligence.linearHeavyShare}%, ${demographicReadout}, and ${behavioralReadout}, so a balanced opening keeps both behaviors covered without forcing an early bias.`;
+  return `${joinEvidenceClauses([
+    `Streaming-heavy behavior sits at ${intelligence.streamingHeavyShare}% and linear-heavy behavior sits at ${intelligence.linearHeavyShare}%`,
+    demographicReadout,
+    incomeReadout || viewingReadout,
+    `${intelligence.overlapPct}% cross-platform overlap means both channels can matter early`,
+    behavioralReadout
+  ])}, so a balanced opening keeps both behaviors covered without forcing an early bias.`;
 }
 
 function compactScenarioLabel(value = "", fallback = "Audience") {
@@ -2005,6 +2110,31 @@ function buildBehavioralReadout(intelligence = {}) {
   return `${topPlatform} is the strongest platform signal and ${topTag} is the clearest behavioral tag`;
 }
 
+function buildIncomeReadout(intelligence = {}) {
+  const leadIncome = intelligence.topIncomeBrackets?.[0];
+  return leadIncome ? `${leadIncome.pct}% of matched profiles sit in the ${leadIncome.label} income band` : "";
+}
+
+function buildViewingReadout(intelligence = {}) {
+  const leadViewing = intelligence.viewingMix?.[0];
+  return leadViewing ? `${leadViewing.pct}% of matched profiles cluster in ${leadViewing.label} viewing` : "";
+}
+
+function buildMarketEvidenceReadout(intelligence = {}) {
+  const markets = (intelligence.topStates || []).map((item) => item.label).slice(0, 2);
+  if (!markets.length) return "";
+  if (markets.length === 1) return `the heaviest state concentration sits in ${markets[0]}`;
+  return `the heaviest state concentration sits in ${markets[0]} and ${markets[1]}`;
+}
+
+function joinEvidenceClauses(clauses = []) {
+  const parts = clauses.map((item) => normalizeWhitespace(item)).filter(Boolean);
+  if (!parts.length) return "";
+  if (parts.length === 1) return parts[0];
+  if (parts.length === 2) return `${parts[0]} and ${parts[1]}`;
+  return `${parts.slice(0, -1).join(", ")}, and ${parts[parts.length - 1]}`;
+}
+
 function buildScenarioTitle(intelligence = {}, variantKey = "") {
   const routeType = getVariantRouteType(variantKey);
   const audienceLabel = deriveScenarioAudienceLabel(intelligence);
@@ -2027,13 +2157,33 @@ function buildScenarioPromptText(intelligence = {}, variantKey = "", networks = 
   const leadNetwork = networks[0]?.name || "Max";
   const supportNetwork = networks[1]?.name || "CNN";
   const demographicReadout = buildDemographicReadout(intelligence);
+  const incomeReadout = buildIncomeReadout(intelligence);
+  const viewingReadout = buildViewingReadout(intelligence);
   if (routeType === "precision") {
-    return `Lead with a streaming-heavy mix because ${audienceLabel} skews on-demand, ${demographicReadout}, and ${leadNetwork} gives this audience the strongest opening signal for ${goalLabel}.`;
+    return `Keep the opening decisively streaming-heavy because ${joinEvidenceClauses([
+      `${audienceLabel} skews on-demand`,
+      `${intelligence.streamingHeavyShare}% of matched households lean streaming-heavy versus ${intelligence.linearHeavyShare}% linear-heavy`,
+      demographicReadout,
+      incomeReadout || viewingReadout,
+      `${leadNetwork} gives this audience the clearest first signal for ${goalLabel}`
+    ])}.`;
   }
   if (routeType === "scale") {
-    return `Build household coverage in ${marketLabel} with a linear-heavy opening on ${leadNetwork} because ${demographicReadout}, then use ${supportNetwork} only where it extends the audience cleanly.`;
+    return `Keep the opening clearly linear-heavy because ${joinEvidenceClauses([
+      `${marketLabel} is the first scale market`,
+      `${intelligence.linearHeavyShare}% of matched households lean linear-heavy`,
+      demographicReadout,
+      incomeReadout || viewingReadout,
+      `${leadNetwork} is the steadiest first network for household coverage`
+    ])}, then use ${supportNetwork} only where it extends the audience cleanly.`;
   }
-  return `Keep ${leadNetwork} and ${supportNetwork} both live in a balanced mix because ${demographicReadout}, so the campaign can pursue ${goalLabel} without forcing an early channel bias.`;
+  return `Keep this route genuinely balanced because ${joinEvidenceClauses([
+    `${leadNetwork} and ${supportNetwork} both carry credible opening value`,
+    `streaming-heavy behavior is ${intelligence.streamingHeavyShare}% and linear-heavy behavior is ${intelligence.linearHeavyShare}%`,
+    demographicReadout,
+    incomeReadout || viewingReadout,
+    `${intelligence.overlapPct}% overlap makes a dual-channel opening viable for ${goalLabel}`
+  ])}.`;
 }
 
 function buildScenarioStrategyText(intelligence = {}, variantKey = "") {
@@ -2042,13 +2192,15 @@ function buildScenarioStrategyText(intelligence = {}, variantKey = "") {
   const marketLabel = deriveScenarioMarketLabel(intelligence);
   const overlapPct = intelligence.overlapPct || 0;
   const behavioralReadout = buildBehavioralReadout(intelligence);
+  const marketReadout = buildMarketEvidenceReadout(intelligence);
+  const viewingReadout = buildViewingReadout(intelligence);
   if (routeType === "precision") {
-    return `Use ${audienceLabel} as the anchor audience, let streaming carry the opening weight, and rely on ${overlapPct}% cross-platform overlap plus the fact that ${behavioralReadout} to keep reinforcement efficient while the strongest on-demand placements prove themselves.`;
+    return `Use ${audienceLabel} as the anchor audience, let streaming carry the opening weight, and rely on ${overlapPct}% cross-platform overlap, ${viewingReadout || behavioralReadout}, and average weekly media time of ${intelligence.avgWeeklyMediaMinutes || 0} minutes to keep reinforcement efficient while the strongest on-demand placements prove themselves.`;
   }
   if (routeType === "scale") {
-    return `Use ${marketLabel} and the strongest adjacent markets to build linear-led household penetration first, then add streaming support only where the reach curve starts to flatten and the audience still needs incremental younger or lighter-viewing households.`;
+    return `Use ${marketLabel} and the strongest adjacent markets to build linear-led household penetration first because ${marketReadout || "the audience is clustered in a few scalable markets"}, then add streaming support only where the reach curve starts to flatten and the audience still needs incremental younger or lighter-viewing households.`;
   }
-  return `Keep both channels viable because the matched audience shows ${intelligence.streamingHeavyShare}% streaming-heavy and ${intelligence.linearHeavyShare}% linear-heavy behavior, and ${behavioralReadout}, making a balanced reallocation path a genuine advantage instead of a fallback.`;
+  return `Keep both channels viable because the matched audience shows ${intelligence.streamingHeavyShare}% streaming-heavy and ${intelligence.linearHeavyShare}% linear-heavy behavior, ${viewingReadout || behavioralReadout}, and ${overlapPct}% cross-platform overlap, making a balanced reallocation path a genuine advantage instead of a fallback.`;
 }
 
 function buildScenarioAllocationStrategy(intelligence = {}, variantKey = "", allocation = null, networks = []) {
@@ -2070,13 +2222,29 @@ function buildScenarioChannelLogic(intelligence = {}, variantKey = "", networks 
   const leadNetwork = networks[0]?.name || "Max";
   const leadLift = roundToTwo(networks[0]?.lift || 1, 1);
   const demographicReadout = buildDemographicReadout(intelligence);
+  const incomeReadout = buildIncomeReadout(intelligence);
   if (routeType === "precision") {
-    return `${leadNetwork} is the strongest streaming lead at ${leadLift}x audience fit, ${demographicReadout}, and the audience shows higher streaming-heavy behavior than linear-heavy behavior, so the mix opens with streaming in front.`;
+    return `${joinEvidenceClauses([
+      `${leadNetwork} is the strongest streaming lead at ${leadLift}x audience fit`,
+      demographicReadout,
+      incomeReadout,
+      "the audience shows higher streaming-heavy behavior than linear-heavy behavior"
+    ])}, so the mix opens with streaming in front.`;
   }
   if (routeType === "scale") {
-    return `${leadNetwork} is the strongest linear lead at ${leadLift}x audience fit, ${demographicReadout}, and the audience shows broader linear behavior, so the plan opens with linear weight before adding streaming reinforcement.`;
+    return `${joinEvidenceClauses([
+      `${leadNetwork} is the strongest linear lead at ${leadLift}x audience fit`,
+      demographicReadout,
+      incomeReadout,
+      "the audience shows broader linear behavior"
+    ])}, so the plan opens with linear weight before adding streaming reinforcement.`;
   }
-  return `${demographicReadout}, and the streaming-heavy share (${intelligence.streamingHeavyShare}%) and linear-heavy share (${intelligence.linearHeavyShare}%) are close enough that a balanced mix is safer than forcing a hard bias, with ${leadNetwork} still available as the strongest first lane.`;
+  return `${joinEvidenceClauses([
+    demographicReadout,
+    incomeReadout,
+    `the streaming-heavy share (${intelligence.streamingHeavyShare}%) and linear-heavy share (${intelligence.linearHeavyShare}%) are close enough that a balanced mix is safer than forcing a hard bias`,
+    `${leadNetwork} still gives the plan a strong first lane`
+  ])}.`;
 }
 
 function buildScenarioBlueprints(campaignPrompt = "") {
@@ -2102,7 +2270,7 @@ function buildScenarioBlueprints(campaignPrompt = "") {
       title,
       promptTile: title,
       promptText: buildScenarioPromptText(intelligence, variant.key, networks),
-      strategy: `${buildScenarioStrategyText(intelligence, variant.key)} Primary audience signals: ${deriveScenarioAudienceLabel(intelligence)}, average age ${intelligence.avgAge}, and ${intelligence.overlapPct}% cross-platform overlap.`,
+      strategy: `${buildScenarioStrategyText(intelligence, variant.key)} Primary audience signals: ${deriveScenarioAudienceLabel(intelligence)}, ${intelligence.topAgeBuckets?.[0]?.label || "mixed ages"}, ${intelligence.topIncomeBrackets?.[0]?.label || "mixed income bands"}, and ${intelligence.overlapPct}% cross-platform overlap.`,
       why,
       allocation,
       allocationStrategy: buildScenarioAllocationStrategy(intelligence, variant.key, allocation, networks),
@@ -2145,10 +2313,18 @@ function buildScenarioDatasetInput(campaignPrompt = "", selectedPlan = null) {
       top_tags: catalog.intelligence.topTags.slice(0, 3),
       top_segments: catalog.intelligence.topSegments.slice(0, 3),
       top_states: catalog.intelligence.topStates.slice(0, 3),
+      top_dmas: catalog.intelligence.topDmas.slice(0, 3),
       top_platforms: catalog.intelligence.topPlatforms.slice(0, 3),
+      top_age_buckets: catalog.intelligence.topAgeBuckets.slice(0, 3),
+      top_income_brackets: catalog.intelligence.topIncomeBrackets.slice(0, 3),
+      viewing_mix: catalog.intelligence.viewingMix.slice(0, 3),
       audience_summary: {
+        matched_profiles: catalog.intelligence.matchedRows.length,
+        seed_households: catalog.intelligence.seedHouseholdCount,
         unique_households: catalog.intelligence.uniqueHouseholds,
         average_age: catalog.intelligence.avgAge,
+        average_weekly_media_minutes: catalog.intelligence.avgWeeklyMediaMinutes,
+        average_conversion_propensity: catalog.intelligence.avgConversionPropensity,
         streaming_heavy_share_pct: catalog.intelligence.streamingHeavyShare,
         linear_heavy_share_pct: catalog.intelligence.linearHeavyShare,
         overlap_pct: catalog.intelligence.overlapPct,
@@ -2191,8 +2367,12 @@ function buildArchitectRealtimeDataset(campaignPrompt = "", scenarioCatalog = nu
       product_family: intelligence.campaign?.productFamily?.displayLabel || deriveProductFamily(campaignPrompt).displayLabel
     },
     audience_summary: {
+      matched_profiles: intelligence.matchedRows?.length || 0,
+      seed_households: intelligence.seedHouseholdCount || 0,
       unique_households: intelligence.uniqueHouseholds || 0,
       average_age: intelligence.avgAge || 0,
+      average_weekly_media_minutes: intelligence.avgWeeklyMediaMinutes || 0,
+      average_conversion_propensity: intelligence.avgConversionPropensity || 0,
       streaming_heavy_share_pct: intelligence.streamingHeavyShare || 0,
       linear_heavy_share_pct: intelligence.linearHeavyShare || 0,
       cross_platform_overlap_pct: intelligence.overlapPct || 0,
@@ -2203,7 +2383,11 @@ function buildArchitectRealtimeDataset(campaignPrompt = "", scenarioCatalog = nu
     top_tags: (intelligence.topTags || []).slice(0, 5),
     top_segments: (intelligence.topSegments || []).slice(0, 4),
     top_states: (intelligence.topStates || []).slice(0, 4),
+    top_dmas: (intelligence.topDmas || []).slice(0, 4),
     top_platforms: (intelligence.topPlatforms || []).slice(0, 4),
+    top_age_buckets: (intelligence.topAgeBuckets || []).slice(0, 3),
+    top_income_brackets: (intelligence.topIncomeBrackets || []).slice(0, 3),
+    viewing_mix: (intelligence.viewingMix || []).slice(0, 3),
     ranked_networks: (intelligence.networkScores
       ? Object.entries(intelligence.networkScores).map(([name, score]) => ({
         name,
@@ -2246,8 +2430,9 @@ function buildArchitectFallbackSummary(problemText = "", scenarioCatalog = null)
   return [
     "Architecting scenarios from the natural-language brief.",
     `Detected product family: ${intelligence.campaign?.productFamily?.displayLabel || deriveProductFamily(problemText).displayLabel}.`,
-    `Matched ${(intelligence.uniqueHouseholds || 0).toLocaleString()} deduplicated households across ${(intelligence.topStates || []).map((item) => item.label).slice(0, 3).join(", ") || "core markets"}.`,
+    `Matched ${(intelligence.matchedRows?.length || 0).toLocaleString()} viewer profiles into ${(intelligence.uniqueHouseholds || 0).toLocaleString()} modeled households across ${(intelligence.seedHouseholdCount || 0).toLocaleString()} seed households and ${(intelligence.topStates || []).map((item) => item.label).slice(0, 3).join(", ") || "core markets"}.`,
     `Demographic readout: average age ${intelligence.avgAge || 0}, ${intelligence.youngShare || 0}% under 40, ${intelligence.olderShare || 0}% age 45+, and ${intelligence.parentShare || 0}% parent-skewing households.`,
+    `Income and viewing mix: ${(intelligence.topIncomeBrackets || []).map((item) => item.label).slice(0, 2).join(", ") || "mixed income bands"}, with ${(intelligence.viewingMix || []).map((item) => `${item.label} (${item.pct}%)`).slice(0, 2).join(", ") || "mixed viewing behavior"}.`,
     `Top behavioral tags: ${(intelligence.topTags || []).map((item) => item.label).slice(0, 3).join(", ") || "no dominant tags detected"}.`,
     `Audience channel tilt: ${intelligence.streamingHeavyShare || 0}% streaming-heavy and ${intelligence.linearHeavyShare || 0}% linear-heavy households.`,
     `Recommended scenario: ${recommended?.title || ARCHITECT_PLAN_FALLBACK_TITLES[0]}.`
@@ -2262,14 +2447,17 @@ function buildArchitectSystemPrompt(agentStyle = "", customArchitectPrompt = "")
     "Analyze the supplied synthetic WBD first-party audience intelligence and generate three materially different campaign scenarios in real time.",
     "The scenarios must feel product-specific, not templated, and they must map to these exact variant keys: scenario-a, scenario-b, and scenario-c.",
     "Treat those keys as slot IDs only. The visible titles should clearly signal whether the route is streaming-heavy, linear-heavy, or balanced, while still grounding that title in the brief and audience evidence.",
+    "scenario-a must be the most streaming-heavy route in both the opening allocation and the narrative. scenario-b must be the most linear-heavy route. scenario-c must stay balanced, with both streaming and linear carrying meaningful opening weight.",
     "Use the supplied audience, network, and yield signals to justify every scenario and recommend exactly one option.",
+    "Each scenario must cite at least three concrete synthetic signals, including at least one demographic signal and at least one media-behavior or supply signal.",
+    "Use any available synthetic evidence such as age mix, parent share, income brackets, top states or DMAs, viewing mix, platform usage, overlap, weekly media minutes, network lift, sample profiles, and yield signals. Do not ignore available audience data.",
     "Keep the six-stage master-agent plan intact. Use the exact node IDs and stage numbers provided in the agent contract.",
     "Respond in two parts only:",
     "Part 1: 4 to 6 clear plain-text lines summarizing the audience diagnosis, the scenario differences, and the recommended path. Write for a non-expert audience, define jargon when needed, and make the explanation understandable to anyone reviewing the demo.",
     "Part 2: one JSON object with keys architectSummary, recommendedVariantKey, and architectPlans.",
     "Each item in architectPlans must include: variantKey, title, strategy, why, promptTile, promptText, allocationStrategy, deliveryTiming, channelLogic, recommended, recommendationReason, scenarioIntelligence, and plan.",
     "Every written field must sound logical, meaningful, and internally consistent with the supplied data.",
-    "Use disciplined reasoning. First identify the audience evidence, then explain how the three scenarios differ, then recommend one path, then state the main tradeoff.",
+    "Use disciplined, linear reasoning. First identify the audience evidence, then explain how the three scenarios differ, then recommend one path, then state the main tradeoff.",
     "For every scenario field, make the function of the field obvious: strategy explains the route, why explains when that route makes sense, promptText explains the route in one sentence, allocationStrategy explains the opening mix, deliveryTiming explains when to lead, and channelLogic explains why the channel bias fits the audience evidence.",
     "Do not mention ROI or return on investment anywhere in the response.",
     "Do not use filler phrases like 'good fit', 'works well', or 'strong option' unless you immediately explain why with audience, inventory, delivery, timing, or cost evidence.",
@@ -2291,16 +2479,18 @@ function buildArchitectUserPrompt({ problemText = "", dataset = {}, agentContrac
     `\nSix-Stage Master-Agent Contract:\n${JSON.stringify(agentContract, null, 2)}`,
     "\nRequirements:",
     "1. Generate three genuinely different scenarios that attack the goal from distinct channel angles: one streaming-heavy, one linear-heavy, and one balanced.",
-    "2. Make the scenario naming and explanation visibly reflect that channel bias, but tie it directly to the audience, market, and platform evidence.",
-    "3. Tie every scenario to the supplied data, especially audience age, viewing habit, platform usage, network lift, and behavioral tags.",
-    "4. Recommend exactly one scenario and explain why it wins for this prompt in clear, plain English that a non-domain expert can still follow.",
-    "5. The written summary must be informative, not terse. Give enough detail for a reviewer to understand what the data said, how the options differ, and why the recommendation is sensible.",
-    "6. Every line must sound logical and meaningful. Avoid generic business filler, avoid unexplained adjectives, and connect claims to data, supply, delivery, or cost.",
-    "7. Do not mention ROI or return on investment anywhere.",
-    "8. If a scenario choice is uncertain, state the tradeoff clearly instead of pretending the data is stronger than it is.",
-    "9. Keep the plan realistic for the WBD ecosystem and preserve all six master-agent stages.",
-    "10. In Part 1, prefer this order: audience evidence, scenario A difference, scenario B difference, scenario C difference, recommendation, main tradeoff.",
-    "11. Output Part 1 plain text followed by Part 2 JSON only."
+    "2. scenario-a must remain streaming-heavy, scenario-b must remain linear-heavy, and scenario-c must remain balanced in both the narrative and the opening allocation.",
+    "3. Make the scenario naming and explanation visibly reflect that channel bias, but tie it directly to the audience, market, platform, and demographic evidence.",
+    "4. Tie every scenario to the supplied synthetic data, especially age mix, parent share, income mix, viewing habit, platform usage, network lift, overlap, top states or DMAs, and behavioral tags when available.",
+    "5. Each scenario should point to at least three concrete synthetic signals instead of relying on generic planning language.",
+    "6. Recommend exactly one scenario and explain why it wins for this prompt in clear, plain English that a non-domain expert can still follow.",
+    "7. The written summary must be informative, not terse. Give enough detail for a reviewer to understand what the data said, how the options differ, and why the recommendation is sensible.",
+    "8. Every line must sound logical and meaningful. Avoid generic business filler, avoid unexplained adjectives, and connect claims to data, supply, delivery, or cost.",
+    "9. Do not mention ROI or return on investment anywhere.",
+    "10. If a scenario choice is uncertain, state the tradeoff clearly instead of pretending the data is stronger than it is.",
+    "11. Keep the plan realistic for the WBD ecosystem and preserve all six master-agent stages.",
+    "12. In Part 1, prefer this order: audience evidence, scenario A difference, scenario B difference, scenario C difference, recommendation, main tradeoff.",
+    "13. Output Part 1 plain text followed by Part 2 JSON only."
   ].join("\n");
 }
 
@@ -3203,7 +3393,7 @@ function runPlanningIdentityStage(agent, campaignState) {
       id: subAgent.id,
       name: subAgent.name,
       details: [
-        `Matched ${intelligence.matchedRows.length.toLocaleString()} viewer profiles into ${intelligence.uniqueHouseholds.toLocaleString()} deduplicated households.`,
+        `Matched ${intelligence.matchedRows.length.toLocaleString()} viewer profiles into ${intelligence.uniqueHouseholds.toLocaleString()} modeled households across ${intelligence.seedHouseholdCount.toLocaleString()} seed households.`,
         `Top cohort: ${intelligence.topSegments[0]?.label || "High-fit audience"} with leading tag ${intelligence.topTags[0]?.label || "n/a"}.`,
         `Audience center of gravity: average age ${intelligence.avgAge}, ${intelligence.streamingHeavyShare}% streaming-heavy, ${intelligence.linearHeavyShare}% linear-heavy.`
       ]
@@ -3230,6 +3420,7 @@ function runPlanningIdentityStage(agent, campaignState) {
   const stateUpdate = {
     audience_summary: {
       matched_profiles: intelligence.matchedRows.length,
+      seed_households: intelligence.seedHouseholdCount,
       unique_households: intelligence.uniqueHouseholds,
       average_age: intelligence.avgAge,
       top_segments: intelligence.topSegments.slice(0, 3),
@@ -3246,7 +3437,7 @@ function runPlanningIdentityStage(agent, campaignState) {
       sample_profiles: intelligence.sampleRows.slice(0, 6)
     },
     summaryLines: [
-      `The audience match pulled ${intelligence.matchedRows.length.toLocaleString()} viewer profiles into ${intelligence.uniqueHouseholds.toLocaleString()} deduplicated households, with ${(intelligence.topStates || []).map((item) => item.label).slice(0, 2).join(" and ") || "the core markets"} carrying the heaviest concentration.`,
+      `The audience match pulled ${intelligence.matchedRows.length.toLocaleString()} viewer profiles into ${intelligence.uniqueHouseholds.toLocaleString()} modeled households across ${intelligence.seedHouseholdCount.toLocaleString()} seed households, with ${(intelligence.topStates || []).map((item) => item.label).slice(0, 2).join(" and ") || "the core markets"} carrying the heaviest concentration.`,
       `Demographically, the matched audience centers on average age ${intelligence.avgAge}, with ${intelligence.streamingHeavyShare}% streaming-heavy behavior and ${intelligence.linearHeavyShare}% linear-heavy behavior.`,
       `The sub-agents isolated ${intelligence.topSegments[0]?.label || "the lead segment"}, confirmed ${intelligence.overlapPct}% cross-platform overlap, and elevated ${(campaignState.selectedScenario.rankedNetworks || []).map((item) => item.name).slice(0, 3).join(", ") || "the strongest WBD networks"} as the cleanest opening lane.`,
       `That evidence is what pushed the workflow toward ${campaignState.selectedScenario.title}, so every downstream stage inherits the same audience story instead of reinterpreting the brief from scratch.`
@@ -3546,9 +3737,19 @@ function runInFlightOperationsStage(agent, campaignState) {
 
 function runMeasurementStage(agent, campaignState) {
   const planning = campaignState.stageOutputs["planning-identity-agent"]?.audience_summary || {};
+  const booking = campaignState.stageOutputs["booking-proposals-agent"]?.booking_summary || {};
   const inflight = campaignState.stageOutputs["inflight-operations-agent"]?.inflight_summary || {};
-  const matchedHouseholds = Math.round((planning.unique_households || campaignState.intelligence.uniqueHouseholds || 0) * 0.72);
-  const cleanRoomMatchRate = roundToTwo(74 + (campaignState.intelligence.overlapPct / 4), 1);
+  const reach = buildReachSummary(datasets.audienceGraph || [], datasets.liveDeliveryLog || [], {}, campaignState);
+  const projectedHouseholds = resolveProjectedHouseholdCount(
+    reach,
+    {},
+    resolveAudienceHouseholdCount(planning, campaignState.intelligence)
+  );
+  const totalImpressions = (booking.line_items || []).reduce((sum, row) => sum + Number(row.impressions || 0), 0);
+  const cleanRoomMatchRate = roundToTwo(clampNumber(74 + (campaignState.intelligence.overlapPct / 4), 68, 86), 1);
+  const matchedHouseholds = Math.round(projectedHouseholds * (cleanRoomMatchRate / 100));
+  const averageFrequency = resolveFrequencyPerHousehold(totalImpressions, projectedHouseholds);
+  const averageFrequencyText = averageFrequency ? `${averageFrequency} times per household` : "pending";
   const strongestChannel = Number(inflight.digital_delivery_rate_pct || 0) >= Number(inflight.linear_delivery_rate_pct || 0) ? "streaming" : "linear";
   const deliveryStrength = (Number(inflight.digital_delivery_rate_pct || 94) + Number(inflight.linear_delivery_rate_pct || 90)) / 2;
   const salesLiftPct = roundToTwo(
@@ -3566,8 +3767,10 @@ function runMeasurementStage(agent, campaignState) {
       : "Keep the balanced structure and let in-flight pacing decide which channel earns the extra dollars next time.";
   const stateUpdate = {
     measurement_summary: {
+      projected_households: projectedHouseholds,
       matched_households: matchedHouseholds,
       clean_room_match_rate_pct: cleanRoomMatchRate,
+      average_frequency: averageFrequency,
       sales_lift_pct: salesLiftPct,
       strongest_channel: strongestChannel,
       next_best_action: nextBestAction
@@ -3577,12 +3780,18 @@ function runMeasurementStage(agent, campaignState) {
   return {
     inputData: {
       audience_summary: planning,
+      booking_summary: booking,
+      projected_reach: {
+        projected_households: projectedHouseholds,
+        overlap_pct: reach.overlapPct,
+        device_count: reach.deviceCount
+      },
       final_allocation: inflight.final_allocation,
       pacing_outcome: inflight
     },
     summaryLines: [
-      `The synthetic clean room matched ${matchedHouseholds.toLocaleString()} households at a ${cleanRoomMatchRate}% match rate, which means roughly ${Math.round(cleanRoomMatchRate)} out of every 100 measurable households could be connected back to privacy-safe exposure data.`,
-      `Within that matched group, the clearest response signal came from ${strongestChannel} and the modeled sales lift landed at ${salesLiftPct}%, so the readout points to a real difference between channels rather than a vague wrap-up.`,
+      `The synthetic clean room matched ${matchedHouseholds.toLocaleString()} of about ${projectedHouseholds.toLocaleString()} projected reached households at a ${cleanRoomMatchRate}% match rate, which means roughly ${Math.round(cleanRoomMatchRate)} out of every 100 reached households could be connected back to privacy-safe exposure data.`,
+      `Average frequency across that reached base is ${averageFrequencyText}, and within the matched group the clearest response signal came from ${strongestChannel} with modeled sales lift at ${salesLiftPct}%.`,
       `The sub-agents separated the job cleanly: one validated the measurable household base, one interpreted the response pattern, and one converted that pattern into a next-flight recommendation.`,
       `The next-flight guidance is to ${nextBestAction.charAt(0).toLowerCase() + nextBestAction.slice(1)}, which keeps the route tied to measured behavior instead of defaulting back to generic planning language.`
     ],
@@ -3591,7 +3800,7 @@ function runMeasurementStage(agent, campaignState) {
         id: subAgent.id,
         name: subAgent.name,
         details: [
-          `${matchedHouseholds.toLocaleString()} households were matched through the privacy-safe exposure workflow.`,
+          `${matchedHouseholds.toLocaleString()} households were matched through the privacy-safe exposure workflow out of about ${projectedHouseholds.toLocaleString()} projected reached households.`,
           `Cross-platform match rate: ${cleanRoomMatchRate}%.`,
           "Exposure logs were matched against synthetic sales outcomes without re-identifying households."
         ],
@@ -3602,6 +3811,7 @@ function runMeasurementStage(agent, campaignState) {
         name: subAgent.name,
         details: [
           `Sales lift: ${salesLiftPct}%.`,
+          `Average frequency across projected reached households: ${averageFrequencyText}.`,
           `Strongest response signal came from ${strongestChannel}.`,
           `${inflight.make_good_triggered ? "The make-good helped protect the weaker channel before measurement was finalized." : "No make-good was needed before measurement was finalized."}`
         ],
@@ -4496,8 +4706,10 @@ async function buildVisualizationNarrative({ creds, model, campaignPrompt, dashb
       : {};
     const measurementSummary = campaignStateObject?.stageOutputs?.["measurement-agent"]?.measurement_summary
       ? {
+        projected_households: campaignStateObject.stageOutputs["measurement-agent"].measurement_summary.projected_households,
         matched_households: campaignStateObject.stageOutputs["measurement-agent"].measurement_summary.matched_households,
-        clean_room_match_rate_pct: campaignStateObject.stageOutputs["measurement-agent"].measurement_summary.clean_room_match_rate_pct
+        clean_room_match_rate_pct: campaignStateObject.stageOutputs["measurement-agent"].measurement_summary.clean_room_match_rate_pct,
+        average_frequency: campaignStateObject.stageOutputs["measurement-agent"].measurement_summary.average_frequency
       }
       : null;
     const summaryPayload = {
@@ -4574,10 +4786,16 @@ function buildSyntheticAgentNarrative(out, campaignPrompt) {
   const effectiveCostPerThousandImpressions = delivered ? ((extractBudgetUsd(campaignPrompt) / delivered) * 1000) : 0;
   const quality = state.dataQuality || computeDataQuality(datasets.audienceGraph || []);
   const compliance = buildComplianceDetails();
+  const planningSummary = state.campaignStateObject?.stageOutputs?.["planning-identity-agent"]?.audience_summary || {};
+  const measurementSummary = state.campaignStateObject?.stageOutputs?.["measurement-agent"]?.measurement_summary || {};
+  const planningHouseholds = resolveAudienceHouseholdCount(planningSummary, state.campaignStateObject?.intelligence || {});
+  const planningSeedHouseholds = Math.max(0, Number(planningSummary.seed_households || state.campaignStateObject?.intelligence?.seedHouseholdCount || 0));
+  const projectedHouseholds = resolveProjectedHouseholdCount(reach, measurementSummary, planningHouseholds || reach.uniqueHouseholds || 0);
+  const measuredHouseholds = resolveMeasuredHouseholdCount(measurementSummary, projectedHouseholds);
 
   if (role === "planning-identity") {
     return `### Planning and Identity Narrative
-For the campaign prompt "${campaignPrompt}", the planning and identity stage used the unified audience base dataset to resolve high-value audience cohorts by state. The deterministic output identifies ${(reach.scaledReach || reach.modeledHouseholds || reach.uniqueHouseholds).toLocaleString()} projected households and ${reach.deviceCount.toLocaleString()} connected devices that can be activated across channels.
+For the campaign prompt "${campaignPrompt}", the planning and identity stage used the unified audience base dataset to resolve high-value audience cohorts by state. The deterministic output built a modeled audience of ${(planningHouseholds || reach.uniqueHouseholds || 0).toLocaleString()} deduplicated households${planningSeedHouseholds ? ` from ${planningSeedHouseholds.toLocaleString()} seed households` : ""} and translated that base into about ${projectedHouseholds.toLocaleString()} projected reachable households with ${reach.deviceCount.toLocaleString()} connected devices across channels.
 
 ### Data Quality Review
 This stage explicitly documented data quality signals before allocation. The synthetic audience base includes ${quality.duplicateCount} duplicate household identifiers and ${quality.nullDmaCount} records with missing designated market area values, which were flagged to avoid overstating addressable reach.
@@ -4633,7 +4851,7 @@ In-flight correction protects campaign value by preventing prolonged under-deliv
 
   if (role === "measurement") {
     return `### Measurement Narrative
-The measurement stage consolidated cross-channel outcomes and quantified performance with deterministic attribution indicators. Reported reach includes ${(reach.scaledReach || reach.modeledHouseholds || reach.uniqueHouseholds).toLocaleString()} projected households, ${reach.deviceCount.toLocaleString()} devices, and ${reach.overlapPct} percent cross-platform overlap.
+The measurement stage consolidated cross-channel outcomes and quantified performance with deterministic attribution indicators. Reported reach includes ${projectedHouseholds.toLocaleString()} projected households, ${reach.deviceCount.toLocaleString()} devices, ${reach.overlapPct} percent cross-platform overlap, and about ${measuredHouseholds.toLocaleString()} measurable households under the current clean-room match assumptions.
 
 ### Outcome Interpretation
 Measurement output links delivery behavior, channel mix, and corrective actions to final outcome quality so optimization decisions can be replicated in future cycles.
@@ -4714,6 +4932,9 @@ function buildStageRawDataEntry(agent, campaignState = null, selectedPlan = null
         selected_scenario: selectedPlan?.title || campaignState?.selectedScenario?.title || "",
         top_tags: scenario?.topTags?.slice(0, 4) || [],
         top_segments: scenario?.topSegments?.slice(0, 3) || [],
+        top_age_buckets: scenario?.topAgeBuckets?.slice(0, 3) || [],
+        top_income_brackets: scenario?.topIncomeBrackets?.slice(0, 3) || [],
+        viewing_mix: scenario?.viewingMix?.slice(0, 3) || [],
         sample_profiles: scenario?.sampleRows?.slice(0, 6) || []
       }, null, 2)
     };
@@ -4781,12 +5002,24 @@ function buildStageRawDataEntry(agent, campaignState = null, selectedPlan = null
   }
 
   if (role === "measurement") {
+    const reachSummary = campaignState
+      ? buildReachSummary(datasets.audienceGraph || [], datasets.liveDeliveryLog || [], {}, campaignState)
+      : null;
     return {
       title: "Measurement and Learning Inputs",
       type: "json",
       content: JSON.stringify({
         audience_summary: campaignState?.stageOutputs?.["planning-identity-agent"] || null,
+        booking_summary: campaignState?.stageOutputs?.["booking-proposals-agent"] || null,
         inflight_summary: campaignState?.stageOutputs?.["inflight-operations-agent"] || null,
+        projected_reach: reachSummary
+          ? {
+            projected_households: resolveProjectedHouseholdCount(reachSummary),
+            addressable_households: Number(reachSummary.addressableHouseholds || 0),
+            overlap_pct: Number(reachSummary.overlapPct || 0),
+            device_count: Number(reachSummary.deviceCount || 0)
+          }
+          : null,
         selected_scenario: campaignState?.selectedScenario || selectedPlan || null
       }, null, 2)
     };
@@ -5250,7 +5483,7 @@ function renderReachChartD3() {
   if (!container) return;
   const reach = state.dashboard?.reach;
   if (!reach) return;
-  const projectedHouseholds = Number(reach.modeledHouseholds || reach.scaledReach || reach.uniqueHouseholds || 0);
+  const projectedHouseholds = Number(reach.projectedHouseholds || reach.modeledHouseholds || reach.scaledReach || reach.uniqueHouseholds || 0);
 
   const sig = JSON.stringify({
     reach: projectedHouseholds,

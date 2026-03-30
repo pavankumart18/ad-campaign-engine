@@ -22,6 +22,7 @@ export const datasetMeta = {
     columns: [
       "device_id",
       "household_id",
+      "modeled_household_weight",
       "state_code",
       "dma_region",
       "age",
@@ -90,6 +91,7 @@ export const datasetMeta = {
     title: "Audience Identity Graph",
     columns: [
       "olli_household_id",
+      "modeled_household_weight",
       "segment_name",
       "household_size",
       "device_count",
@@ -569,6 +571,22 @@ function buildHouseholdPlatforms(template) {
   return Array.from(new Set(picks));
 }
 
+function buildModeledHouseholdWeight({ householdSize, deviceCount, incomeBracket, viewingHabit, dmaRegion }) {
+  const incomeBoost = {
+    low: 180,
+    mid: 360,
+    upper_mid: 520,
+    high: 700
+  }[incomeBracket] || 300;
+  const viewingBoost = /streaming/i.test(viewingHabit)
+    ? 260
+    : /linear/i.test(viewingHabit)
+      ? 320
+      : 290;
+  const dmaBoost = ["NYC", "LA", "CHI", "DAL", "ATL", "SFO"].includes(dmaRegion) ? 260 : 120;
+  return intBetween(900, 1700) + (householdSize * 120) + (deviceCount * 110) + incomeBoost + viewingBoost + dmaBoost;
+}
+
 export const audienceGraph = [];
 export const unifiedAudienceDataset = [];
 let deviceCounter = 1;
@@ -586,8 +604,16 @@ for (let i = 1; i <= 84; i += 1) {
   const viewingHabit = template.viewingHabit;
   const autoIntenderScore = rangePick(template.scores.auto);
   const insuranceIntenderScore = rangePick(template.scores.insurance);
+  const modeledHouseholdWeight = buildModeledHouseholdWeight({
+    householdSize,
+    deviceCount,
+    incomeBracket,
+    viewingHabit,
+    dmaRegion: geo.dma_region
+  });
   const graphRow = {
     olli_household_id: `HH-${pad(i, 5)}`,
+    modeled_household_weight: modeledHouseholdWeight,
     segment_name: segment,
     household_size: householdSize,
     device_count: deviceCount,
@@ -609,6 +635,7 @@ for (let i = 1; i <= 84; i += 1) {
     unifiedAudienceDataset.push({
       device_id: `DEV-${pad(deviceCounter++, 6)}`,
       household_id: graphRow.olli_household_id,
+      modeled_household_weight: modeledHouseholdWeight,
       state_code: geo.state_code,
       dma_region: geo.dma_region,
       age,
