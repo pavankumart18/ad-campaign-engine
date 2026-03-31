@@ -452,6 +452,7 @@ function buildStageProcessSummary(agent = {}) {
 
 function buildStageMetricNarrative(agent = {}, state = {}) {
   const role = detectStageRole(agent);
+  const toddlerHero = isToddlerHeroPresentation(state);
   const audience = agent?.stateUpdate?.audience_summary || {};
   const inventory = agent?.stateUpdate?.inventory_summary || {};
   const booking = agent?.stateUpdate?.booking_summary || {};
@@ -461,30 +462,53 @@ function buildStageMetricNarrative(agent = {}, state = {}) {
   const reach = state?.dashboard?.reach || {};
 
   if (role === "planning" && (audience.matched_profiles || audience.unique_households)) {
-    return `It narrowed ${Number(audience.matched_profiles || 0).toLocaleString()} matched profiles into ${Number(audience.unique_households || 0).toLocaleString()} modeled unique households${audience.seed_households ? ` from ${Number(audience.seed_households || 0).toLocaleString()} seed households` : ""} and elevated ${audience.top_segments?.[0]?.label || "the top cohort"} as the operating audience.`;
+    if (toddlerHero) {
+      return `It scanned the wider WBD universe, isolated ${Number(audience.total_wbd_universe_hhs || audience.unique_households || 0).toLocaleString()} toddler-parent households, and compressed the working target to about ${Number(audience.target_reachable_households || 0).toLocaleString()} high-intent homes for the $50K brief.`;
+    }
+    return `It matched ${Number(audience.matched_profiles || 0).toLocaleString()} viewer profiles and translated them into a modeled planning audience of ${Number(audience.unique_households || 0).toLocaleString()} households, then elevated ${audience.top_segments?.[0]?.label || "the top cohort"} as the operating audience.`;
   }
   if (role === "inventory" && (inventory.capacity_impressions || inventory.capacity_spend_usd)) {
+    if (toddlerHero) {
+      return `It found ${Number(inventory.capacity_impressions || 0).toLocaleString()} eligible impressions worth about $${Number(inventory.capacity_spend_usd || 0).toLocaleString()} in capacity value and locked the price path at $${inventory.premium_streaming_cpm || "0"} streaming CPM versus $${inventory.blended_linear_cpm || "0"} linear CPM.`;
+    }
     return `It found ${Number(inventory.capacity_impressions || 0).toLocaleString()} fulfillable impressions with premium streaming CPM around $${inventory.premium_streaming_cpm || "0"} and linear CPM around $${inventory.blended_linear_cpm || "0"}.`;
   }
   if (role === "booking" && booking.line_items?.length) {
+    if (toddlerHero) {
+      return `It turned the approved mix into ${booking.line_items.length} bookable lines, locked ${Number(booking.guarantee_impressions || 0).toLocaleString()} guaranteed impressions, and cleared the package as ${booking.compliance_status || "pending"}.`;
+    }
     return `It assembled ${booking.line_items.length} line items, guaranteed ${Number(booking.guarantee_impressions || 0).toLocaleString()} impressions, and left proposal compliance at ${booking.compliance_status || "pending"}.`;
   }
   if (role === "trafficking" && (trafficking.readiness_score != null || trafficking.asset_checks?.length)) {
+    if (toddlerHero) {
+      return `It cleared launch at ${trafficking.readiness_score || 0}% readiness after asset QA passed, while holding ${trafficking.affected_placement || "the flagged placement"} on a routing watchlist because the SCTE-35 cue was unstable.`;
+    }
     return `It closed the stage at ${trafficking.readiness_score || 0}/100 readiness with ${trafficking.asset_checks?.length || 0} asset checks and ${trafficking.signal_risks?.length || 0} flagged signal risks.`;
   }
   if (role === "inflight" && (inflight.digital_delivery_rate_pct != null || inflight.linear_delivery_rate_pct != null)) {
+    if (toddlerHero) {
+      return inflight.make_good_triggered
+        ? `It spotted streaming pacing at ${inflight.digital_delivery_rate_pct || 0}% versus linear at ${inflight.linear_delivery_rate_pct || 0}%, then shifted $${Number(inflight.shift_budget_usd || 0).toLocaleString()} into Max to restore the flight to full-delivery projection.`
+        : `It kept streaming and linear pacing inside tolerance and did not need a make-good intervention.`;
+    }
     return inflight.make_good_triggered
       ? `It projected ${inflight.digital_delivery_rate_pct || 0}% streaming delivery versus ${inflight.linear_delivery_rate_pct || 0}% linear delivery, then triggered a $${Number(inflight.shift_budget_usd || 0).toLocaleString()} make-good to protect pacing.`
       : `It projected ${inflight.digital_delivery_rate_pct || 0}% streaming delivery versus ${inflight.linear_delivery_rate_pct || 0}% linear delivery and kept the original allocation intact because no make-good was required.`;
   }
   if (role === "measurement" && (measurement.matched_households || measurement.clean_room_match_rate_pct != null)) {
-    const projectedHouseholds = resolveReachHouseholds(reach);
+    const projectedHouseholds = Number(measurement.projected_households || resolveReachHouseholds(reach) || 0);
     const frequencyText = measurement.average_frequency ? `${measurement.average_frequency}x` : "pending";
+    if (toddlerHero) {
+      return `It validated ${Number(measurement.verified_unique_households || measurement.matched_households || 0).toLocaleString()} unique households against a ${projectedHouseholds.toLocaleString()}-household projection, confirmed ${measurement.incremental_reach_streaming_pct || 0}% net-new reach from streaming, and held average frequency at ${frequencyText}.`;
+    }
     return projectedHouseholds
-      ? `It validated ${Number(measurement.matched_households || 0).toLocaleString()} measurable households out of about ${projectedHouseholds.toLocaleString()} projected reached households at a ${measurement.clean_room_match_rate_pct || 0}% clean-room hit rate, with average frequency at ${frequencyText}.`
-      : `It validated ${Number(measurement.matched_households || 0).toLocaleString()} measurable households at a ${measurement.clean_room_match_rate_pct || 0}% clean-room hit rate, with ${reach.overlapPct != null ? `${reach.overlapPct}%` : "measured"} cross-platform overlap informing the readout.`;
+      ? `It matched ${Number(measurement.matched_households || 0).toLocaleString()} reached households in the clean room out of about ${projectedHouseholds.toLocaleString()} households the plan projected to reach, with average frequency at ${frequencyText}. The matched total is the measurable subset of delivery, not the full planning audience.`
+      : `It matched ${Number(measurement.matched_households || 0).toLocaleString()} reached households at a ${measurement.clean_room_match_rate_pct || 0}% clean-room hit rate, with ${reach.overlapPct != null ? `${reach.overlapPct}%` : "measured"} cross-platform overlap informing the readout.`;
   }
   if (role === "compliance" && state?.complianceDetails) {
+    if (toddlerHero) {
+      return `It cleared the workflow as ${state.complianceDetails.status || "pending"} after resolving ${state.complianceDetails.findings?.length || 0} policy flags across COPPA, brand safety, and pricing controls.`;
+    }
     return `It completed the compliance pass with status ${state.complianceDetails.status || "pending"} and ${state.complianceDetails.findings?.length || 0} recorded findings.`;
   }
   return "";

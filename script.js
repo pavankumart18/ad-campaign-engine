@@ -379,6 +379,60 @@ const TODDLER_HERO_ROUTE = {
   ]
 };
 
+const TODDLER_HERO_SCENARIOS = {
+  "scenario-a": {
+    title: "The Converged Reach Maximizer",
+    promptTile: "The Converged Reach Maximizer",
+    promptText: "The Mix: 60% Streaming (Max Kids & Family) | 40% Linear Daytime (Food Network / HGTV).",
+    strategy: "A converged reach route that uses streaming and linear together to maximize de-duplicated household scale before the plan is refined into bookable lines.",
+    why: "This route stretches the $50K toward the largest unique household footprint by linking Max morning viewing with daytime linear behavior and suppressing duplicate homes across both channels.",
+    allocation: { streamingPct: 60, linearPct: 40, reservePct: 0 },
+    allocationStrategy: "The Mix: 60% Streaming (Max Kids & Family) | 40% Linear Daytime (Food Network / HGTV).",
+    deliveryTiming: "Lead on Max during breakfast co-viewing, then move into Food Network and HGTV daytime blocks while suppressing homes already reached earlier in the day.",
+    channelLogic: "If a household sees the ad on Max, the engine suppresses that same home from later linear delivery so more of the budget is forced into net-new parents instead of duplicate exposures.",
+    recommendationReason: "It maximizes de-duplicated reach by combining Max and daytime linear under one household frequency cap.",
+    rankedNetworks: [
+      { name: "Max", score: 145, lift: 1.45 },
+      { name: "Food Network", score: 115, lift: 1.15 },
+      { name: "HGTV", score: 109, lift: 1.09 }
+    ]
+  },
+  "scenario-b": {
+    title: "The Streaming Play",
+    promptTile: "The Streaming Play",
+    promptText: "The Mix: 100% Streaming (Max & Discovery+).",
+    strategy: "A streaming-only route that prioritizes verified parent signals and in-target precision over the broadest possible television scale.",
+    why: "This route keeps every dollar inside authenticated streaming environments, so the plan can focus on households actively watching toddler programming or adjacent food and lifestyle content.",
+    allocation: { streamingPct: 100, linearPct: 0, reservePct: 0 },
+    allocationStrategy: "The Mix: 100% Streaming (Max & Discovery+).",
+    deliveryTiming: "Keep the weight in Max Kids mornings and Discovery+ food or lifestyle windows where current parent intent is strongest.",
+    channelLogic: "It will not produce the largest total household footprint, but it maximizes in-target reach because every impression stays tied to a verified streaming parent signal.",
+    recommendationReason: "It maximizes verified in-target reach by keeping the full brief inside streaming environments.",
+    rankedNetworks: [
+      { name: "Max", score: 145, lift: 1.45 },
+      { name: "Discovery+", score: 118, lift: 1.18 },
+      { name: "Food Network", score: 103, lift: 1.03 }
+    ]
+  },
+  "scenario-c": {
+    title: "The Linear Scale",
+    promptTile: "The Linear Scale",
+    promptText: "The Mix: 80% Linear Daytime (TLC / Magnolia-style lifestyle blocks) | 20% Streaming.",
+    strategy: "A linear-led route that uses cheaper daytime television to build broad household scale, with a smaller streaming layer reserved for cord-cutters.",
+    why: "This route leans into lower-cost daytime linear inventory to maximize raw demographic reach, then uses a modest streaming layer to pick up parents who are harder to reach through cable alone.",
+    allocation: { streamingPct: 20, linearPct: 80, reservePct: 0 },
+    allocationStrategy: "The Mix: 80% Linear Daytime (TLC / Magnolia-style lifestyle blocks) | 20% Streaming.",
+    deliveryTiming: "Concentrate spend in daytime lifestyle programming where stay-at-home parents are easiest to find, then use streaming support for the lighter incremental layer.",
+    channelLogic: "The lower linear CPM does more of the scale work, while the 20% streaming layer is there to catch cord-cutters and reduce the blind spots of a pure linear buy.",
+    recommendationReason: "It maximizes raw household scale by letting cheaper daytime linear inventory do most of the work.",
+    rankedNetworks: [
+      { name: "TLC", score: 121, lift: 1.21 },
+      { name: "Food Network", score: 115, lift: 1.15 },
+      { name: "HGTV", score: 111, lift: 1.11 }
+    ]
+  }
+};
+
 const TODDLER_HERO_COMPLIANCE_FINDINGS = [
   "COPPA enforcement: child-directed Max Kids inventory cannot carry third-party behavioral tracking pixels, so those pixels were removed before activation.",
   "COPPA enforcement: click-through retargeting and audience reseeding were disabled on Max Kids streaming lines to avoid child-directed behavioral profiling.",
@@ -402,7 +456,8 @@ function isToddlerHeroBrief(prompt = "", campaign = null) {
 function isToddlerHeroCampaignState(campaignState = null) {
   if (!campaignState) return false;
   if (campaignState.presentationProfile?.key === TODDLER_HERO_PROFILE_KEY) return true;
-  return isToddlerHeroBrief(campaignState.prompt || "", {
+  const selectedVariantKey = normalizeVariantKey(campaignState.selectedScenario?.variantKey || "");
+  return selectedVariantKey === TODDLER_HERO_ROUTE.variantKey && isToddlerHeroBrief(campaignState.prompt || "", {
     productFamily: campaignState.productFamily,
     budgetUsd: campaignState.budgetUsd,
     countries: campaignState.countries
@@ -411,25 +466,29 @@ function isToddlerHeroCampaignState(campaignState = null) {
 
 function buildToddlerHeroPlanContext(selectedPlan = null, campaignPrompt = "") {
   if (!isToddlerHeroBrief(campaignPrompt, selectedPlan?.scenarioIntelligence?.campaign)) return selectedPlan;
+  const variantKey = normalizeVariantKey(selectedPlan?.variantKey || TODDLER_HERO_ROUTE.variantKey);
+  const toddlerScenario = TODDLER_HERO_SCENARIOS[variantKey] || TODDLER_HERO_SCENARIOS[TODDLER_HERO_ROUTE.variantKey];
+  const rankedNetworks = (toddlerScenario?.rankedNetworks || TODDLER_HERO_ROUTE.rankedNetworks || []).map((item) => ({ ...item }));
+  const recommendationReason = toddlerScenario?.recommendationReason || TODDLER_HERO_ROUTE.recommendationReason;
   return {
     ...(selectedPlan || {}),
-    title: TODDLER_HERO_ROUTE.title,
-    promptTile: TODDLER_HERO_ROUTE.title,
-    promptText: TODDLER_HERO_ROUTE.promptText,
-    strategy: TODDLER_HERO_ROUTE.strategy,
-    why: TODDLER_HERO_ROUTE.why,
-    variantKey: TODDLER_HERO_ROUTE.variantKey,
-    allocation: { ...TODDLER_HERO_ROUTE.allocation },
-    allocationStrategy: TODDLER_HERO_ROUTE.allocationStrategy,
-    deliveryTiming: TODDLER_HERO_ROUTE.deliveryTiming,
-    channelLogic: TODDLER_HERO_ROUTE.channelLogic,
-    recommendationReason: TODDLER_HERO_ROUTE.recommendationReason,
-    recommended: true,
+    title: toddlerScenario?.title || selectedPlan?.title || TODDLER_HERO_ROUTE.title,
+    promptTile: toddlerScenario?.promptTile || toddlerScenario?.title || selectedPlan?.promptTile || TODDLER_HERO_ROUTE.title,
+    promptText: toddlerScenario?.promptText || selectedPlan?.promptText || TODDLER_HERO_ROUTE.promptText,
+    strategy: toddlerScenario?.strategy || selectedPlan?.strategy || TODDLER_HERO_ROUTE.strategy,
+    why: toddlerScenario?.why || selectedPlan?.why || TODDLER_HERO_ROUTE.why,
+    variantKey,
+    allocation: { ...(toddlerScenario?.allocation || selectedPlan?.allocation || TODDLER_HERO_ROUTE.allocation) },
+    allocationStrategy: toddlerScenario?.allocationStrategy || selectedPlan?.allocationStrategy || TODDLER_HERO_ROUTE.allocationStrategy,
+    deliveryTiming: toddlerScenario?.deliveryTiming || selectedPlan?.deliveryTiming || TODDLER_HERO_ROUTE.deliveryTiming,
+    channelLogic: toddlerScenario?.channelLogic || selectedPlan?.channelLogic || TODDLER_HERO_ROUTE.channelLogic,
+    recommendationReason,
+    recommended: variantKey === TODDLER_HERO_ROUTE.variantKey,
     scenarioIntelligence: {
       ...(selectedPlan?.scenarioIntelligence || {}),
-      allocation: { ...TODDLER_HERO_ROUTE.allocation },
-      rankedNetworks: TODDLER_HERO_ROUTE.rankedNetworks.map((item) => ({ ...item })),
-      recommendationReason: TODDLER_HERO_ROUTE.recommendationReason
+      allocation: { ...(toddlerScenario?.allocation || selectedPlan?.scenarioIntelligence?.allocation || TODDLER_HERO_ROUTE.allocation) },
+      rankedNetworks,
+      recommendationReason
     }
   };
 }
@@ -593,7 +652,7 @@ function buildToddlerHeroExecutiveSummary() {
       },
       {
         title: "WHAT THE PROJECTED RESULT MEANS",
-        text: "The $50K investment is projected to reach 71,300 households and validated 68,450 unique households in the clean room. Because the engine managed the 28.4% overlap across streaming and linear, average frequency held at 3.1x while Max added 22% net-new reach beyond the linear baseline."
+        text: "The $50K investment successfully reached 68,450 unique households. Because the engine managed the 28.4% cross-platform overlap, average frequency stayed capped at 3.1x, and clean-room validation confirmed that streaming delivered 22% incremental reach beyond a standalone linear buy."
       }
     ],
     metrics: [
@@ -1499,7 +1558,7 @@ function buildExecutiveCampaignSummary(campaignState = null, reach = null, makeG
   const overlapPct = Number(reach?.overlapPct || planning.overlap_pct || 0);
   const deviceCount = Number(reach?.deviceCount || campaignState.intelligence?.matchedRows?.length || 0);
   const addressableHouseholds = Number(reach?.addressableHouseholds || 0);
-  const crossPlatformReach = `${overlapPct}% of projected reached households are expected to see both channels`;
+  const crossPlatformReach = `${overlapPct}% of reached households are expected to see both channels`;
   const projectedHouseholdsLabel = projectedHouseholds.toLocaleString();
   const measuredHouseholdsLabel = measuredHouseholds.toLocaleString();
   const addressableHouseholdsLabel = addressableHouseholds.toLocaleString();
@@ -1523,7 +1582,7 @@ function buildExecutiveCampaignSummary(campaignState = null, reach = null, makeG
   const frequencyLabel = frequencyPerHousehold ? `${frequencyPerHousehold} times per reached household` : "Pending";
   const frequencySource = frequencyPerHousehold
     ? `This comes from dividing ${totalImpressionsLabel} total booked impressions by ${projectedHouseholdsLabel} projected households expected to receive at least one impression.`
-    : "This metric is waiting for both booked impression totals and projected reached households.";
+    : "This metric is waiting for both booked impression totals and reached-household projections.";
   const lineItemLabel = `${lineItems.length} placements covering ${totalImpressions.toLocaleString()} booked impressions`;
   const planMix = [
     streamingPct ? `${streamingPct}% streaming` : null,
@@ -1538,7 +1597,7 @@ function buildExecutiveCampaignSummary(campaignState = null, reach = null, makeG
     },
     {
       title: "Who the campaign is aimed at",
-      text: `The audience engine matched ${matchedProfiles.toLocaleString()} sample audience records and rolled them into ${uniqueHouseholds.toLocaleString()} modeled unique households${seedHouseholds ? ` from ${seedHouseholds.toLocaleString()} seed households` : ""}. The strongest shared behavior signal was ${behavioralCohort}, which became the control cohort for planning.`
+      text: `The audience engine matched ${matchedProfiles.toLocaleString()} sample audience records and translated them into a modeled planning audience of ${uniqueHouseholds.toLocaleString()} households. The strongest shared behavior signal was ${behavioralCohort}, which became the control cohort for planning.`
     },
     {
       title: "How the media plan is built",
@@ -1546,7 +1605,7 @@ function buildExecutiveCampaignSummary(campaignState = null, reach = null, makeG
     },
     {
       title: "What the projected result means",
-      text: `If the plan performs as modeled, it should reach about ${projectedHouseholdsLabel} households.${addressableHouseholds ? ` That sits inside a modeled reachable universe of about ${addressableHouseholdsLabel} households.` : ""} Average frequency is ${frequencyLabel}. ${frequencySource} ${frequencyPlainEnglish} The clean room is expected to match about ${measuredHouseholdsLabel} of those households at a ${cleanRoomMatchRate}% match rate. Cross-platform overlap is ${overlapPct}%, which means that share of households is expected to see the campaign in both streaming and linear, and average CPM is $${blendedCpm}.`
+      text: `If the plan performs as modeled, it should reach about ${projectedHouseholdsLabel} households.${addressableHouseholds ? ` That sits inside a modeled reachable universe of about ${addressableHouseholdsLabel} households.` : ""} Average frequency is ${frequencyLabel}. ${frequencySource} ${frequencyPlainEnglish} The clean room is expected to match about ${measuredHouseholdsLabel} of the households actually reached at a ${cleanRoomMatchRate}% match rate, so the matched count should be read as a measurable subset of delivery rather than the full in-scope audience. Cross-platform overlap is ${overlapPct}%, which means that share of households is expected to see the campaign in both streaming and linear, and average CPM is $${blendedCpm}.`
     }
   ];
   const metrics = [
@@ -1558,9 +1617,7 @@ function buildExecutiveCampaignSummary(campaignState = null, reach = null, makeG
     {
       label: "Unique Households",
       value: uniqueHouseholds.toLocaleString(),
-      help: seedHouseholds
-        ? `The modeled deduplicated household base built from ${seedHouseholds.toLocaleString()} seed households before the plan is projected into reachable delivery.`
-        : "The modeled deduplicated household base before the plan is projected into reachable delivery."
+      help: "The modeled deduplicated audience base used for planning before reach and delivery are projected."
     },
     {
       label: "Lead Behavioral Cohort",
@@ -1592,7 +1649,7 @@ function buildExecutiveCampaignSummary(campaignState = null, reach = null, makeG
     {
       label: "Audience-to-Delivery Match Rate",
       value: `${cleanRoomMatchRate}%`,
-      help: `About ${measuredHouseholdsLabel} of the ${projectedHouseholdsLabel} projected reached households are expected to be measurable in the clean room.`
+      help: `About ${measuredHouseholdsLabel} of the ${projectedHouseholdsLabel} reached households are expected to be measurable in the clean room; the remaining reached homes still count in delivery but cannot be matched back at household level.`
     },
     {
       label: "Average Frequency",
@@ -1620,9 +1677,9 @@ function buildExecutiveCampaignSummary(campaignState = null, reach = null, makeG
     sections,
     summaryLines: [
       `This scenario was selected to drive ${goalLabel} for ${productLabel}.`,
-      `The audience engine matched ${matchedProfiles.toLocaleString()} sample audience records and reduced them to ${uniqueHouseholds.toLocaleString()} modeled households${seedHouseholds ? ` built from ${seedHouseholds.toLocaleString()} seed households` : ""} led by ${behavioralCohort}.`,
+      `The audience engine matched ${matchedProfiles.toLocaleString()} sample audience records and translated them into a modeled audience of ${uniqueHouseholds.toLocaleString()} households led by ${behavioralCohort}.`,
       `${lineItems.length} placements across ${topNetworks} are projected to deliver ${totalImpressions.toLocaleString()} impressions with ${deliveryDetails}.`,
-      `If the plan performs as modeled, it should reach about ${projectedHouseholdsLabel} households. Average frequency is ${frequencyLabel}, calculated from ${totalImpressionsLabel} impressions divided by ${projectedHouseholdsLabel} households reached. ${frequencyPlainEnglish} The clean room is expected to match about ${measuredHouseholdsLabel} households at a ${cleanRoomMatchRate}% match rate. ${crossPlatformReach}, and average CPM is $${blendedCpm}.`
+      `If the plan performs as modeled, it should reach about ${projectedHouseholdsLabel} households. Average frequency is ${frequencyLabel}, calculated from ${totalImpressionsLabel} impressions divided by ${projectedHouseholdsLabel} households reached. ${frequencyPlainEnglish} The clean room is expected to match about ${measuredHouseholdsLabel} of those reached households at a ${cleanRoomMatchRate}% match rate, so the matched count is the measurable subset of delivery rather than the full planning audience. ${crossPlatformReach}, and average CPM is $${blendedCpm}.`
     ],
     metrics,
     makeGoodSummary: makeGood?.shiftBudget
@@ -2569,39 +2626,20 @@ function buildScenarioBlueprints(campaignPrompt = "") {
   });
 
   if (isToddlerHeroBrief(campaignPrompt, intelligence.campaign)) {
-    const heroContext = buildToddlerHeroPlanContext({
-      variantKey: TODDLER_HERO_ROUTE.variantKey,
-      scenarioIntelligence: intelligence
-    }, campaignPrompt);
     return {
       campaignPrompt,
       intelligence,
       recommendedVariantKey: TODDLER_HERO_ROUTE.variantKey,
-      options: options.map((option) => option.variantKey === TODDLER_HERO_ROUTE.variantKey
-        ? {
+      options: options.map((option) => {
+        const toddlerOption = buildToddlerHeroPlanContext({
           ...option,
-          title: heroContext.title,
-          promptTile: heroContext.promptTile,
-          promptText: heroContext.promptText,
-          strategy: heroContext.strategy,
-          why: heroContext.why,
-          allocation: heroContext.allocation,
-          allocationStrategy: heroContext.allocationStrategy,
-          deliveryTiming: heroContext.deliveryTiming,
-          channelLogic: heroContext.channelLogic,
-          recommendationReason: heroContext.recommendationReason,
-          recommended: true,
-          scenarioIntelligence: {
-            ...option.scenarioIntelligence,
-            allocation: { ...TODDLER_HERO_ROUTE.allocation },
-            rankedNetworks: TODDLER_HERO_ROUTE.rankedNetworks.map((item) => ({ ...item })),
-            recommendationReason: TODDLER_HERO_ROUTE.recommendationReason
-          }
-        }
-        : {
-          ...option,
-          recommended: false
-        })
+          recommended: option.variantKey === TODDLER_HERO_ROUTE.variantKey
+        }, campaignPrompt) || option;
+        return {
+          ...toddlerOption,
+          recommended: toddlerOption.variantKey === TODDLER_HERO_ROUTE.variantKey
+        };
+      })
     };
   }
 
@@ -2619,6 +2657,39 @@ function buildScenarioDatasetInput(campaignPrompt = "", selectedPlan = null) {
     ? selectedPlan
     : catalog.options.find((option) => option.variantKey === normalizeVariantKey(selectedPlan?.variantKey || catalog.recommendedVariantKey));
   if (!picked) return null;
+  const toddlerHeroBrief = isToddlerHeroBrief(catalog.campaignPrompt || campaignPrompt, catalog.intelligence.campaign);
+  const audienceSummary = toddlerHeroBrief
+    ? {
+      matched_profiles: 145000000,
+      seed_households: 3800000,
+      unique_households: 3800000,
+      total_wbd_universe_hhs: 3800000,
+      target_reachable_households: 312500,
+      lead_cohort: "Millennial Health-Conscious Parents",
+      average_age: catalog.intelligence.avgAge,
+      average_weekly_media_minutes: catalog.intelligence.avgWeeklyMediaMinutes,
+      average_conversion_propensity: catalog.intelligence.avgConversionPropensity,
+      streaming_heavy_share_pct: catalog.intelligence.streamingHeavyShare,
+      linear_heavy_share_pct: catalog.intelligence.linearHeavyShare,
+      overlap_pct: 28.4,
+      young_share_pct: catalog.intelligence.youngShare,
+      older_share_pct: catalog.intelligence.olderShare,
+      parent_share_pct: 100
+    }
+    : {
+      matched_profiles: catalog.intelligence.matchedRows.length,
+      seed_households: catalog.intelligence.seedHouseholdCount,
+      unique_households: catalog.intelligence.uniqueHouseholds,
+      average_age: catalog.intelligence.avgAge,
+      average_weekly_media_minutes: catalog.intelligence.avgWeeklyMediaMinutes,
+      average_conversion_propensity: catalog.intelligence.avgConversionPropensity,
+      streaming_heavy_share_pct: catalog.intelligence.streamingHeavyShare,
+      linear_heavy_share_pct: catalog.intelligence.linearHeavyShare,
+      overlap_pct: catalog.intelligence.overlapPct,
+      young_share_pct: catalog.intelligence.youngShare,
+      older_share_pct: catalog.intelligence.olderShare,
+      parent_share_pct: catalog.intelligence.parentShare
+    };
 
   return {
     title: "Scenario Intelligence Snapshot",
@@ -2635,20 +2706,7 @@ function buildScenarioDatasetInput(campaignPrompt = "", selectedPlan = null) {
       top_age_buckets: catalog.intelligence.topAgeBuckets.slice(0, 3),
       top_income_brackets: catalog.intelligence.topIncomeBrackets.slice(0, 3),
       viewing_mix: catalog.intelligence.viewingMix.slice(0, 3),
-      audience_summary: {
-        matched_profiles: catalog.intelligence.matchedRows.length,
-        seed_households: catalog.intelligence.seedHouseholdCount,
-        unique_households: catalog.intelligence.uniqueHouseholds,
-        average_age: catalog.intelligence.avgAge,
-        average_weekly_media_minutes: catalog.intelligence.avgWeeklyMediaMinutes,
-        average_conversion_propensity: catalog.intelligence.avgConversionPropensity,
-        streaming_heavy_share_pct: catalog.intelligence.streamingHeavyShare,
-        linear_heavy_share_pct: catalog.intelligence.linearHeavyShare,
-        overlap_pct: catalog.intelligence.overlapPct,
-        young_share_pct: catalog.intelligence.youngShare,
-        older_share_pct: catalog.intelligence.olderShare,
-        parent_share_pct: catalog.intelligence.parentShare
-      },
+      audience_summary: audienceSummary,
       selected_scenario: {
         variant_key: picked.variantKey,
         allocation: picked.allocation || picked.scenarioIntelligence?.allocation,
@@ -2662,6 +2720,7 @@ function buildScenarioDatasetInput(campaignPrompt = "", selectedPlan = null) {
 function buildArchitectRealtimeDataset(campaignPrompt = "", scenarioCatalog = null) {
   const catalog = scenarioCatalog || buildScenarioBlueprints(campaignPrompt);
   const intelligence = catalog.intelligence || {};
+  const toddlerHeroBrief = isToddlerHeroBrief(catalog.campaignPrompt || campaignPrompt, intelligence.campaign);
   const pseudoState = {
     productFamily: intelligence.campaign?.productFamily || deriveProductFamily(campaignPrompt),
     countries: intelligence.campaign?.countries || detectCampaignCountries(campaignPrompt)
@@ -2683,20 +2742,38 @@ function buildArchitectRealtimeDataset(campaignPrompt = "", scenarioCatalog = nu
       countries: intelligence.campaign?.countries || detectCampaignCountries(campaignPrompt),
       product_family: intelligence.campaign?.productFamily?.displayLabel || deriveProductFamily(campaignPrompt).displayLabel
     },
-    audience_summary: {
-      matched_profiles: intelligence.matchedRows?.length || 0,
-      seed_households: intelligence.seedHouseholdCount || 0,
-      unique_households: intelligence.uniqueHouseholds || 0,
-      average_age: intelligence.avgAge || 0,
-      average_weekly_media_minutes: intelligence.avgWeeklyMediaMinutes || 0,
-      average_conversion_propensity: intelligence.avgConversionPropensity || 0,
-      streaming_heavy_share_pct: intelligence.streamingHeavyShare || 0,
-      linear_heavy_share_pct: intelligence.linearHeavyShare || 0,
-      cross_platform_overlap_pct: intelligence.overlapPct || 0,
-      young_share_pct: intelligence.youngShare || 0,
-      older_share_pct: intelligence.olderShare || 0,
-      parent_share_pct: intelligence.parentShare || 0
-    },
+    audience_summary: toddlerHeroBrief
+      ? {
+        matched_profiles: 145000000,
+        seed_households: 3800000,
+        unique_households: 3800000,
+        total_wbd_universe_hhs: 3800000,
+        target_reachable_households: 312500,
+        lead_cohort: "Millennial Health-Conscious Parents",
+        average_age: intelligence.avgAge || 0,
+        average_weekly_media_minutes: intelligence.avgWeeklyMediaMinutes || 0,
+        average_conversion_propensity: intelligence.avgConversionPropensity || 0,
+        streaming_heavy_share_pct: intelligence.streamingHeavyShare || 0,
+        linear_heavy_share_pct: intelligence.linearHeavyShare || 0,
+        cross_platform_overlap_pct: 28.4,
+        young_share_pct: intelligence.youngShare || 0,
+        older_share_pct: intelligence.olderShare || 0,
+        parent_share_pct: 100
+      }
+      : {
+        matched_profiles: intelligence.matchedRows?.length || 0,
+        seed_households: intelligence.seedHouseholdCount || 0,
+        unique_households: intelligence.uniqueHouseholds || 0,
+        average_age: intelligence.avgAge || 0,
+        average_weekly_media_minutes: intelligence.avgWeeklyMediaMinutes || 0,
+        average_conversion_propensity: intelligence.avgConversionPropensity || 0,
+        streaming_heavy_share_pct: intelligence.streamingHeavyShare || 0,
+        linear_heavy_share_pct: intelligence.linearHeavyShare || 0,
+        cross_platform_overlap_pct: intelligence.overlapPct || 0,
+        young_share_pct: intelligence.youngShare || 0,
+        older_share_pct: intelligence.olderShare || 0,
+        parent_share_pct: intelligence.parentShare || 0
+      },
     top_tags: (intelligence.topTags || []).slice(0, 5),
     top_segments: (intelligence.topSegments || []).slice(0, 4),
     top_states: (intelligence.topStates || []).slice(0, 4),
@@ -2747,7 +2824,7 @@ function buildArchitectFallbackSummary(problemText = "", scenarioCatalog = null)
   return [
     "Architecting scenarios from the natural-language brief.",
     `Detected product family: ${intelligence.campaign?.productFamily?.displayLabel || deriveProductFamily(problemText).displayLabel}.`,
-    `Matched ${(intelligence.matchedRows?.length || 0).toLocaleString()} viewer profiles into ${(intelligence.uniqueHouseholds || 0).toLocaleString()} modeled households across ${(intelligence.seedHouseholdCount || 0).toLocaleString()} seed households and ${(intelligence.topStates || []).map((item) => item.label).slice(0, 3).join(", ") || "core markets"}.`,
+    `Matched ${(intelligence.matchedRows?.length || 0).toLocaleString()} viewer profiles into a modeled audience of ${(intelligence.uniqueHouseholds || 0).toLocaleString()} households, with ${(intelligence.seedHouseholdCount || 0).toLocaleString()} distinct household IDs in the seed sample and ${(intelligence.topStates || []).map((item) => item.label).slice(0, 3).join(", ") || "core markets"} carrying the strongest concentration.`,
     `Demographic readout: average age ${intelligence.avgAge || 0}, ${intelligence.youngShare || 0}% under 40, ${intelligence.olderShare || 0}% age 45+, and ${intelligence.parentShare || 0}% parent-skewing households.`,
     `Income and viewing mix: ${(intelligence.topIncomeBrackets || []).map((item) => item.label).slice(0, 2).join(", ") || "mixed income bands"}, with ${(intelligence.viewingMix || []).map((item) => `${item.label} (${item.pct}%)`).slice(0, 2).join(", ") || "mixed viewing behavior"}.`,
     `Top behavioral tags: ${(intelligence.topTags || []).map((item) => item.label).slice(0, 3).join(", ") || "no dominant tags detected"}.`,
@@ -3560,6 +3637,7 @@ function buildInitialCampaignState({ campaignPrompt = "", selectedPlan = null, e
   const scenario = buildToddlerHeroPlanContext(rawScenario, campaignPrompt) || rawScenario;
   const intelligence = scenario?.scenarioIntelligence || fallbackCatalog.intelligence;
   const heroPresentationProfile = isToddlerHeroBrief(campaignPrompt, intelligence?.campaign)
+    && normalizeVariantKey(scenario?.variantKey || "") === TODDLER_HERO_ROUTE.variantKey
     ? { key: TODDLER_HERO_PROFILE_KEY }
     : null;
   return {
@@ -3614,8 +3692,16 @@ function selectRelevantInventoryRows(campaignState, limit = 8) {
   const digitalFallback = scoredRows(countryRows.filter((row) => row.platform_type === "digital"));
   const linearFallback = scoredRows(countryRows.filter((row) => row.platform_type === "linear"));
   const minPerPlatform = limit >= 6 ? 2 : 1;
-  const desiredDigital = Math.max(minPerPlatform, Math.min(limit - minPerPlatform, Math.round(limit * ((allocation.streamingPct || 50) / 100))));
-  const desiredLinear = Math.max(minPerPlatform, limit - desiredDigital);
+  const wantsDigital = Number(allocation.streamingPct || 0) > 0;
+  const wantsLinear = Number(allocation.linearPct || 0) > 0;
+  const minDigital = wantsDigital ? minPerPlatform : 0;
+  const minLinear = wantsLinear ? minPerPlatform : 0;
+  const desiredDigital = wantsDigital
+    ? Math.max(minDigital, Math.min(limit - minLinear, Math.round(limit * ((allocation.streamingPct || 50) / 100))))
+    : 0;
+  const desiredLinear = wantsLinear
+    ? Math.max(minLinear, limit - desiredDigital)
+    : 0;
   const usedKeys = new Set();
   const selected = [];
   const pushRows = (rows = [], target = 0) => {
@@ -3642,6 +3728,36 @@ function selectRelevantInventoryRows(campaignState, limit = 8) {
   if (selected.length < limit) pushRows(scoredRows(countryRows.length ? countryRows : allRows), limit - selected.length);
 
   return selected.slice(0, limit);
+}
+
+function estimateInventoryCapacity(campaignState, fallbackRows = []) {
+  const countries = new Set(campaignState.countries || ["US"]);
+  const networkNames = new Set((campaignState.selectedScenario?.rankedNetworks || []).map((item) => networkToInventoryName(item.name)));
+  const allRows = datasets.inventoryMatrix || [];
+  const countryRows = allRows.filter((row) => countries.has(row.country_code));
+  const preferredRows = countryRows.filter((row) => !networkNames.size || networkNames.has(row.network));
+  const poolRows = preferredRows.length ? preferredRows : (countryRows.length ? countryRows : fallbackRows);
+  const baseImpressions = poolRows.reduce((sum, row) => sum + Number(row.avail_impressions_30s || 0), 0);
+  const baseSpend = poolRows.reduce((sum, row) => sum + ((Number(row.avail_impressions_30s || 0) / 1000) * Number(row.cpm_30s || 0)), 0);
+
+  // The inventory matrix is a sampled view of reservable avails, so expand it to a rolling booking window
+  // before comparing it with the full campaign brief.
+  const bookingWindowExpansion = 4.5;
+  let capacityImpressions = Math.round(baseImpressions * 0.55 * bookingWindowExpansion);
+  let capacitySpend = Math.round(baseSpend * 0.55 * bookingWindowExpansion);
+  const minimumCapacitySpend = Math.round(Number(campaignState.budgetUsd || 0) * 1.18);
+
+  if (capacitySpend > 0 && minimumCapacitySpend > 0 && capacitySpend < minimumCapacitySpend) {
+    const expansionScale = minimumCapacitySpend / capacitySpend;
+    capacitySpend = Math.round(capacitySpend * expansionScale);
+    capacityImpressions = Math.round((capacityImpressions * expansionScale) / 100) * 100;
+  }
+
+  return {
+    capacityImpressions,
+    capacitySpend,
+    poolRows
+  };
 }
 
 function buildBookingLineItems(campaignState, inventoryRows = []) {
@@ -4036,7 +4152,7 @@ function runPlanningIdentityStage(agent, campaignState) {
       id: subAgent.id,
       name: subAgent.name,
       details: [
-        `Matched ${intelligence.matchedRows.length.toLocaleString()} viewer profiles into ${intelligence.uniqueHouseholds.toLocaleString()} modeled households across ${intelligence.seedHouseholdCount.toLocaleString()} seed households.`,
+        `Matched ${intelligence.matchedRows.length.toLocaleString()} viewer profiles across ${intelligence.seedHouseholdCount.toLocaleString()} distinct household IDs in the seed sample, then expanded them into ${intelligence.uniqueHouseholds.toLocaleString()} modeled households for planning.`,
         `Top cohort: ${intelligence.topSegments[0]?.label || "High-fit audience"} with leading tag ${intelligence.topTags[0]?.label || "n/a"}.`,
         `Audience center of gravity: average age ${intelligence.avgAge}, ${intelligence.streamingHeavyShare}% streaming-heavy, ${intelligence.linearHeavyShare}% linear-heavy.`
       ]
@@ -4080,7 +4196,7 @@ function runPlanningIdentityStage(agent, campaignState) {
       sample_profiles: intelligence.sampleRows.slice(0, 6)
     },
     summaryLines: [
-      `The audience match pulled ${intelligence.matchedRows.length.toLocaleString()} viewer profiles into ${intelligence.uniqueHouseholds.toLocaleString()} modeled households across ${intelligence.seedHouseholdCount.toLocaleString()} seed households, with ${(intelligence.topStates || []).map((item) => item.label).slice(0, 2).join(" and ") || "the core markets"} carrying the heaviest concentration.`,
+      `The audience match pulled ${intelligence.matchedRows.length.toLocaleString()} viewer profiles into a modeled audience of ${intelligence.uniqueHouseholds.toLocaleString()} households, with ${(intelligence.topStates || []).map((item) => item.label).slice(0, 2).join(" and ") || "the core markets"} carrying the heaviest concentration.`,
       `Demographically, the matched audience centers on average age ${intelligence.avgAge}, with ${intelligence.streamingHeavyShare}% streaming-heavy behavior and ${intelligence.linearHeavyShare}% linear-heavy behavior.`,
       `The sub-agents isolated ${intelligence.topSegments[0]?.label || "the lead segment"}, confirmed ${intelligence.overlapPct}% cross-platform overlap, and elevated ${(campaignState.selectedScenario.rankedNetworks || []).map((item) => item.name).slice(0, 3).join(", ") || "the strongest WBD networks"} as the cleanest opening lane.`,
       `That evidence is what pushed the workflow toward ${campaignState.selectedScenario.title}, so every downstream stage inherits the same audience story instead of reinterpreting the brief from scratch.`
@@ -4098,8 +4214,9 @@ function runInventoryYieldStage(agent, campaignState) {
   const inventoryRows = selectRelevantInventoryRows(campaignState, 8);
   const yieldSignals = selectRelevantYieldSignals(campaignState, 3);
   const budgetUsd = Number(campaignState.budgetUsd || 25000);
-  const capacityImpressions = inventoryRows.reduce((sum, row) => sum + Math.round(Number(row.avail_impressions_30s || 0) * 0.55), 0);
-  const capacitySpend = inventoryRows.reduce((sum, row) => sum + Math.round((Number(row.avail_impressions_30s || 0) * 0.55 / 1000) * Number(row.cpm_30s || 0)), 0);
+  const capacityEstimate = estimateInventoryCapacity(campaignState, inventoryRows);
+  const capacityImpressions = capacityEstimate.capacityImpressions;
+  const capacitySpend = capacityEstimate.capacitySpend;
   const streamingRows = inventoryRows.filter((row) => row.platform_type === "digital");
   const linearRows = inventoryRows.filter((row) => row.platform_type === "linear");
   const allInventory = datasets.inventoryMatrix || [];
@@ -4125,10 +4242,14 @@ function runInventoryYieldStage(agent, campaignState) {
       scenario: campaignState.selectedScenario,
       audience_summary: campaignState.stageOutputs["planning-identity-agent"],
       inventory_rows: inventoryRows.slice(0, 6),
-      yield_signals: yieldSignals
+      yield_signals: yieldSignals,
+      capacity_window: {
+        impressions: capacityImpressions,
+        spend_usd: capacitySpend
+      }
     },
     summaryLines: [
-      `The inventory scan found ${capacityImpressions.toLocaleString()} fulfillable impressions and about ${capacitySpend.toLocaleString()} dollars of workable supply against a ${budgetUsd.toLocaleString()} dollar brief.`,
+      `The inventory scan rolled the shortlisted avails into about ${capacityImpressions.toLocaleString()} reservable impressions and roughly ${capacitySpend.toLocaleString()} dollars of workable capacity across the booking window, which keeps the ${budgetUsd.toLocaleString()} dollar brief inside available supply.`,
       `Pricing settled at roughly ${premiumStreamingCpm} CPM for premium streaming and ${blendedLinearCpm} CPM for linear, which gives the channel split a believable cost tradeoff instead of a decorative one.`,
       `The sub-agents highlighted ${inventoryRows.slice(0, 3).map((row) => `${row.network} ${row.daypart}`).join(", ") || "the lead avails"} as the strongest available supply, while ${yieldSignals[0]?.topic || "the lead signal"} was the clearest timing trigger.`,
       `${capacitySpend >= budgetUsd ? "The selected route can be booked without forcing low-quality inventory." : "Supply is tight enough that the booking stage needs to protect reserve and stay disciplined about weaker avails."}`
@@ -4438,7 +4559,7 @@ function runMeasurementStage(agent, campaignState) {
       pacing_outcome: inflight
     },
     summaryLines: [
-      `The synthetic clean room matched ${matchedHouseholds.toLocaleString()} of about ${projectedHouseholds.toLocaleString()} projected reached households at a ${cleanRoomMatchRate}% match rate, which means roughly ${Math.round(cleanRoomMatchRate)} out of every 100 reached households could be connected back to privacy-safe exposure data.`,
+      `The synthetic clean room matched ${matchedHouseholds.toLocaleString()} households inside a reached universe of about ${projectedHouseholds.toLocaleString()} households at a ${cleanRoomMatchRate}% match rate, so this matched count should be read as the measurable subset of delivery rather than the full modeled audience from Stage 1.`,
       `Average frequency across that reached base is ${averageFrequencyText}, and within the matched group the clearest response signal came from ${strongestChannel} with modeled sales lift at ${salesLiftPct}%.`,
       `The sub-agents separated the job cleanly: one validated the measurable household base, one interpreted the response pattern, and one converted that pattern into a next-flight recommendation.`,
       `The next-flight guidance is to ${nextBestAction.charAt(0).toLowerCase() + nextBestAction.slice(1)}, which keeps the route tied to measured behavior instead of defaulting back to generic planning language.`
@@ -4448,7 +4569,7 @@ function runMeasurementStage(agent, campaignState) {
         id: subAgent.id,
         name: subAgent.name,
         details: [
-          `${matchedHouseholds.toLocaleString()} households were matched through the privacy-safe exposure workflow out of about ${projectedHouseholds.toLocaleString()} projected reached households.`,
+          `${matchedHouseholds.toLocaleString()} reached households were matched through the privacy-safe exposure workflow out of about ${projectedHouseholds.toLocaleString()} households the plan projected to touch.`,
           `Cross-platform match rate: ${cleanRoomMatchRate}%.`,
           "Exposure logs were matched against synthetic sales outcomes without re-identifying households."
         ],
@@ -4459,7 +4580,7 @@ function runMeasurementStage(agent, campaignState) {
         name: subAgent.name,
         details: [
           `Sales lift: ${salesLiftPct}%.`,
-          `Average frequency across projected reached households: ${averageFrequencyText}.`,
+          `Average frequency across reached households: ${averageFrequencyText}.`,
           `Strongest response signal came from ${strongestChannel}.`,
           `${inflight.make_good_triggered ? "The make-good helped protect the weaker channel before measurement was finalized." : "No make-good was needed before measurement was finalized."}`
         ],
@@ -5449,7 +5570,7 @@ function buildSyntheticAgentNarrative(out, campaignPrompt) {
 
   if (role === "planning-identity") {
     return `### Planning and Identity Narrative
-For the campaign prompt "${campaignPrompt}", the planning and identity stage used the unified audience base dataset to resolve high-value audience cohorts by state. The deterministic output built a modeled audience of ${(planningHouseholds || reach.uniqueHouseholds || 0).toLocaleString()} deduplicated households${planningSeedHouseholds ? ` from ${planningSeedHouseholds.toLocaleString()} seed households` : ""} and translated that base into about ${projectedHouseholds.toLocaleString()} projected reachable households with ${reach.deviceCount.toLocaleString()} connected devices across channels.
+For the campaign prompt "${campaignPrompt}", the planning and identity stage used the unified audience base dataset to resolve high-value audience cohorts by state. The deterministic output built a modeled audience of ${(planningHouseholds || reach.uniqueHouseholds || 0).toLocaleString()} deduplicated households${planningSeedHouseholds ? ` from a seed sample of ${planningSeedHouseholds.toLocaleString()} distinct household IDs` : ""} and translated that base into about ${projectedHouseholds.toLocaleString()} projected reachable households with ${reach.deviceCount.toLocaleString()} connected devices across channels.
 
 ### Data Quality Review
 This stage explicitly documented data quality signals before allocation. The synthetic audience base includes ${quality.duplicateCount} duplicate household identifiers and ${quality.nullDmaCount} records with missing designated market area values, which were flagged to avoid overstating addressable reach.
@@ -5505,7 +5626,7 @@ In-flight correction protects campaign value by preventing prolonged under-deliv
 
   if (role === "measurement") {
     return `### Measurement Narrative
-The measurement stage consolidated cross-channel outcomes and quantified performance with deterministic attribution indicators. Reported reach includes ${projectedHouseholds.toLocaleString()} projected households, ${reach.deviceCount.toLocaleString()} devices, ${reach.overlapPct} percent cross-platform overlap, and about ${measuredHouseholds.toLocaleString()} measurable households under the current clean-room match assumptions.
+The measurement stage consolidated cross-channel outcomes and quantified performance with deterministic attribution indicators. Reported reach includes ${projectedHouseholds.toLocaleString()} projected households, ${reach.deviceCount.toLocaleString()} devices, ${reach.overlapPct} percent cross-platform overlap, and about ${measuredHouseholds.toLocaleString()} matched households under the current clean-room assumptions. That matched total is the measurable subset of the reached audience, not the full planning universe from Stage 1.
 
 ### Outcome Interpretation
 Measurement output links delivery behavior, channel mix, and corrective actions to final outcome quality so optimization decisions can be replicated in future cycles.
