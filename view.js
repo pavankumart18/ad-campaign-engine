@@ -279,8 +279,20 @@ function detectStageRole(agent = {}) {
   return "generic";
 }
 
+function isToddlerHeroPresentation(state = {}) {
+  return state?.campaignStateObject?.presentationProfile?.key === "toddler-converged-precision-sprint";
+}
+
+function formatCompactHouseholdValue(value = 0) {
+  const numeric = Number(value || 0);
+  if (!numeric) return "Pending";
+  if (numeric >= 1000000) return `${(numeric / 1000000).toFixed(1)}M`;
+  return numeric.toLocaleString();
+}
+
 function buildAgentSummaryMetrics(agent = {}, state = {}) {
   const role = detectStageRole(agent);
+  const toddlerHero = isToddlerHeroPresentation(state);
   const audience = agent?.stateUpdate?.audience_summary || {};
   const inventory = agent?.stateUpdate?.inventory_summary || {};
   const booking = agent?.stateUpdate?.booking_summary || {};
@@ -291,6 +303,14 @@ function buildAgentSummaryMetrics(agent = {}, state = {}) {
   const lineItems = booking.line_items || [];
 
   if (role === "planning") {
+    if (toddlerHero) {
+      return [
+        { label: "Total WBD Universe", value: audience.total_wbd_universe_hhs ? `${formatCompactHouseholdValue(audience.total_wbd_universe_hhs)} HHs` : "Pending" },
+        { label: "Target Reachable (for $50K)", value: audience.target_reachable_households ? `~${Number(audience.target_reachable_households).toLocaleString()} Unique HHs` : "Pending" },
+        { label: "Lead Cohort", value: audience.lead_cohort || audience.top_segments?.[0]?.label || "Pending" },
+        { label: "Cross-Platform Overlap", value: audience.overlap_pct != null ? `${audience.overlap_pct}%` : "Pending" }
+      ];
+    }
     return [
       { label: "Matched Sample Profiles", value: audience.matched_profiles ? Number(audience.matched_profiles).toLocaleString() : "Pending" },
       { label: "Unique Households", value: audience.unique_households ? Number(audience.unique_households).toLocaleString() : "Pending" },
@@ -320,6 +340,14 @@ function buildAgentSummaryMetrics(agent = {}, state = {}) {
   }
 
   if (role === "trafficking") {
+    if (toddlerHero) {
+      return [
+        { label: "Launch Readiness", value: trafficking.readiness_score != null ? `${trafficking.readiness_score}% (${trafficking.readiness_status_label || "Conditionally Approved"})` : "Pending" },
+        { label: "Technical Alerts", value: trafficking.technical_alerts_count != null ? `${trafficking.technical_alerts_count} Routing Risk` : "Pending" },
+        { label: "Creatives QA'D", value: trafficking.creatives_passed_count != null ? `${trafficking.creatives_passed_count}/${trafficking.creative_total_count || trafficking.creatives_passed_count} Passed Specs` : "Pending" },
+        { label: "Affected Placement", value: trafficking.affected_placement || "Ready" }
+      ];
+    }
     return [
       { label: "Readiness", value: trafficking.readiness_score != null ? `${trafficking.readiness_score}/100` : "Pending" },
       { label: "Signal Risks", value: trafficking.signal_risks?.length != null ? `${trafficking.signal_risks.length}` : "Pending" },
@@ -330,6 +358,14 @@ function buildAgentSummaryMetrics(agent = {}, state = {}) {
 
   if (role === "inflight") {
     const allocation = inflight.final_allocation || {};
+    if (toddlerHero) {
+      return [
+        { label: "Streaming Pacing", value: inflight.digital_delivery_rate_pct != null ? `${inflight.digital_delivery_rate_pct}% (${inflight.streaming_status_label || "Healthy"})` : "Pending" },
+        { label: "Linear Pacing", value: inflight.linear_delivery_rate_pct != null ? `${inflight.linear_delivery_rate_pct}% (${inflight.linear_status_label || "Under-delivering"})` : "Pending" },
+        { label: "Autonomous Shift", value: inflight.shift_budget_usd ? `$${Number(inflight.shift_budget_usd).toLocaleString()} Reallocated` : "Not needed" },
+        { label: "Final Budget Mix", value: allocation.streamingPct != null ? `${allocation.streamingPct}% Streaming / ${allocation.linearPct}% Linear` : "Pending" }
+      ];
+    }
     return [
       { label: "Streaming Delivery", value: inflight.digital_delivery_rate_pct != null ? `${inflight.digital_delivery_rate_pct}%` : "Pending" },
       { label: "Linear Delivery", value: inflight.linear_delivery_rate_pct != null ? `${inflight.linear_delivery_rate_pct}%` : "Pending" },
@@ -339,7 +375,15 @@ function buildAgentSummaryMetrics(agent = {}, state = {}) {
   }
 
   if (role === "measurement") {
-    const projectedHouseholds = resolveReachHouseholds(reach);
+    const projectedHouseholds = Number(measurement.projected_households || resolveReachHouseholds(reach) || 0);
+    if (toddlerHero) {
+      return [
+        { label: "Projected Reach", value: projectedHouseholds ? `${projectedHouseholds.toLocaleString()} HHs` : "Pending" },
+        { label: "Verified Unique HHs", value: measurement.verified_unique_households ? `${Number(measurement.verified_unique_households).toLocaleString()} HHs` : "Pending" },
+        { label: "Incremental Reach (Streaming)", value: measurement.incremental_reach_streaming_pct != null ? `+${measurement.incremental_reach_streaming_pct}% Net-New` : "Pending" },
+        { label: "Avg Converged Frequency", value: measurement.average_frequency ? `${measurement.average_frequency}x (Capped)` : "Pending" }
+      ];
+    }
     return [
       { label: "Projected Reach", value: projectedHouseholds ? projectedHouseholds.toLocaleString() : "Pending" },
       { label: "Measured Households", value: measurement.matched_households ? Number(measurement.matched_households).toLocaleString() : "Pending" },
@@ -349,6 +393,12 @@ function buildAgentSummaryMetrics(agent = {}, state = {}) {
   }
 
   if (role === "compliance") {
+    if (toddlerHero) {
+      return [
+        { label: "Status", value: state?.complianceDetails?.status || agent?.status || "Pending" },
+        { label: "Findings", value: state?.complianceDetails?.findings?.length != null ? `${state.complianceDetails.findings.length} Flags Logged` : "Pending" }
+      ];
+    }
     return [
       { label: "Status", value: state?.complianceDetails?.status || agent?.status || "Pending" },
       { label: "Findings", value: state?.complianceDetails?.findings?.length != null ? `${state.complianceDetails.findings.length}` : "Pending" }
@@ -1821,6 +1871,9 @@ function renderDashboard(state, actions) {
   if (!hasDashboard && showVisualizationLoader) return renderVisualizationLoadingCard();
 
   const { reach, actions: actionRows } = state.dashboard;
+  const toddlerHero = isToddlerHeroPresentation(state);
+  const pacingTitle = toddlerHero ? "Delivery Pacing (Linear versus Streaming)" : "Delivery Pacing (Linear versus Digital)";
+  const secondaryChannelLabel = toddlerHero ? "Streaming" : "Digital";
   return html`
     <section class="card mb-5">
       <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2"><span><i class="bi bi-bar-chart-line me-2"></i>Output and Visualization</span><div class="d-flex align-items-center gap-2 flex-wrap"><small class="text-body-secondary">Charts use synthetic metrics and explanations are generated by the language model.</small><button class="btn btn-sm btn-outline-warning" @click=${actions.toggleVisualizationExplanation}>${state.visualizationExplanationOpen ? "Hide Visualization Explanation" : "Show Visualization Explanation"}</button><button class="btn btn-sm btn-outline-warning" @click=${actions.exportApprovedPlan}><i class="bi bi-download me-1"></i>Export Plan CSV</button></div></div>
@@ -1837,7 +1890,7 @@ function renderDashboard(state, actions) {
           </div>
         ` : null}
         ${renderDashboardExecutiveSummary(state.dashboard?.executive)}
-        <div class="dashboard-grid"><div class="chart-card"><div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2"><h6 class="mb-0">Delivery Pacing (Linear versus Digital)</h6><div class="btn-group btn-group-sm" role="group"><button class="btn btn-outline-warning ${state.pacingMode === "pct" ? "active" : ""}" @click=${() => actions.setPacingMode("pct")}>Delivery Rate (%)</button><button class="btn btn-outline-warning ${state.pacingMode === "imp" ? "active" : ""}" @click=${() => actions.setPacingMode("imp")}>Delivered Impressions</button></div></div>${renderPacingChart()}<div class="d-flex gap-3 small mt-2 text-body-secondary"><span class="d-flex align-items-center gap-2"><span class="legend-swatch linear"></span>Linear</span><span class="d-flex align-items-center gap-2"><span class="legend-swatch digital"></span>Digital</span></div></div><div class="donut-card"><h6 class="mb-3">Cross-Platform Reach</h6>${renderReachDonut(reach)}<div class="reach-metrics mt-3"><div><div class="metric-label">Projected Households Reached</div><div class="metric-value">${formatNumber(resolveReachHouseholds(reach))}</div></div><div><div class="metric-label">Devices Touched</div><div class="metric-value">${formatNumber(reach.deviceCount)}</div></div><div><div class="metric-label">Cross-Platform Overlap</div><div class="metric-value">${reach.overlapPct}%</div></div></div></div></div>
+        <div class="dashboard-grid"><div class="chart-card"><div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2"><h6 class="mb-0">${pacingTitle}</h6><div class="btn-group btn-group-sm" role="group"><button class="btn btn-outline-warning ${state.pacingMode === "pct" ? "active" : ""}" @click=${() => actions.setPacingMode("pct")}>Delivery Rate (%)</button><button class="btn btn-outline-warning ${state.pacingMode === "imp" ? "active" : ""}" @click=${() => actions.setPacingMode("imp")}>Delivered Impressions</button></div></div>${renderPacingChart()}<div class="d-flex gap-3 small mt-2 text-body-secondary"><span class="d-flex align-items-center gap-2"><span class="legend-swatch linear"></span>Linear</span><span class="d-flex align-items-center gap-2"><span class="legend-swatch digital"></span>${secondaryChannelLabel}</span></div></div><div class="donut-card"><h6 class="mb-3">Cross-Platform Reach</h6>${renderReachDonut(reach, secondaryChannelLabel)}<div class="reach-metrics mt-3"><div><div class="metric-label">Projected Households Reached</div><div class="metric-value">${formatNumber(resolveReachHouseholds(reach))}</div></div><div><div class="metric-label">Devices Touched</div><div class="metric-value">${formatNumber(reach.deviceCount)}</div></div><div><div class="metric-label">Cross-Platform Overlap</div><div class="metric-value">${reach.overlapPct}%</div></div></div></div></div>
         ${renderMakeGood(state)}
         ${state.visualizationExplanationOpen ? renderVisualizationExplanation(state) : null}
         <div class="mt-4"><h6 class="mb-3">Agent Actions</h6>${renderActionTable(actionRows)}</div>
@@ -1925,8 +1978,8 @@ function renderPacingChart() {
   return html`<div class="pacing-chart-d3"></div>`;
 }
 
-function renderReachDonut(reach) {
-  return html`<div class="reach-chart-d3"></div><div class="mt-3 text-center text-body-secondary small">Linear ${reach.linearPct}% | Digital ${reach.digitalPct}%</div>`;
+function renderReachDonut(reach, secondaryChannelLabel = "Digital") {
+  return html`<div class="reach-chart-d3"></div><div class="mt-3 text-center text-body-secondary small">Linear ${reach.linearPct}% | ${secondaryChannelLabel} ${reach.digitalPct}%</div>`;
 }
 
 function renderMakeGood(state) {
@@ -1934,6 +1987,23 @@ function renderMakeGood(state) {
   if (!ops || ops.status !== "done") return null;
   const summary = state.dashboard?.makeGood;
   if (!summary) return null;
+  if (isToddlerHeroPresentation(state)) {
+    return html`
+      <div class="makegood-card mt-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <div>
+            <h6 class="mb-1">In-Flight Action</h6>
+            <div class="small text-body-secondary">During live pacing, the Autonomous Make-Good agent reallocated $${summary.shiftBudget.toLocaleString()} from underperforming live sports linear inventory directly into Max Ad-Lite to protect the 211,970 booked guarantee.</div>
+          </div>
+        </div>
+        <div class="makegood-track mt-3">
+          <span class="budget-chip chip-linear">TNT Live Sports</span>
+          <span class="budget-chip chip-digital">Max Ad-Lite</span>
+          <span class="budget-chip chip-move">$${summary.shiftBudget.toLocaleString()} shifted</span>
+        </div>
+      </div>
+    `;
+  }
   return html`<div class="makegood-card mt-4"><div class="d-flex justify-content-between align-items-center flex-wrap gap-2"><div><h6 class="mb-1">Delivery Make-Good Triggered</h6><div class="small text-body-secondary">Reallocated ${summary.shiftBudget.toLocaleString()} United States dollars to stronger inventory to protect delivery.</div></div></div><div class="makegood-track mt-3"><span class="budget-chip chip-linear">Linear</span><span class="budget-chip chip-digital">Streaming</span><span class="budget-chip chip-move">${summary.shiftBudget.toLocaleString()} United States dollars</span></div></div>`;
 }
 

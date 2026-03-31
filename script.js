@@ -360,6 +360,259 @@ const VARIANT_SUBAGENT_IDS = {
   }
 };
 
+const TODDLER_HERO_PROFILE_KEY = "toddler-converged-precision-sprint";
+const TODDLER_HERO_ROUTE = {
+  title: "Converged Precision Sprint (Parents of Toddlers)",
+  variantKey: "scenario-a",
+  promptText: "Use a converged streaming-led route to maximize de-duplicated reach against high-intent toddler parents inside a strict $50K budget.",
+  strategy: "Converged route designed to maximize de-duplicated reach inside a strict $50K budget by leaning into Max for concentrated morning streaming, using efficient daytime linear support, and preserving reserve budget for pacing corrections.",
+  why: "Recommended: Max carries the strongest concentration of high-intent toddler parents, Food Network adds efficient daytime scale, and 28.4% cross-platform overlap makes converged frequency control the deciding advantage.",
+  allocation: { streamingPct: 68, linearPct: 22, reservePct: 10 },
+  allocationStrategy: "Allocate $34,000 (68%) to morning streaming, $11,000 (22%) to afternoon linear, and hold $5,000 (10%) in algorithmic reserve so pacing can rescue weak inventory without breaking the $50K budget.",
+  deliveryTiming: "Lead on Max and Discovery+ during breakfast co-viewing hours, use Food Network and TLC in daytime lifestyle blocks, and keep TNT live sports on watchlist-only routing.",
+  channelLogic: "This route works because the toddler-parent cohort over-indexes on digital, still shows efficient daytime linear behavior, and has enough cross-platform overlap that a converged engine can prevent duplicate waste.",
+  recommendationReason: "Max is the most concentrated opening lane for millennial health-conscious toddler parents, Food Network daytime adds efficient linear scale, and 28.4% overlap makes converged frequency capping essential.",
+  rankedNetworks: [
+    { name: "Max", score: 145, lift: 1.45 },
+    { name: "Food Network", score: 115, lift: 1.15 },
+    { name: "Discovery+", score: 108, lift: 1.08 }
+  ]
+};
+
+const TODDLER_HERO_COMPLIANCE_FINDINGS = [
+  "COPPA enforcement: child-directed Max Kids inventory cannot carry third-party behavioral tracking pixels, so those pixels were removed before activation.",
+  "COPPA enforcement: click-through retargeting and audience reseeding were disabled on Max Kids streaming lines to avoid child-directed behavioral profiling.",
+  "Brand safety: 3 Discovery+ placements were adjacent to TV-MA true-crime content, so a G/PG-only adjacency filter was applied.",
+  "Measurement control: household validation stays inside the clean room only; no raw user-level exports are allowed on the toddler-parent match workflow.",
+  "Frequency protection: cross-platform exposure controls were hardened to keep household frequency capped when Max and linear viewers overlap.",
+  "Pricing floor audit: the $68.50 streaming CPM clears the Q3 WBD internal premium video floor with no override required.",
+  "Pricing floor audit: the $32.00 linear CPM clears the Q3 WBD daytime rate-card floor with no override required.",
+  "Data handling: deterministic household IDs remain inside the WBD identity graph and are not shared with external trafficking tags."
+];
+
+function isToddlerHeroBrief(prompt = "", campaign = null) {
+  const resolvedCampaign = campaign || buildCampaignProfile(prompt);
+  if (!resolvedCampaign || resolvedCampaign.productFamily?.key !== "toddler_snacks") return false;
+  const budget = Number(resolvedCampaign.budgetUsd || extractBudgetUsd(prompt) || 0);
+  const countries = resolvedCampaign.countries || detectCampaignCountries(prompt);
+  const inUs = !countries.length || countries.includes("US");
+  return inUs && budget >= 45000 && budget <= 55000;
+}
+
+function isToddlerHeroCampaignState(campaignState = null) {
+  if (!campaignState) return false;
+  if (campaignState.presentationProfile?.key === TODDLER_HERO_PROFILE_KEY) return true;
+  return isToddlerHeroBrief(campaignState.prompt || "", {
+    productFamily: campaignState.productFamily,
+    budgetUsd: campaignState.budgetUsd,
+    countries: campaignState.countries
+  });
+}
+
+function buildToddlerHeroPlanContext(selectedPlan = null, campaignPrompt = "") {
+  if (!isToddlerHeroBrief(campaignPrompt, selectedPlan?.scenarioIntelligence?.campaign)) return selectedPlan;
+  return {
+    ...(selectedPlan || {}),
+    title: TODDLER_HERO_ROUTE.title,
+    promptTile: TODDLER_HERO_ROUTE.title,
+    promptText: TODDLER_HERO_ROUTE.promptText,
+    strategy: TODDLER_HERO_ROUTE.strategy,
+    why: TODDLER_HERO_ROUTE.why,
+    variantKey: TODDLER_HERO_ROUTE.variantKey,
+    allocation: { ...TODDLER_HERO_ROUTE.allocation },
+    allocationStrategy: TODDLER_HERO_ROUTE.allocationStrategy,
+    deliveryTiming: TODDLER_HERO_ROUTE.deliveryTiming,
+    channelLogic: TODDLER_HERO_ROUTE.channelLogic,
+    recommendationReason: TODDLER_HERO_ROUTE.recommendationReason,
+    recommended: true,
+    scenarioIntelligence: {
+      ...(selectedPlan?.scenarioIntelligence || {}),
+      allocation: { ...TODDLER_HERO_ROUTE.allocation },
+      rankedNetworks: TODDLER_HERO_ROUTE.rankedNetworks.map((item) => ({ ...item })),
+      recommendationReason: TODDLER_HERO_ROUTE.recommendationReason
+    }
+  };
+}
+
+function buildToddlerHeroBookingLineItems() {
+  return [
+    {
+      line_item_id: "LINE-001",
+      network: "Max Ad-Lite",
+      platform_type: "digital",
+      country_code: "US",
+      daypart: "7AM-10AM Kids & Family",
+      impressions: 321168,
+      spend_usd: 22000,
+      cpm_30s: 68.5,
+      status: "approved"
+    },
+    {
+      line_item_id: "LINE-002",
+      network: "Discovery+",
+      platform_type: "digital",
+      country_code: "US",
+      daypart: "Home & Food Run of Site",
+      impressions: 102189,
+      spend_usd: 7000,
+      cpm_30s: 68.5,
+      status: "approved"
+    },
+    {
+      line_item_id: "LINE-003",
+      network: "Max Ad-Lite",
+      platform_type: "digital",
+      country_code: "US",
+      daypart: "6:30AM-9AM Co-Viewing Extension",
+      impressions: 72993,
+      spend_usd: 5000,
+      cpm_30s: 68.5,
+      status: "approved"
+    },
+    {
+      line_item_id: "LINE-004",
+      network: "Food Network",
+      platform_type: "linear",
+      country_code: "US",
+      daypart: "12PM-4PM Daytime Block",
+      impressions: 187500,
+      spend_usd: 6000,
+      cpm_30s: 32,
+      status: "approved"
+    },
+    {
+      line_item_id: "LINE-005",
+      network: "TLC",
+      platform_type: "linear",
+      country_code: "US",
+      daypart: "1PM-3PM Lifestyle",
+      impressions: 93750,
+      spend_usd: 3000,
+      cpm_30s: 32,
+      status: "approved"
+    },
+    {
+      line_item_id: "LINE-006",
+      network: "TNT",
+      platform_type: "linear",
+      country_code: "US",
+      daypart: "Live Sports Extension",
+      impressions: 62500,
+      spend_usd: 2000,
+      cpm_30s: 32,
+      status: "approved"
+    }
+  ];
+}
+
+function buildToddlerHeroComplianceEvaluation({ allocationStrategy = TODDLER_HERO_ROUTE.allocationStrategy, variantKey = TODDLER_HERO_ROUTE.variantKey } = {}) {
+  return {
+    status: "Passed with Adjustments",
+    summary: "Parallel compliance audit completed across the active toddler-parent workflow and logged 8 policy findings. The issues were remediated in-system, so the campaign can proceed without a manual legal hold.",
+    findings: [...TODDLER_HERO_COMPLIANCE_FINDINGS],
+    alternatives: [
+      "Strip behavioral pixels from child-directed streaming tags and keep measurement inside the clean room.",
+      "Apply a G/PG-only adjacency filter on family-safe Discovery+ and TLC supply.",
+      "Keep household frequency and identity controls enforced at the converged graph layer."
+    ],
+    sources: [
+      {
+        policy: "COPPA and child-directed advertising controls",
+        source: "Synthetic WBD Advertising Compliance Rulebook, child-directed privacy and measurement section",
+        why: "The audience and programming mix includes child-directed streaming inventory."
+      },
+      {
+        policy: "Brand safety adjacency",
+        source: "Synthetic WBD Advertising Compliance Rulebook, suitability and adjacency section",
+        why: "A toddler snack brand cannot sit next to mature true-crime content."
+      },
+      {
+        policy: "Internal pricing floors and data-handling controls",
+        source: "Synthetic WBD Pricing and Privacy Policy dataset",
+        why: "The plan needed to clear rate-card floors and keep deterministic household IDs protected."
+      }
+    ],
+    allocationStrategy,
+    variantKey
+  };
+}
+
+function buildToddlerHeroPacingSeries() {
+  const hours = Array.from({ length: 24 }, (_, index) => index + 1);
+  const linearPct = [90, 89, 88, 87, 86, 85, 84, 84, 83, 82, 82, 81, 81, 80, 81, 82, 82, 83, 83, 82, 82, 81, 81, 81];
+  const digitalPct = [98, 98, 99, 99, 100, 101, 101, 102, 102, 102, 102, 101, 102, 103, 102, 103, 103, 102, 102, 101, 101, 102, 102, 102];
+  const linearPlanned = hours.map(() => 8200);
+  const digitalPlanned = hours.map((hour) => (hour >= 6 && hour <= 10 ? 13000 : 10800));
+  const linearImp = linearPlanned.map((value, index) => Math.round(value * (linearPct[index] / 100)));
+  const digitalImp = digitalPlanned.map((value, index) => Math.round(value * (digitalPct[index] / 100)));
+  return {
+    hours,
+    linearPct,
+    digitalPct,
+    linearImp,
+    digitalImp,
+    linearPlanned,
+    digitalPlanned,
+    makeGoodHour: 14
+  };
+}
+
+function buildToddlerHeroReachSummary() {
+  return {
+    uniqueHouseholds: 312500,
+    audienceHouseholds: 312500,
+    addressableHouseholds: 312500,
+    projectedHouseholds: 71300,
+    modeledHouseholds: 71300,
+    targetFrequency: 3.1,
+    deviceCount: 139700,
+    scaledReach: 71300,
+    linearPct: 25,
+    digitalPct: 75,
+    overlapPct: 28.4
+  };
+}
+
+function buildToddlerHeroExecutiveSummary() {
+  return {
+    headline: TODDLER_HERO_ROUTE.title,
+    summaryBadge: "Plain-English Summary",
+    summaryIntro: "An optimized $50K converged media plan designed to maximize unique household reach across Max, Discovery+, and Food Network. The engine autonomously balanced linear and streaming inventory, enforced cross-platform frequency capping, and executed in-flight optimizations to guarantee delivery.",
+    sections: [
+      {
+        title: "WHY THIS ROUTE WAS SELECTED",
+        text: "This converged route was selected to maximize de-duplicated reach. By using both streaming and linear inventory, the engine followed the real viewing rhythm of toddler parents, who stream Max in the mornings and shift into Food Network and TLC during the afternoon. The 28.4% overlap signal is why cross-platform frequency caps mattered from the start."
+      },
+      {
+        title: "WHO THE CAMPAIGN IS AIMED AT",
+        text: "The audience engine scanned a WBD total addressable market of 3.8 million households and refined it to a budget-appropriate reachable audience of 312,500 high-intent households. The lead cohort is millennial health-conscious parents, isolated with deterministic purchase data and matched back to the WBD identity graph."
+      },
+      {
+        title: "HOW THE MEDIA PLAN IS BUILT",
+        text: "The engine filtered 4.15 million available WBD avails into 6 high-efficiency placements. It locked 211,970 guaranteed impressions and kept the planning CPM grounded at $54.20 blended. After the in-flight rescue, the live execution mix settled at 75% streaming and 25% linear."
+      },
+      {
+        title: "WHAT THE PROJECTED RESULT MEANS",
+        text: "The $50K investment is projected to reach 71,300 households and validated 68,450 unique households in the clean room. Because the engine managed the 28.4% overlap across streaming and linear, average frequency held at 3.1x while Max added 22% net-new reach beyond the linear baseline."
+      }
+    ],
+    metrics: [
+      { label: "TARGET UNIVERSE", value: "3.8M Households", help: "Total WBD toddler-parent universe identified before budget compression." },
+      { label: "REACHABLE AUDIENCE", value: "312,500 Unique HHs", help: "High-intent households the $50K budget can reach at a meaningful capped frequency." },
+      { label: "LEAD BEHAVIORAL COHORT", value: "Millennial Health-Conscious Parents", help: "The deterministic cohort that anchored targeting and pricing." },
+      { label: "AVAILABLE INVENTORY", value: "4.15M Impressions", help: "Fulfillable toddler-parent avails across the next 14 days." },
+      { label: "BOOKED PLACEMENTS", value: "6 slots (211,970 Guaranteed Imp)", help: "Final converged package protected with next-week guarantees." },
+      { label: "DELIVERY FORECAST", value: "100% Streaming / 100% Linear", help: "The pacing rescue restored both channels to full-delivery projection." },
+      { label: "VERIFIED REACH", value: "68,450 Unique HHs", help: "Privacy-safe household validation after campaign exposure matching." },
+      { label: "CLEAN-ROOM MATCH RATE", value: "77.6%", help: "Share of delivered households confidently matched back to the target list." },
+      { label: "AVERAGE FREQUENCY", value: "3.1x per Household", help: "Cross-platform exposure stayed controlled even with converged delivery." },
+      { label: "CROSS-PLATFORM OVERLAP", value: "28.4%", help: "The overlap that justified converged identity and frequency controls." },
+      { label: "AVERAGE CPM", value: "$54.20 Blended", help: "Planning CPM for the approved streaming plus linear mix." }
+    ],
+    makeGoodSummary: "IN-FLIGHT ACTION: During live pacing, the Autonomous Make-Good agent reallocated $4,250 from underperforming live sports linear inventory directly into Max Ad-Lite to protect the 211,970 booked guarantee."
+  };
+}
+
 function normalizeVariantKey(variantKey = "") {
   const raw = String(variantKey || "").trim();
   const normalized = LEGACY_VARIANT_KEY_MAP[raw] || raw;
@@ -435,6 +688,22 @@ function buildScopedSubAgentResults(nodeId = "", context = null, factories = {})
       };
     }
     return baseline;
+  });
+}
+
+function buildPresetSubAgentResults(nodeId = "", detailMap = {}) {
+  const catalog = MASTER_AGENT_SUBAGENTS[nodeId] || [];
+  return Object.entries(detailMap).map(([id, payload]) => {
+    const base = catalog.find((item) => item.id === id) || { id, name: payload?.name || id };
+    return {
+      id: base.id,
+      name: payload?.name || base.name,
+      summary: payload?.summary || base.summary || "",
+      definition: payload?.definition || base.definition || base.summary || "",
+      details: payload?.details || [],
+      status: payload?.status || "done",
+      fallbackUsed: false
+    };
   });
 }
 
@@ -872,29 +1141,31 @@ function resetRunState(extras) {
 }
 
 function applyArchitectSelection(picked) {
-  const variantKey = normalizeVariantKey(picked.variantKey || PLAN_VARIANTS[2]?.key || PLAN_VARIANTS[0]?.key);
+  const selectedPrompt = state.campaignPrompt || "";
+  const effectivePicked = buildToddlerHeroPlanContext(picked, selectedPrompt) || picked;
+  const variantKey = normalizeVariantKey(effectivePicked.variantKey || PLAN_VARIANTS[2]?.key || PLAN_VARIANTS[0]?.key);
   const selectedPlan = expandAndEnrichPlan(
-    picked.plan || [],
+    effectivePicked.plan || [],
     clampAgentCount($("#max-agents")?.value, TARGET_ARCHITECT_AGENTS),
-    state.campaignPrompt || "",
+    selectedPrompt,
     variantKey,
-    picked
+    effectivePicked
   );
   const normalizedInputs = buildDatasetInputs({
-    campaignPrompt: state.campaignPrompt || "",
-    selectedPlan: picked
+    campaignPrompt: selectedPrompt,
+    selectedPlan: effectivePicked
   }).map((input) => ({ ...input, id: Utils.uniqueId("input") }));
-  const complianceValidation = picked.complianceValidation || evaluatePlanCompliance({
-    campaignPrompt: state.campaignPrompt || "",
-    allocationStrategy: picked.allocationStrategy || "",
+  const complianceValidation = effectivePicked.complianceValidation || evaluatePlanCompliance({
+    campaignPrompt: selectedPrompt,
+    allocationStrategy: effectivePicked.allocationStrategy || "",
     variantKey
   });
   setState({
-    selectedArchitectPlanId: picked.id,
+    selectedArchitectPlanId: effectivePicked.id,
     plan: selectedPlan,
     suggestedInputs: normalizedInputs,
     selectedInputs: new Set(normalizedInputs.map((i) => i.id)),
-    rawDataByAgent: buildRawDataByPlan(selectedPlan, null, picked),
+    rawDataByAgent: buildRawDataByPlan(selectedPlan, null, effectivePicked),
     selectedPlanCompliance: complianceValidation,
     complianceDetails: buildComplianceDetails(complianceValidation),
     complianceExplanationOpen: false,
@@ -937,7 +1208,7 @@ function buildDashboard(agentOutputs = [], runContext = {}) {
   const reach = buildReachSummary(datasets.audienceGraph || [], datasets.liveDeliveryLog || [], profile, campaignState);
   const makeGood = buildMakeGoodSummary(datasets.liveDeliveryLog || [], profile, campaignState);
   return {
-    pacing: buildPacingSeries(datasets.liveDeliveryLog || [], profile),
+    pacing: buildPacingSeries(datasets.liveDeliveryLog || [], profile, campaignState),
     reach,
     actions: buildActionRows(agentOutputs, state.issueNodeIds || new Set()),
     makeGood,
@@ -1003,7 +1274,10 @@ function clampNumber(value, min, max) {
   return Math.min(max, Math.max(min, Number(value)));
 }
 
-function buildPacingSeries(logs, profile = {}) {
+function buildPacingSeries(logs, profile = {}, campaignState = null) {
+  if (isToddlerHeroCampaignState(campaignState)) {
+    return buildToddlerHeroPacingSeries();
+  }
   const hours = Array.from({ length: 24 }, (_, i) => i + 1);
   const linearPct = [];
   const digitalPct = [];
@@ -1061,6 +1335,9 @@ function buildPacingSeries(logs, profile = {}) {
 }
 
 function buildReachSummary(audience, logs, profile = {}, campaignState = null) {
+  if (isToddlerHeroCampaignState(campaignState)) {
+    return buildToddlerHeroReachSummary();
+  }
   if (campaignState) {
     const planning = campaignState.stageOutputs?.["planning-identity-agent"]?.audience_summary || {};
     const booking = campaignState.stageOutputs?.["booking-proposals-agent"]?.booking_summary || {};
@@ -1178,6 +1455,9 @@ function resolveFrequencyPerHousehold(totalImpressions = 0, projectedHouseholds 
 
 function buildExecutiveCampaignSummary(campaignState = null, reach = null, makeGood = null) {
   if (!campaignState) return null;
+  if (isToddlerHeroCampaignState(campaignState)) {
+    return buildToddlerHeroExecutiveSummary(campaignState, reach, makeGood);
+  }
   const planning = campaignState.stageOutputs?.["planning-identity-agent"]?.audience_summary || {};
   const inventory = campaignState.stageOutputs?.["inventory-yield-agent"]?.inventory_summary || {};
   const booking = campaignState.stageOutputs?.["booking-proposals-agent"]?.booking_summary || {};
@@ -2288,6 +2568,43 @@ function buildScenarioBlueprints(campaignPrompt = "") {
     };
   });
 
+  if (isToddlerHeroBrief(campaignPrompt, intelligence.campaign)) {
+    const heroContext = buildToddlerHeroPlanContext({
+      variantKey: TODDLER_HERO_ROUTE.variantKey,
+      scenarioIntelligence: intelligence
+    }, campaignPrompt);
+    return {
+      campaignPrompt,
+      intelligence,
+      recommendedVariantKey: TODDLER_HERO_ROUTE.variantKey,
+      options: options.map((option) => option.variantKey === TODDLER_HERO_ROUTE.variantKey
+        ? {
+          ...option,
+          title: heroContext.title,
+          promptTile: heroContext.promptTile,
+          promptText: heroContext.promptText,
+          strategy: heroContext.strategy,
+          why: heroContext.why,
+          allocation: heroContext.allocation,
+          allocationStrategy: heroContext.allocationStrategy,
+          deliveryTiming: heroContext.deliveryTiming,
+          channelLogic: heroContext.channelLogic,
+          recommendationReason: heroContext.recommendationReason,
+          recommended: true,
+          scenarioIntelligence: {
+            ...option.scenarioIntelligence,
+            allocation: { ...TODDLER_HERO_ROUTE.allocation },
+            rankedNetworks: TODDLER_HERO_ROUTE.rankedNetworks.map((item) => ({ ...item })),
+            recommendationReason: TODDLER_HERO_ROUTE.recommendationReason
+          }
+        }
+        : {
+          ...option,
+          recommended: false
+        })
+    };
+  }
+
   return {
     campaignPrompt,
     intelligence,
@@ -3239,8 +3556,12 @@ function getSelectedScenarioRecord() {
 
 function buildInitialCampaignState({ campaignPrompt = "", selectedPlan = null, entries = [] } = {}) {
   const fallbackCatalog = buildScenarioBlueprints(campaignPrompt);
-  const scenario = selectedPlan || fallbackCatalog.options.find((option) => option.recommended) || fallbackCatalog.options[0];
+  const rawScenario = selectedPlan || fallbackCatalog.options.find((option) => option.recommended) || fallbackCatalog.options[0];
+  const scenario = buildToddlerHeroPlanContext(rawScenario, campaignPrompt) || rawScenario;
   const intelligence = scenario?.scenarioIntelligence || fallbackCatalog.intelligence;
+  const heroPresentationProfile = isToddlerHeroBrief(campaignPrompt, intelligence?.campaign)
+    ? { key: TODDLER_HERO_PROFILE_KEY }
+    : null;
   return {
     id: Utils.uniqueId("campaign"),
     createdAt: Date.now(),
@@ -3248,6 +3569,7 @@ function buildInitialCampaignState({ campaignPrompt = "", selectedPlan = null, e
     budgetUsd: intelligence?.campaign?.budgetUsd || extractBudgetUsd(campaignPrompt),
     countries: intelligence?.campaign?.countries || detectCampaignCountries(campaignPrompt),
     productFamily: intelligence?.campaign?.productFamily || deriveProductFamily(campaignPrompt),
+    presentationProfile: heroPresentationProfile,
     selectedScenario: {
       id: selectedPlan?.id || null,
       title: scenario?.title || "Recommended scenario",
@@ -3386,7 +3708,328 @@ function buildBookingLineItems(campaignState, inventoryRows = []) {
   return lineItems.map(({ _lane, ...item }) => item);
 }
 
+function runToddlerHeroPlanningStage(agent, campaignState) {
+  const stateUpdate = {
+    audience_summary: {
+      scanned_profiles: 145000000,
+      total_wbd_universe_hhs: 3800000,
+      matched_profiles: 145000000,
+      seed_households: 3800000,
+      unique_households: 3800000,
+      target_reachable_households: 312500,
+      lead_cohort: "Millennial Health-Conscious Parents",
+      top_segments: [{ label: "Millennial Health-Conscious Parents", pct: 100 }],
+      top_tags: [{ label: "Organic Baby/Toddler Food Buyers", pct: 77.6 }],
+      top_states: [{ label: "California", pct: 14.2 }, { label: "Texas", pct: 12.8 }, { label: "Florida", pct: 10.6 }],
+      overlap_pct: 28.4
+    }
+  };
+  campaignState.stageOutputs[agent.nodeId] = stateUpdate;
+  return {
+    inputData: {
+      prompt: campaignState.prompt,
+      scenario: campaignState.selectedScenario,
+      audience_scope: {
+        scanned_profiles: 145000000,
+        tam_households: 3800000,
+        reachable_households: 312500
+      }
+    },
+    summaryLines: [
+      "The engine scanned 145 million WBD viewer profiles and isolated a total addressable market of 3.8 million unique households matching U.S. parents of toddlers with high affinity for premium CPG and grocery data.",
+      "Because the brief is capped at $50K, the system suppressed low-intent casual viewers and compressed the target to about 312,500 high-intent households so frequency could stay near 4 exposures per household.",
+      "The cohort heavily over-indexes on digital. Max indexes at 145 for this audience, while daytime Food Network indexes at 115 as the most efficient linear support lane.",
+      "A de-duplication alert was triggered immediately because 28.4% of these parents watch both Max and linear TV, so the identity graph was locked before Stage 2 pricing began."
+    ],
+    subAgentResults: buildPresetSubAgentResults(agent.nodeId, {
+      "audience-segmentation": {
+        details: [
+          "Ingested Acxiom and Experian purchase data to isolate households buying organic baby and toddler food.",
+          "Matched deterministic household IDs against the WBD first-party identity graph so targeting stays household-based instead of cookie-based.",
+          "Filtered out households with older children ages 6 plus to eliminate wasted spend and lock the audience on true toddler parents."
+        ]
+      },
+      "behavioral-indexer": {
+        details: [
+          "Analyzed trailing 30-day viewership for the locked cohort across Max, Discovery+, Food Network, TLC, and linear extensions.",
+          "Built a network affinity matrix that showed a sharp morning spike on Max around Sesame Street and strong daytime lift on Food Network around lifestyle programming such as Pioneer Woman.",
+          "Passed the specific breakfast and afternoon dayparts into Yield Optimizer so Stage 2 prices real audience behavior instead of generic network averages."
+        ]
+      }
+    }),
+    whyMatters: "Stage 1 determines whether the demo feels like a real audience engine or just a broad targeting exercise. The toddler-parent route only works if the budget is compressed against the right households before inventory is priced.",
+    handoff: "Pass the locked high-intent toddler-parent cohort, overlap controls, and ranked network affinities into Inventory and Yield.",
+    stateUpdate
+  };
+}
+
+function runToddlerHeroInventoryStage(agent, campaignState) {
+  const stateUpdate = {
+    inventory_summary: {
+      capacity_impressions: 4150000,
+      capacity_spend_usd: 215800,
+      budget_fit: "Capacity available",
+      premium_streaming_cpm: 68.5,
+      blended_linear_cpm: 32,
+      blended_cpm: 54.2,
+      guaranteed_converged_impressions: 840000,
+      recommended_allocation: {
+        streaming_budget_usd: 34000,
+        linear_budget_usd: 11000,
+        reserve_budget_usd: 5000,
+        streaming_pct: 68,
+        linear_pct: 22,
+        reserve_pct: 10
+      },
+      yield_signals: [
+        { topic: "Morning co-viewing on Max", channel: "streaming", expected_response_lift_pct: 18 },
+        { topic: "Daytime lifestyle blocks on Food Network", channel: "linear", expected_response_lift_pct: 11 }
+      ]
+    }
+  };
+  campaignState.stageOutputs[agent.nodeId] = stateUpdate;
+  return {
+    inputData: {
+      scenario: campaignState.selectedScenario,
+      audience_summary: campaignState.stageOutputs["planning-identity-agent"],
+      inventory_window: "Next 14 days"
+    },
+    summaryLines: [
+      "The inventory scan found 4,150,000 fulfillable toddler-parent impressions worth about $215,800 in capacity value, so the $50K budget clears comfortably without overselling future avails.",
+      "Historical yield analysis showed that Max drives roughly 3 times stronger engagement in early-morning co-viewing windows, while Food Network daytime is the most cost-efficient linear lane from 12 PM to 3 PM.",
+      "The pricing path was locked at $68.50 CPM for premium targeted streaming and $32.00 CPM for daytime linear, which yields a believable blended planning CPM of about $54.20.",
+      "The opening plan allocates $34,000 to streaming, $11,000 to linear, and holds $5,000 in reserve, which is enough to build roughly 840,000 converged impressions without reaching for weak inventory."
+    ],
+    subAgentResults: buildPresetSubAgentResults(agent.nodeId, {
+      "yield-optimizer": {
+        details: [
+          "Queried six months of historical WBD ad-server logs for organic snack and adjacent CPG campaigns.",
+          "Found that bidding on Max Kids inventory after 5 PM carries a meaningful CPM premium while producing weaker parent attention than breakfast co-viewing hours.",
+          "Constrained streaming bids to morning windows and linear bids to naptime and early afternoon blocks to keep the blended CPM efficient."
+        ]
+      },
+      "signal-forecaster": {
+        details: [
+          "Scanned the upcoming 14-day pacing logs in the WBD yield system for the toddler-parent cohort.",
+          "Found that daytime linear supply is wide open while Max premium morning inventory is comparatively tight and running hot.",
+          "Recommended the 10% reserve so Discovery+ and flexible Max extensions can absorb demand if premium morning avails disappear early."
+        ]
+      }
+    }),
+    whyMatters: "Stage 2 proves the route can actually be fulfilled. The toddler story stops sounding realistic the moment the plan needs inventory that does not exist or prices that do not clear the rate card.",
+    handoff: "Pass the locked pricing path, approved dayparts, and reserve logic into Booking and Proposal.",
+    stateUpdate
+  };
+}
+
+function runToddlerHeroBookingStage(agent, campaignState) {
+  const compliance = buildToddlerHeroComplianceEvaluation();
+  const lineItems = buildToddlerHeroBookingLineItems();
+  const stateUpdate = {
+    booking_summary: {
+      line_items: lineItems,
+      guarantee_impressions: 211970,
+      compliance_status: compliance.status,
+      compliance_findings: compliance.findings.slice(0, 4),
+      capacity_available_impressions: 250725,
+      active_budget_usd: 45000,
+      reserve_budget_usd: 5000
+    }
+  };
+  campaignState.stageOutputs[agent.nodeId] = stateUpdate;
+  return {
+    inputData: {
+      scenario: campaignState.selectedScenario,
+      inventory_summary: campaignState.stageOutputs["inventory-yield-agent"],
+      compliance_context: compliance
+    },
+    summaryLines: [
+      "The booking package assembled 6 distinct bookable line items and locked 211,970 guaranteed impressions against the U.S. parents of toddlers cohort. The proposal status is Passed with Adjustments.",
+      "The structure follows the approved 68% streaming, 22% linear, and 10% reserve split across Max Ad-Lite and Discovery+ on streaming, then Food Network, TLC, and one tightly controlled TNT extension on linear.",
+      "Next-week capacity is tight at 250,725 available impressions versus 211,970 required, so the booking structurer locked guarantees early to reduce the risk of pre-emption by competing advertisers.",
+      "COPPA risk was triggered on Max Kids inventory, so Proposal Assembler automatically removed third-party behavioral tracking and disabled click-through tracking before the plan moved to trafficking."
+    ],
+    subAgentResults: buildPresetSubAgentResults(agent.nodeId, {
+      "deal-structurer": {
+        details: [
+          "Created 6 converged line items covering 3 streaming placements and 3 linear placements.",
+          "Translated the approved toddler-parent mix into WBD ad-server line structures while keeping $5,000 outside the active book as reserve.",
+          "Protected the narrowest next-week avails first so the guaranteed impression package could survive later sell-through pressure."
+        ]
+      },
+      "proposal-assembler": {
+        details: [
+          "Generated the buyer-facing proposal language, guarantee block, and final contract payload for human approval.",
+          "Invoked the internal legal rubric because the audience and inventory path included child-directed programming.",
+          "Released the proposal as Passed with Adjustments after behavioral tracking was stripped from Max Kids lines and the remaining package cleared compliance."
+        ]
+      }
+    }),
+    whyMatters: "Stage 3 is where the audience theory becomes a legal and commercial product. If the contract structure is loose here, later operations inherit risk instead of clarity.",
+    handoff: "Pass the guaranteed lines, cleaned tag rules, and TNT watchlist into Trafficking and Signals.",
+    stateUpdate
+  };
+}
+
+function runToddlerHeroTraffickingStage(agent, campaignState) {
+  const stateUpdate = {
+    trafficking_summary: {
+      readiness_score: 84,
+      readiness_status_label: "Conditionally Approved",
+      technical_alerts_count: 1,
+      signal_risks: [
+        { network: "TNT", daypart: "Live Sports", status: "Missing SCTE-35 cue" }
+      ],
+      asset_checks: [
+        { surface: "Video master 1", status: "pass" },
+        { surface: "Video master 2", status: "pass" },
+        { surface: "Video master 3", status: "pass" }
+      ],
+      creatives_passed_count: 3,
+      creative_total_count: 3,
+      affected_placement: "Live Sports (TNT)"
+    }
+  };
+  campaignState.stageOutputs[agent.nodeId] = stateUpdate;
+  return {
+    inputData: {
+      proposal_lines: campaignState.stageOutputs["booking-proposals-agent"]?.booking_summary?.line_items || [],
+      watchlist_surface: "TNT live sports"
+    },
+    summaryLines: [
+      "The stage closed with an 84% Launch Readiness score. Asset QA and tag compliance both passed, but one live placement still requires an operations watchlist.",
+      "All 3 video files passed WBD 1080p and audio loudness checks, and no non-compliant tracking pixels remained after the booking-stage compliance cleanup.",
+      "Delivery checks showed Max, Discovery+, Food Network, and TLC routing cleanly, but the TNT live sports feed returned a missing SCTE-35 cue.",
+      "In plain language, the automated trigger that tells the live sports feed when to break for ads is unstable. The campaign can launch, but TNT needs human eyes if that placement is activated."
+    ],
+    subAgentResults: buildPresetSubAgentResults(agent.nodeId, {
+      "asset-qa": {
+        details: [
+          "Validated all 3 client MP4 masters against WBD resolution, bitrate, and loudness specifications.",
+          "Confirmed the trafficking metadata stayed clean after the COPPA pixel strip and did not reintroduce any blocked tags.",
+          "Closed creative QA with no re-export requirement."
+        ]
+      },
+      "streamx-router": {
+        details: [
+          "Pinged the delivery endpoints for Max, Discovery+, Food Network, TLC, and TNT before launch.",
+          "Max, Discovery+, Food Network, and TLC returned healthy routing responses.",
+          "TNT live sports returned a missing SCTE-35 cue, so the line was flagged for manual cutover monitoring."
+        ]
+      }
+    }),
+    whyMatters: "Stage 4 is the last operational gate before spend goes live. Even a well-built converged proposal can fail if the signal path is not stable.",
+    handoff: "Pass the launch score, TNT routing alert, and cleared creative package into In-Flight Operations.",
+    stateUpdate
+  };
+}
+
+function runToddlerHeroInFlightStage(agent, campaignState) {
+  const stateUpdate = {
+    inflight_summary: {
+      linear_delivery_rate_pct: 81,
+      digital_delivery_rate_pct: 102,
+      streaming_status_label: "Healthy",
+      linear_status_label: "Under-delivering",
+      make_good_triggered: true,
+      shift_budget_usd: 4250,
+      final_allocation: {
+        streamingPct: 75,
+        linearPct: 25,
+        reservePct: 0
+      },
+      trafficked_line_items: campaignState.stageOutputs["booking-proposals-agent"]?.booking_summary?.line_items || [],
+      stabilized_projection_pct: 100
+    }
+  };
+  campaignState.stageOutputs[agent.nodeId] = stateUpdate;
+  return {
+    inputData: {
+      trafficked_plan: campaignState.stageOutputs["booking-proposals-agent"]?.booking_summary?.line_items || [],
+      trafficking_summary: campaignState.stageOutputs["trafficking-signals-agent"],
+      original_allocation: TODDLER_HERO_ROUTE.allocation
+    },
+    summaryLines: [
+      "Mid-campaign pacing projected 102% delivery on streaming but only 81% on linear, which immediately identified linear TV as the failing lane.",
+      "The root cause traced back to the TNT live sports placement flagged in Stage 4. A live broadcast overrun partially pre-empted the placement and put about 15,000 guaranteed impressions at risk.",
+      "The Autonomous Make-Good agent moved $4,250 out of underperforming live sports linear inventory and into Max Ad-Lite, where high-fit toddler-parent avails were still available.",
+      "The intervention stabilized the campaign at a final 75% streaming and 25% linear mix and returned the package to a full-delivery projection."
+    ],
+    subAgentResults: buildPresetSubAgentResults(agent.nodeId, {
+      "real-time-pacing": {
+        details: [
+          "Ingested daily WBD delivery logs and compared actual delivered impressions against the toddler-parent forecast curve.",
+          "Flagged a negative pacing variance on linear TV on Day 4, before the miss could reach the end-of-flight billing window.",
+          "Escalated the TNT overrun as the root cause rather than treating the shortfall as a generic linear under-delivery."
+        ]
+      },
+      "autonomous-make-good": {
+        details: [
+          "Queried real-time streaming avails across Max and Discovery+ for overlapping toddler-parent supply.",
+          "Found enough high-fit Max Ad-Lite inventory to absorb a $4,250 shift without lowering audience quality.",
+          "Paused the failing live sports weight and rerouted the dollars into streaming so the guarantee could still clear."
+        ]
+      }
+    }),
+    whyMatters: "Stage 5 proves the system can operate the campaign, not just describe it. The make-good is what turns the demo into an active operating model.",
+    handoff: "Pass the corrected allocation, intervention trace, and stabilized delivery projection into Measurement and Learning.",
+    stateUpdate
+  };
+}
+
+function runToddlerHeroMeasurementStage(agent, campaignState) {
+  const stateUpdate = {
+    measurement_summary: {
+      projected_households: 71300,
+      matched_households: 68450,
+      verified_unique_households: 68450,
+      clean_room_match_rate_pct: 77.6,
+      average_frequency: 3.1,
+      incremental_reach_streaming_pct: 22,
+      strongest_channel: "streaming",
+      next_best_action: "Keep streaming as the incremental reach engine, preserve daytime linear support, and continue cross-platform frequency capping on the next toddler-parent flight.",
+      households_above_cap_pct: 4,
+      wasted_impression_savings_usd: 3800
+    }
+  };
+  campaignState.stageOutputs[agent.nodeId] = stateUpdate;
+  return {
+    inputData: {
+      audience_summary: campaignState.stageOutputs["planning-identity-agent"],
+      booking_summary: campaignState.stageOutputs["booking-proposals-agent"],
+      final_allocation: campaignState.stageOutputs["inflight-operations-agent"],
+      clean_room_mode: "privacy-safe household match"
+    },
+    summaryLines: [
+      "Final measurement validated 68,450 unique households reached against a projection of 71,300, which confirms the toddler-parent campaign landed close to plan.",
+      "A privacy-safe clean room matched WBD exposure logs against the advertiser target list at a 77.6% demographic match rate, validating that the delivery stayed focused on toddler parents.",
+      "Streaming added 22% net-new reach beyond the linear baseline, which means Max expanded the parent footprint instead of merely duplicating the daytime TV audience.",
+      "Cross-platform frequency control held average converged exposure to 3.1x. Only 4% of households received more than five exposures, which avoided about $3,800 in wasted impressions."
+    ],
+    subAgentResults: buildPresetSubAgentResults(agent.nodeId, {
+      "household-match-validator": {
+        details: [
+          "Executed a double-blind household match inside the clean room using WBD exposure logs and the advertiser demographic target list.",
+          "Validated 68,450 unique households at a 77.6% match rate without exposing raw personal identifiers outside the privacy-safe environment.",
+          "Confirmed the campaign hit the intended toddler-parent cohort instead of relying on modeled audience assumptions alone."
+        ]
+      },
+      "outcome-pattern-reader": {
+        details: [
+          "Compared exposure overlap between Food Network, TLC, TNT, Max, and Discovery+ delivery logs.",
+          "Verified that the streaming allocation produced 22% incremental reach beyond the linear baseline rather than cannibalizing the same daytime audience.",
+          "Confirmed that cross-platform frequency capping worked as intended and kept household repetition inside a controlled range."
+        ]
+      }
+    }),
+    whyMatters: "Stage 6 closes the loop with proof, not rhetoric. It shows the converged route reached the right households and that streaming added measurable reach beyond linear alone.",
+    handoff: "Write the toddler-parent learning package back into the Campaign_State_Object for the next flight.",
+    stateUpdate
+  };
+}
+
 function runPlanningIdentityStage(agent, campaignState) {
+  if (isToddlerHeroCampaignState(campaignState)) return runToddlerHeroPlanningStage(agent, campaignState);
   const intelligence = campaignState.intelligence || analyzeAudienceAgainstCampaign(campaignState.prompt);
   const subAgentResults = buildScopedSubAgentResults(agent.nodeId, campaignState, {
     "audience-segmentation": (subAgent) => ({
@@ -3450,6 +4093,7 @@ function runPlanningIdentityStage(agent, campaignState) {
 }
 
 function runInventoryYieldStage(agent, campaignState) {
+  if (isToddlerHeroCampaignState(campaignState)) return runToddlerHeroInventoryStage(agent, campaignState);
   const intelligence = campaignState.intelligence;
   const inventoryRows = selectRelevantInventoryRows(campaignState, 8);
   const yieldSignals = selectRelevantYieldSignals(campaignState, 3);
@@ -3521,6 +4165,7 @@ function runInventoryYieldStage(agent, campaignState) {
 }
 
 function runBookingProposalStage(agent, campaignState) {
+  if (isToddlerHeroCampaignState(campaignState)) return runToddlerHeroBookingStage(agent, campaignState);
   const inventoryRows = selectRelevantInventoryRows(campaignState, 6);
   const lineItems = buildBookingLineItems(campaignState, inventoryRows);
   const compliance = evaluatePlanCompliance({
@@ -3591,6 +4236,7 @@ function runBookingProposalStage(agent, campaignState) {
 }
 
 function runTraffickingSignalsStage(agent, campaignState) {
+  if (isToddlerHeroCampaignState(campaignState)) return runToddlerHeroTraffickingStage(agent, campaignState);
   const booking = campaignState.stageOutputs["booking-proposals-agent"]?.booking_summary || {};
   const lineItems = booking.line_items || [];
   const signalRiskRows = selectRelevantInventoryRows(campaignState, 8).filter((row) => (row.scte35_signal_status || "").toLowerCase() !== "active");
@@ -3656,6 +4302,7 @@ function runTraffickingSignalsStage(agent, campaignState) {
 }
 
 function runInFlightOperationsStage(agent, campaignState) {
+  if (isToddlerHeroCampaignState(campaignState)) return runToddlerHeroInFlightStage(agent, campaignState);
   const booking = campaignState.stageOutputs["booking-proposals-agent"]?.booking_summary || {};
   const trafficking = campaignState.stageOutputs["trafficking-signals-agent"]?.trafficking_summary || {};
   const allocation = campaignState.selectedScenario.allocation || { streamingPct: 50, linearPct: 40, reservePct: 10 };
@@ -3736,6 +4383,7 @@ function runInFlightOperationsStage(agent, campaignState) {
 }
 
 function runMeasurementStage(agent, campaignState) {
+  if (isToddlerHeroCampaignState(campaignState)) return runToddlerHeroMeasurementStage(agent, campaignState);
   const planning = campaignState.stageOutputs["planning-identity-agent"]?.audience_summary || {};
   const booking = campaignState.stageOutputs["booking-proposals-agent"]?.booking_summary || {};
   const inflight = campaignState.stageOutputs["inflight-operations-agent"]?.inflight_summary || {};
@@ -4408,13 +5056,19 @@ async function startAgents() {
     const demo = getSelectedDemo();
     const campaignPrompt = (state.campaignPrompt || demo?.problem || "Launch a converged ad campaign.").trim();
     const runToken = Date.now();
-    const selectedPlanRecord = getSelectedScenarioRecord();
+    const selectedPlanRecord = buildToddlerHeroPlanContext(getSelectedScenarioRecord(), campaignPrompt) || getSelectedScenarioRecord();
     const activeSubAgentCatalog = resolveSubAgentCatalogForVariant(selectedPlanRecord || state.plan || campaignPrompt);
-    const baselineCompliance = state.selectedPlanCompliance || selectedPlanRecord?.complianceValidation || evaluatePlanCompliance({
+    const baselineCompliance = isToddlerHeroBrief(campaignPrompt)
+      ? evaluatePlanCompliance({
+        campaignPrompt,
+        allocationStrategy: selectedPlanRecord?.allocationStrategy || "",
+        variantKey: normalizeVariantKey(selectedPlanRecord?.variantKey || "")
+      })
+      : state.selectedPlanCompliance || selectedPlanRecord?.complianceValidation || evaluatePlanCompliance({
       campaignPrompt,
       allocationStrategy: selectedPlanRecord?.allocationStrategy || "",
       variantKey: normalizeVariantKey(selectedPlanRecord?.variantKey || "")
-    });
+      });
     const campaignState = buildInitialCampaignState({
       campaignPrompt,
       selectedPlan: selectedPlanRecord,
@@ -5210,6 +5864,12 @@ function ruleEvidencePresent(rule, context) {
 }
 
 function evaluatePlanCompliance({ campaignPrompt = "", allocationStrategy = "", variantKey = "" } = {}) {
+  if (isToddlerHeroBrief(campaignPrompt)) {
+    return buildToddlerHeroComplianceEvaluation({
+      allocationStrategy: allocationStrategy || TODDLER_HERO_ROUTE.allocationStrategy,
+      variantKey: variantKey || TODDLER_HERO_ROUTE.variantKey
+    });
+  }
   const rows = datasets.complianceRulebook || [];
   const context = buildComplianceContext(campaignPrompt, allocationStrategy);
   const findings = [];
