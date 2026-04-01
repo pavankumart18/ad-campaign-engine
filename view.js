@@ -193,6 +193,29 @@ function truncateCardText(text = "", max = 120) {
   return `${safe.trimEnd()}...`;
 }
 
+function truncateReadableSentence(text = "", max = 220) {
+  const cleaned = stripMarkdownToText(text);
+  if (!cleaned) return "";
+  if (cleaned.length <= max) return cleaned;
+
+  const firstSentence = cleaned.match(/^.*?[.!?](?=\s|$)/)?.[0]?.trim();
+  if (firstSentence && firstSentence.length <= max) return firstSentence;
+
+  const clipped = cleaned.slice(0, max);
+  const sentenceBoundary = Math.max(
+    clipped.lastIndexOf(". "),
+    clipped.lastIndexOf("? "),
+    clipped.lastIndexOf("! ")
+  );
+  if (sentenceBoundary > max * 0.45) {
+    return `${clipped.slice(0, sentenceBoundary + 1).trim()}`;
+  }
+
+  const wordBoundary = clipped.lastIndexOf(" ");
+  const safe = wordBoundary > max * 0.6 ? clipped.slice(0, wordBoundary) : clipped;
+  return `${safe.trimEnd()}...`;
+}
+
 function splitSummaryFragments(text = "") {
   const cleaned = stripMarkdownToText(text);
   if (!cleaned) return [];
@@ -464,6 +487,49 @@ function buildStageProcessSummary(agent = {}) {
     return `This stage worked through ${dataSources} to check policy fit, capture evidence gaps, and keep downstream execution inside compliant guardrails.`;
   }
   return `This stage worked through ${dataSources} to update the shared campaign state and keep the pipeline moving.`;
+}
+
+function buildStageMissionText(agent = {}, state = {}) {
+  const role = detectStageRole(agent);
+  const toddlerHero = isToddlerHeroPresentation(state);
+
+  if (role === "planning") {
+    return toddlerHero
+      ? "Define the toddler-parent audience, size the reachable households for the budget, and lock the identity rules that the rest of the run will use."
+      : "Define the audience, remove duplicate households, and hand the rest of the run a clear target that can be priced and booked."
+  }
+  if (role === "inventory") {
+    return toddlerHero
+      ? "Test whether the toddler-parent audience can be delivered at the right price, then choose the strongest streaming and linear supply for the opening plan."
+      : "Check whether the selected audience can be fulfilled, compare the pricing path, and choose the best delivery mix before booking starts."
+  }
+  if (role === "booking") {
+    return toddlerHero
+      ? "Turn the approved toddler plan into bookable line items, guarantees, and a proposal package that sales and operations can execute."
+      : "Turn the approved scenario into bookable line items, guarantees, and a proposal structure that is ready to move forward."
+  }
+  if (role === "trafficking") {
+    return toddlerHero
+      ? "Validate creative readiness, routing, and signal quality so the toddler campaign can launch cleanly without avoidable delivery issues."
+      : "Validate launch readiness, asset quality, and routing setup so the campaign can go live without technical surprises."
+  }
+  if (role === "inflight") {
+    return toddlerHero
+      ? "Watch pacing across streaming and linear, catch under-delivery early, and shift budget only if the toddler plan needs a make-good."
+      : "Monitor pacing, spot delivery risk early, and decide whether the live plan needs a make-good or budget reallocation."
+  }
+  if (role === "measurement") {
+    return toddlerHero
+      ? "Verify how many households the toddler plan reached, measure net-new cross-platform lift, and capture the final learning for the team."
+      : "Verify household reach, measure cross-platform lift, and write the final learning back into the campaign record."
+  }
+  if (role === "compliance") {
+    return toddlerHero
+      ? "Check the toddler workflow against privacy, brand-safety, and policy guardrails so activation stays compliant from start to finish."
+      : "Check the workflow against policy guardrails, flag any evidence gaps, and keep downstream execution compliant."
+  }
+
+  return truncateReadableSentence(agent.task || agent.initialTask || "No stage mission provided.", 220);
 }
 
 function buildStageMetricNarrative(agent = {}, state = {}) {
@@ -1895,7 +1961,7 @@ function renderAgentCard(agent, state, simple, actions) {
   const subDone = subAgents.filter((item) => item.status === "done").length;
   const subRunning = subAgents.filter((item) => item.status === "running").length;
   const previewText = buildStagePreviewText(agent);
-  const missionText = truncateCardText(agent.task || agent.initialTask || "No stage mission provided.", simple ? 140 : 180);
+  const missionText = buildStageMissionText(agent, state);
   const summaryMetrics = buildAgentSummaryMetrics(agent, state);
   const hasFallback = hasFallbackNarrative(agent?.text) || subAgents.some((item) => item?.fallbackUsed || hasFallbackNarrative(item?.text));
   const quickPills = [
