@@ -594,9 +594,7 @@ function renderStageSummaryBlock(agent, state, options = {}) {
   } = options;
   const processSummary = buildStageProcessSummary(agent);
   const findingLines = buildStageFindingLines(agent, state, simple);
-  const subAgentLines = buildStageSubAgentSummaryLines(agent, simple);
-  const impactLines = buildStageImpactLines(agent, simple);
-  const hasContent = processSummary || findingLines.length || subAgentLines.length || impactLines.length;
+  const hasContent = processSummary || findingLines.length;
 
   if (!hasContent) return null;
 
@@ -615,24 +613,6 @@ function renderStageSummaryBlock(agent, state, options = {}) {
             <div class="stage-summary-section-title">What It Found</div>
             <ul class="stage-summary-list mb-0">
               ${findingLines.map((line) => html`<li>${line}</li>`)}
-            </ul>
-          </div>
-        ` : null}
-        ${subAgentLines.length ? html`
-          <div class="stage-summary-section">
-            <details class="stage-output-disclosure stage-summary-disclosure">
-              <summary>What The Sub-Agents Did</summary>
-              <ul class="stage-summary-list mb-0">
-                ${subAgentLines.map((line) => html`<li>${line}</li>`)}
-              </ul>
-            </details>
-          </div>
-        ` : null}
-        ${impactLines.length ? html`
-          <div class="stage-summary-section stage-summary-impact">
-            <div class="stage-summary-section-title">Why It Helped</div>
-            <ul class="stage-summary-list mb-0">
-              ${impactLines.map((line) => html`<li>${line}</li>`)}
             </ul>
           </div>
         ` : null}
@@ -1792,6 +1772,25 @@ function renderAgentCard(agent, state, simple, actions) {
   ].filter(Boolean);
   const metricBlock = renderStageMetricBlock(summaryMetrics, quickPills);
   const summaryBlock = renderStageSummaryBlock(agent, state, { simple });
+  const subAgentLines = buildStageSubAgentSummaryLines(agent, simple);
+  const detailedSubAgentBlock = agent.status === "done" && subAgentLines.length ? html`
+    <div class="detail-section">
+      <div class="detail-section-label">What The Sub-Agents Did</div>
+      <ul class="detail-list mb-0">
+        ${subAgentLines.map((line) => html`<li>${line}</li>`)}
+      </ul>
+    </div>
+  ` : null;
+  const impactLines = buildStageImpactLines(agent, simple);
+  const hasWhySectionInOutput = /why this matters|why it helped/i.test(agent?.text || "");
+  const detailedImpactBlock = agent.status === "done" && impactLines.length && !hasWhySectionInOutput ? html`
+    <div class="detail-section">
+      <div class="detail-section-label">Why It Helped</div>
+      <ul class="detail-list mb-0">
+        ${impactLines.map((line) => html`<li>${line}</li>`)}
+      </ul>
+    </div>
+  ` : null;
   const missionBlock = html`
     <section class="stage-mission-card" title="${agent.task || agent.initialTask || ""}">
       <div class="stage-panel-label">Stage Mission</div>
@@ -1801,9 +1800,7 @@ function renderAgentCard(agent, state, simple, actions) {
   const outputNote = agent.text
     ? agent.status === "running"
       ? "The executed summary stays readable here while the live trace continues to stream."
-      : hasFallback
-        ? "A graceful fallback was applied. The executed summary below remains the primary readout."
-        : "The executed summary below is the primary readout. Open the detailed output only when you need the full trace."
+      : "The executed summary below is the primary readout. Open the detailed output only when you need the full trace."
     : "The live output panel will populate as soon as the model starts returning text.";
   const outputPreview = agent.status === "running" && previewText
       ? html`
@@ -1816,8 +1813,6 @@ function renderAgentCard(agent, state, simple, actions) {
       <div class=${`stage-output-state ${hasFallback ? "is-warning" : agent.status === "error" ? "is-danger" : ""}`.trim()}>
         ${agent.status === "running"
           ? "Waiting for the live output stream to populate."
-          : hasFallback
-          ? "The live language-model call fell back to deterministic stage logic. Open the detailed output for the full fallback note."
           : agent.status === "error"
             ? "The live output was interrupted before the stage could complete."
             : "The stage summary is complete. Use the disclosure below for the full narrative, evidence, and handoff."}
@@ -1837,7 +1832,11 @@ function renderAgentCard(agent, state, simple, actions) {
   const fullOutputBlock = agent.text ? html`
     <details class="stage-output-disclosure mt-3">
       <summary>${agent.status === "running" ? "Open live output trace" : "Open detailed output"}</summary>
-      <div class="${agentStreamClasses(agent)} mt-3">${renderOutputBody(agent)}</div>
+      <div class="stage-side-disclosure-body">
+        <div class="${agentStreamClasses(agent)}">${renderOutputBody(agent)}</div>
+        ${detailedSubAgentBlock}
+        ${detailedImpactBlock}
+      </div>
     </details>
   ` : null;
   const subAgentDetails = subAgents.length ? html`
