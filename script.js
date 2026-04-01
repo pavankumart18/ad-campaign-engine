@@ -3438,11 +3438,13 @@ async function runArchitect() {
         setState({
           architectBuffer: `${summaryLines.join("\n")}\n\nLive LLM architect failed. Falling back to pre-calculated demo information.`
         });
+        await paceFallbackExperience("architectFallback");
       }
     } else {
       setState({
         architectBuffer: `${summaryLines.join("\n")}\n\nLive LLM architect credentials were not provided. Using pre-calculated demo information.`
       });
+      await paceFallbackExperience("architectNoLlm");
     }
 
     const selectedPlan = expandAndEnrichPlan(
@@ -3489,6 +3491,7 @@ async function runArchitect() {
       buildFallbackArchitectPlans(fallbackDemo, maxAgents),
       fallbackCatalog.recommendedVariantKey
     );
+    await paceFallbackExperience("architectFallback");
     const recommendedPlan = fallbackPlans.find((plan) => plan.recommended) || fallbackPlans[0];
     const selectedPlan = expandAndEnrichPlan(
       recommendedPlan?.plan || [],
@@ -3530,6 +3533,23 @@ async function runArchitect() {
 
 function wait(ms = 120) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+const NATURAL_FALLBACK_PACING_MS = Object.freeze({
+  architectNoLlm: 420,
+  architectFallback: 260,
+  offlineGuardrail: 220,
+  masterFallback: 220,
+  subAgentFallback: 140,
+  syntheticFallback: 220,
+  visualizationFallback: 260
+});
+
+async function paceFallbackExperience(kind = "masterFallback", extraMs = 0) {
+  const base = NATURAL_FALLBACK_PACING_MS[kind] ?? 180;
+  const duration = Math.max(0, Math.round(base + Number(extraMs || 0)));
+  if (!duration) return;
+  await wait(duration);
 }
 
 function escapeHtml(value = "") {
@@ -5078,6 +5098,7 @@ async function runLiveSubAgentsForMaster(out, campaignState, selectedPlan, basel
       };
     } catch (err) {
       console.warn(`Live sub-agent execution failed for ${pendingItem.name}, using fallback:`, err?.message || err);
+      await paceFallbackExperience("subAgentFallback", Math.min(index * 35, 105));
       mutableResults[index] = {
         ...mutableResults[index],
         status: "done",
@@ -5163,6 +5184,7 @@ async function runMasterAgentStage(out, campaignState, selectedPlan, opts = {}) 
   } catch (err) {
     usedFallback = true;
     console.warn(`Live master-agent execution failed for ${out.name}, using deterministic fallback:`, err?.message || err);
+    await paceFallbackExperience("masterFallback");
   }
 
   result.subAgentResults = liveSubAgentResults.length ? liveSubAgentResults : (result.subAgentResults || []);
@@ -5208,6 +5230,7 @@ async function startAgents() {
     try {
       creds = await ensureCreds();
     } catch (credsError) {
+      await paceFallbackExperience("offlineGuardrail");
       setState({
         error: "Live LLM credentials are required for multi-agent execution.",
         stage: "data",
@@ -5531,6 +5554,7 @@ async function runSyntheticAgent(out, opts) {
     return finalNarrative;
   } catch (e) {
     // LLM fallback keeps the run alive, but marks the response clearly.
+    await paceFallbackExperience("syntheticFallback");
     if (!narrative) {
       const fallback = buildSyntheticAgentNarrative(out, campaignPrompt, context);
       narrative = `### LLM Fallback Activated\nThe language model request did not complete for this step. A deterministic fallback narrative was generated.\n\nWhy this matters: the workflow remains connected and testable even when the model endpoint is unavailable.\n\n${fallback}`;
@@ -5622,6 +5646,7 @@ async function buildVisualizationDeck({ creds, model, campaignPrompt, dashboard,
     if ((normalized.slides || []).length === (fallbackDeck.slides || []).length) return normalized;
     throw new Error("Visualization deck response was incomplete.");
   } catch {
+    await paceFallbackExperience("visualizationFallback");
     return fallbackDeck;
   }
 }

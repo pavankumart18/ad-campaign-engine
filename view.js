@@ -939,32 +939,107 @@ function renderArchitectLoadingCards() {
   `;
 }
 
+function renderArchitectPlanComparisonTable(plans = [], selectedPlanId = "") {
+  const rows = (plans || []).filter(Boolean);
+  if (!rows.length) return html`<p class="architect-empty-copy mb-0">Scenario comparison will appear after scenario generation finishes.</p>`;
+
+  return html`
+    <div class="architect-plan-table-wrap architect-plan-compare-wrap">
+      <table class="architect-plan-table architect-plan-compare-table">
+        <thead>
+          <tr>
+            <th scope="col" class="column-recommended">Recommended</th>
+            <th scope="col" class="column-scenario">Scenario</th>
+            <th scope="col" class="column-fit">When This Plan Fits</th>
+            <th scope="col" class="column-allocation">Opening Mix</th>
+            <th scope="col" class="column-timing">Delivery Timing</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map((plan, index) => {
+            const meta = getArchitectScenarioMeta(plan, index);
+            const isFocus = plan.id === selectedPlanId;
+            const fitSummary = truncateCardText(plan.why || plan.strategy || plan.promptText || "", 165) || "Not provided.";
+            const fitSupport = truncateCardText(plan.channelLogic || plan.recommendationReason || "", 120);
+            const rowClass = `${plan.recommended ? "is-recommended" : ""} ${isFocus ? "is-focus" : ""}`.trim();
+            return html`
+              <tr class="${rowClass}">
+                <td class="column-recommended">
+                  <span class="architect-table-pill ${plan.recommended ? "is-recommended" : "is-alternative"}">
+                    ${plan.recommended ? "Recommended" : "Alternative"}
+                  </span>
+                  <div class="architect-table-note">${isFocus ? "Open in this view" : "Compare against selected plan"}</div>
+                </td>
+                <td class="column-scenario">
+                  <div class="architect-table-scenario">
+                    <div class="architect-table-scenario-label">${meta.label}</div>
+                    <div class="architect-table-scenario-title">${meta.title}</div>
+                  </div>
+                </td>
+                <td class="column-fit">
+                  <div class="architect-table-primary">${fitSummary}</div>
+                  ${fitSupport ? html`<div class="architect-table-secondary">${fitSupport}</div>` : null}
+                </td>
+                <td class="column-allocation">
+                  <div class="architect-table-primary">${truncateCardText(plan.allocationStrategy || "", 155) || "Not provided."}</div>
+                </td>
+                <td class="column-timing">
+                  <div class="architect-table-primary">${truncateCardText(plan.deliveryTiming || "", 135) || "Not provided."}</div>
+                </td>
+              </tr>
+            `;
+          })}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
 function renderArchitectPlanSteps(option = {}) {
   const steps = option.plan || [];
   if (!steps.length) return html`<p class="architect-empty-copy mb-0">Agent steps will populate after scenario generation finishes.</p>`;
   return html`
-    <ol class="architect-plan-list mb-0">
-      ${steps.map((agent, index) => html`
-        <li class="architect-plan-step">
-          <div class="architect-plan-step-head">
-            <span class="architect-plan-step-index">${index + 1}</span>
-            <div class="architect-plan-step-copy">
-              <div class="architect-plan-step-name">${agent.agentName}</div>
-              <p class="architect-plan-step-summary mb-0">${truncateCardText(agent.initialTask || "", 120)}</p>
-            </div>
-          </div>
-          <details class="architect-prompt-disclosure">
-            <summary>Prompt details</summary>
-            <div class="architect-prompt-detail">
-              <div class="architect-prompt-detail-label">Task</div>
-              <p class="mb-3">${agent.initialTask || "No task detail provided."}</p>
-              <div class="architect-prompt-detail-label">System Prompt</div>
-              <p class="mb-0">${agent.systemInstruction || "No system prompt detail provided."}</p>
-            </div>
-          </details>
-        </li>
-      `)}
-    </ol>
+    <div class="architect-plan-table-wrap">
+      <table class="architect-plan-table architect-stage-plan-table">
+        <thead>
+          <tr>
+            <th scope="col" class="column-stage">Stage</th>
+            <th scope="col" class="column-agent">Lead Agent</th>
+            <th scope="col" class="column-task">Main Responsibility</th>
+            <th scope="col" class="column-detail">Prompt Details</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${steps.map((agent, index) => {
+            const stageNumber = agent.phase ?? agent.stage ?? index + 1;
+            return html`
+              <tr>
+                <td class="column-stage">
+                  <span class="architect-stage-chip">Stage ${stageNumber}</span>
+                </td>
+                <td class="column-agent">
+                  <div class="architect-table-primary architect-table-agent-name">${agent.agentName || `Agent ${stageNumber}`}</div>
+                </td>
+                <td class="column-task">
+                  <div class="architect-table-primary">${truncateCardText(agent.initialTask || "", 185) || "No task detail provided."}</div>
+                </td>
+                <td class="column-detail">
+                  <details class="architect-prompt-disclosure architect-table-disclosure">
+                    <summary>Open prompts</summary>
+                    <div class="architect-prompt-detail">
+                      <div class="architect-prompt-detail-label">Task</div>
+                      <p class="mb-3">${agent.initialTask || "No task detail provided."}</p>
+                      <div class="architect-prompt-detail-label">System Prompt</div>
+                      <p class="mb-0">${agent.systemInstruction || "No system prompt detail provided."}</p>
+                    </div>
+                  </details>
+                </td>
+              </tr>
+            `;
+          })}
+        </tbody>
+      </table>
+    </div>
   `;
 }
 
@@ -1030,19 +1105,22 @@ function renderArchitectDetailModal(state, actions) {
     >
       <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
         <div class="modal-content architect-detail-modal">
-          <div class="modal-header border-0 pb-0">
+          <div class="modal-header border-0 pb-0 architect-modal-header">
             <div class="architect-modal-heading">
               <span class="architect-scenario-label">${meta.label}</span>
               <h5 id="architect-detail-modal-title" class="modal-title">${modalTitle}</h5>
               <p class="architect-modal-subtitle mb-0">${meta.title}</p>
             </div>
-            <button type="button" class="btn-close" aria-label="Close" @click=${actions.closeArchitectDetailModal}></button>
+            <button type="button" class="architect-modal-close" aria-label="Close modal" @click=${actions.closeArchitectDetailModal}>
+              <span aria-hidden="true">&times;</span>
+            </button>
           </div>
           <div class="modal-body pt-3">
             ${detailType === "plan"
               ? html`
                 <section class="architect-modal-section">
                   <div class="architect-section-label">Agent Plan</div>
+                  <p class="architect-summary-support">This table shows only the six master-agent steps for ${meta.label.toLowerCase()}.</p>
                   ${renderArchitectPlanSteps(option)}
                 </section>
               `
@@ -1066,43 +1144,103 @@ function renderArchitectDetailModal(state, actions) {
   `;
 }
 
-function renderArchitectScenarioCard(option, index, state, actions) {
-  const selected = state.selectedArchitectPlanId === option.id;
-  const meta = getArchitectScenarioMeta(option, index);
+function renderArchitectScenarioTable(options = [], state, actions) {
+  const rows = (options || []).filter(Boolean);
+  if (!rows.length) return null;
+  const getCellClass = (option) => `column-scenario ${option.recommended ? "is-recommended" : ""} ${state.selectedArchitectPlanId === option.id ? "is-focus" : ""}`.trim();
+
   return html`
-    <div class="col-12 col-lg-4">
-      <article class="architect-scenario-card ${selected ? "is-selected" : ""}">
-        <div class="architect-scenario-header">
-          <div class="architect-scenario-title-wrap">
-            <span class="architect-scenario-label">${meta.label}</span>
-            <h5 class="mb-0">${meta.title}</h5>
-          </div>
-          <div class="architect-scenario-statuses">
-            ${option.recommended ? html`<span class="badge text-bg-warning text-dark">Recommended</span>` : null}
-            <span class="badge text-bg-${selected ? "success" : "secondary"}">${selected ? "Selected" : "Available"}</span>
-          </div>
-        </div>
-        <div class="architect-scenario-body">
-          <section class="architect-scenario-summary">
-            <div class="architect-section-label">Summary</div>
-            <p class="architect-summary-copy">${option.why || option.promptText || "Summary not provided."}</p>
-            <p class="architect-summary-support mb-0">${option.promptText || "Scenario objective not provided."}</p>
-          </section>
-
-          <div class="architect-detail-actions">
-            <button class="btn btn-sm btn-outline-primary architect-detail-button" type="button" @click=${() => actions.openArchitectDetailModal(option.id, "parameters")}>
-              <i class="bi bi-sliders me-1"></i>View Plan Parameters
-            </button>
-            <button class="btn btn-sm btn-outline-secondary architect-detail-button" type="button" @click=${() => actions.openArchitectDetailModal(option.id, "plan")}>
-              <i class="bi bi-diagram-3 me-1"></i>View Agent Plan
-            </button>
-          </div>
-
-          <button class="btn btn-sm btn-primary w-100 mt-auto" @click=${() => actions.chooseArchitectPlan(option.id)} ?disabled=${["architect", "run"].includes(state.stage)}>
-            ${selected ? "Current Selection" : "Choose This Scenario"}
-          </button>
-        </div>
-      </article>
+    <div class="architect-plan-table-wrap architect-scenario-table-wrap">
+      <table class="architect-plan-table architect-scenario-table architect-scenario-matrix">
+        <thead>
+          <tr>
+            <th scope="col" class="column-field">Plan Item</th>
+            ${rows.map((option, index) => {
+              const meta = getArchitectScenarioMeta(option, index);
+              const selected = state.selectedArchitectPlanId === option.id;
+              const scenarioLabel = option.scenarioCardLabel || `Scenario ${String.fromCharCode(65 + index)}`;
+              const columnClass = `column-scenario ${option.recommended ? "is-recommended" : ""} ${selected ? "is-focus" : ""}`.trim();
+              return html`
+                <th scope="col" class="${columnClass}">
+                  <div class="architect-scenario-matrix-head">
+                    <div class="architect-table-scenario-label">${scenarioLabel}</div>
+                    <div class="architect-table-scenario-title">${meta.title}</div>
+                    <div class="architect-table-statuses">
+                      <span class="architect-table-pill ${option.recommended ? "is-recommended" : "is-alternative"}">
+                        ${option.recommended ? "Recommended" : "Alternative"}
+                      </span>
+                      <span class="badge text-bg-${selected ? "success" : "secondary"}">${selected ? "Selected" : "Available"}</span>
+                    </div>
+                  </div>
+                </th>
+              `;
+            })}
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row" class="column-field">Summary</th>
+            ${rows.map((option) => html`
+              <td class="${getCellClass(option)}">
+                <div class="architect-table-primary">${truncateCardText(option.why || option.promptText || "", 220) || "Summary not provided."}</div>
+                <div class="architect-table-secondary">${truncateCardText(option.promptText || option.strategy || "", 140) || "Scenario objective not provided."}</div>
+              </td>
+            `)}
+          </tr>
+          <tr>
+            <th scope="row" class="column-field">Why This Route Fits</th>
+            ${rows.map((option) => html`
+              <td class="${getCellClass(option)}">
+                <div class="architect-table-primary">${truncateCardText(option.channelLogic || option.recommendationReason || option.strategy || "", 220) || "Route fit explanation not provided."}</div>
+              </td>
+            `)}
+          </tr>
+          <tr>
+            <th scope="row" class="column-field">Opening Mix</th>
+            ${rows.map((option) => html`
+              <td class="${getCellClass(option)}">
+                <div class="architect-table-primary">${truncateCardText(option.allocationStrategy || "", 180) || "Opening mix not provided."}</div>
+              </td>
+            `)}
+          </tr>
+          <tr>
+            <th scope="row" class="column-field">Delivery Timing</th>
+            ${rows.map((option) => html`
+              <td class="${getCellClass(option)}">
+                <div class="architect-table-primary">${truncateCardText(option.deliveryTiming || "", 140) || "Timing guidance not provided."}</div>
+              </td>
+            `)}
+          </tr>
+          <tr>
+            <th scope="row" class="column-field">Details</th>
+            ${rows.map((option) => html`
+              <td class="${getCellClass(option)}">
+                <div class="architect-table-button-stack">
+                  <button class="btn btn-sm btn-outline-primary architect-detail-button" type="button" @click=${() => actions.openArchitectDetailModal(option.id, "parameters")}>
+                    <i class="bi bi-sliders me-1"></i>View Plan Parameters
+                  </button>
+                  <button class="btn btn-sm btn-outline-secondary architect-detail-button" type="button" @click=${() => actions.openArchitectDetailModal(option.id, "plan")}>
+                    <i class="bi bi-diagram-3 me-1"></i>View Agent Plan
+                  </button>
+                </div>
+              </td>
+            `)}
+          </tr>
+          <tr>
+            <th scope="row" class="column-field">Selection</th>
+            ${rows.map((option) => {
+              const selected = state.selectedArchitectPlanId === option.id;
+              return html`
+                <td class="${getCellClass(option)}">
+                  <button class="btn btn-sm btn-primary w-100 architect-scenario-select-button" @click=${() => actions.chooseArchitectPlan(option.id)} ?disabled=${["architect", "run"].includes(state.stage)}>
+                    ${selected ? "Current Selection" : "Choose This Scenario"}
+                  </button>
+                </td>
+              `;
+            })}
+          </tr>
+        </tbody>
+      </table>
     </div>
   `;
 }
@@ -1113,7 +1251,7 @@ function renderPlan(state, actions) {
   const hasOptions = (state.architectPlans || []).length > 0;
   const hasPlan = state.plan.length > 0;
   const architectFallbackNote = /falling back|credentials were not provided/i.test(state.architectBuffer || "")
-    ? "Live architect output was unavailable, so the scenario cards are using the deterministic fallback plan."
+    ? "Live architect output was unavailable, so the scenario table is using the deterministic fallback plan."
     : "";
   return html`
     <section class="card mb-4" data-running-key="architect-plan">
@@ -1136,9 +1274,7 @@ function renderPlan(state, actions) {
         ` : null}
         ${architectFallbackNote ? html`<div class="architect-loading-note">${architectFallbackNote}</div>` : null}
         ${hasOptions ? html`
-          <div class="row g-3">
-            ${state.architectPlans.map((option, index) => renderArchitectScenarioCard(option, index, state, actions))}
-          </div>
+          ${renderArchitectScenarioTable(state.architectPlans, state, actions)}
         ` : null}
         ${!streaming && !hasOptions && !hasPlan ? html`<div class="text-center py-3 text-body-secondary small">Three architect plans will appear here after generation.</div>` : null}
       </div>
