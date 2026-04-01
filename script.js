@@ -364,14 +364,16 @@ const TODDLER_HERO_PROFILE_KEY = "toddler-converged-precision-sprint";
 const TODDLER_HERO_ROUTE = {
   title: "Converged Precision Sprint (Parents of Toddlers)",
   variantKey: "scenario-a",
-  promptText: "Use a converged streaming-led route to maximize de-duplicated reach against high-intent toddler parents inside a strict $50K budget.",
-  strategy: "Converged route designed to maximize de-duplicated reach inside a strict $50K budget by leaning into Max for concentrated morning streaming, using efficient daytime linear support, and preserving reserve budget for pacing corrections.",
-  why: "Recommended: Max carries the strongest concentration of high-intent toddler parents, Food Network adds efficient daytime scale, and 28.4% cross-platform overlap makes converged frequency control the deciding advantage.",
+  promptText: "The Mix: 68% Streaming (Max Ad-Lite + Discovery+) | 22% Linear Daytime (Food Network / TLC) | 10% Reserve.",
+  strategy: "A streaming-heavy converged route designed to maximize de-duplicated reach inside a strict $50K budget by leaning into Max for concentrated morning streaming, using efficient daytime linear support, and preserving reserve budget for pacing corrections.",
+  why: "Recommended: the toddler-parent cohort is streaming-heavy, but not streaming-only. Max carries the strongest concentration of high-intent parents, Food Network adds efficient daytime scale, and 28.4% cross-platform overlap makes converged frequency control the deciding advantage.",
   allocation: { streamingPct: 68, linearPct: 22, reservePct: 10 },
   allocationStrategy: "Allocate $34,000 (68%) to morning streaming, $11,000 (22%) to afternoon linear, and hold $5,000 (10%) in algorithmic reserve so pacing can rescue weak inventory without breaking the $50K budget.",
   deliveryTiming: "Lead on Max and Discovery+ during breakfast co-viewing hours, use Food Network and TLC in daytime lifestyle blocks, and keep TNT live sports on watchlist-only routing.",
-  channelLogic: "This route works because the toddler-parent cohort over-indexes on digital, still shows efficient daytime linear behavior, and has enough cross-platform overlap that a converged engine can prevent duplicate waste.",
+  channelLogic: "This route works because the toddler-parent cohort over-indexes on digital, still shows efficient daytime linear behavior, and has enough cross-platform overlap that a converged engine can prevent duplicate waste while still adding net-new homes.",
   recommendationReason: "Max is the most concentrated opening lane for millennial health-conscious toddler parents, Food Network daytime adds efficient linear scale, and 28.4% overlap makes converged frequency capping essential.",
+  scenarioCardLabel: "Scenario C",
+  scenarioCardTitle: "Streaming-Heavy Converged Mix (68% Streaming / 22% Linear / 10% Reserve)",
   rankedNetworks: [
     { name: "Max", score: 145, lift: 1.45 },
     { name: "Food Network", score: 115, lift: 1.15 },
@@ -381,54 +383,60 @@ const TODDLER_HERO_ROUTE = {
 
 const TODDLER_HERO_SCENARIOS = {
   "scenario-a": {
-    title: "The Converged Reach Maximizer",
-    promptTile: "The Converged Reach Maximizer",
-    promptText: "The Mix: 60% Streaming (Max Kids & Family) | 40% Linear Daytime (Food Network / HGTV).",
-    strategy: "A converged reach route that uses streaming and linear together to maximize de-duplicated household scale before the plan is refined into bookable lines.",
-    why: "This route stretches the $50K toward the largest unique household footprint by linking Max morning viewing with daytime linear behavior and suppressing duplicate homes across both channels.",
-    allocation: { streamingPct: 60, linearPct: 40, reservePct: 0 },
-    allocationStrategy: "The Mix: 60% Streaming (Max Kids & Family) | 40% Linear Daytime (Food Network / HGTV).",
-    deliveryTiming: "Lead on Max during breakfast co-viewing, then move into Food Network and HGTV daytime blocks while suppressing homes already reached earlier in the day.",
-    channelLogic: "If a household sees the ad on Max, the engine suppresses that same home from later linear delivery so more of the budget is forced into net-new parents instead of duplicate exposures.",
-    recommendationReason: "It maximizes de-duplicated reach by combining Max and daytime linear under one household frequency cap.",
+    title: "Converged Precision Sprint (Parents of Toddlers)",
+    promptTile: "Streaming-Heavy Converged Mix",
+    promptText: "The Mix: 68% Streaming (Max Ad-Lite + Discovery+) | 22% Linear Daytime (Food Network / TLC) | 10% Reserve.",
+    strategy: "A streaming-heavy converged route that keeps the money where toddler parents actually watch while preserving a smaller linear layer and a reserve buffer for pacing rescue.",
+    why: "The behavioral data shows a 28.4% overlap between Max streamers and daytime linear viewers in this demographic. By keeping most of the budget in streaming, using linear surgically, and suppressing overlap through the identity graph, the engine maximizes net-new households instead of repeated exposure.",
+    allocation: { streamingPct: 68, linearPct: 22, reservePct: 10 },
+    allocationStrategy: "Allocate $34,000 (68%) to streaming, $11,000 (22%) to linear, and hold $5,000 (10%) in reserve for in-flight rescue.",
+    deliveryTiming: "Lead on Max and Discovery+ during breakfast co-viewing hours, add Food Network and TLC in daytime lifestyle blocks, and keep reserve budget ready for any pacing recovery.",
+    channelLogic: "The audience is streaming-heavy, but not streaming-only. This mix keeps the weight in the strongest behavior signal while using linear only where it can add parents who would otherwise be missed.",
+    recommendationReason: "It maximizes net-new toddler-parent reach by combining streaming concentration, surgical linear support, and overlap suppression under one converged frequency cap.",
+    scenarioCardLabel: "Scenario C",
+    scenarioCardTitle: "Streaming-Heavy Converged Mix (68% Streaming / 22% Linear / 10% Reserve)",
     rankedNetworks: [
       { name: "Max", score: 145, lift: 1.45 },
       { name: "Food Network", score: 115, lift: 1.15 },
-      { name: "HGTV", score: 109, lift: 1.09 }
+      { name: "Discovery+", score: 108, lift: 1.08 }
     ]
   },
   "scenario-b": {
-    title: "The Streaming Play",
-    promptTile: "The Streaming Play",
+    title: "The Linear-Heavy Mix",
+    promptTile: "Linear-Heavy Mix",
+    promptText: "The Mix: 80% Linear Daytime (Food Network / TLC) | 20% Streaming.",
+    strategy: "A linear-heavy route that leans into cheaper daytime television to buy broad scale first, then keeps a lighter streaming layer for support.",
+    why: "While linear CPMs are cheaper, the behavioral data shows toddler parents are not watching enough daytime TV to justify putting 80% of the budget there. The plan buys a lot of impressions, but too many of them land on the wrong households, which increases waste.",
+    allocation: { streamingPct: 20, linearPct: 80, reservePct: 0 },
+    allocationStrategy: "Initial allocation: 80% linear daytime support and 20% streaming reinforcement.",
+    deliveryTiming: "Concentrate spend in daytime Food Network and TLC blocks, then use a smaller streaming layer to catch the lighter digital tail.",
+    channelLogic: "The lower linear CPM does more of the raw scale work, but the audience fit is weaker because too much of the buy lands outside the strongest toddler-parent viewing pockets.",
+    recommendationReason: "It buys broad daytime scale cheaply, but it wastes too much money on lower-fit linear viewing.",
+    scenarioCardLabel: "Scenario A",
+    scenarioCardTitle: "Linear-Heavy Mix (80% Linear / 20% Streaming)",
+    rankedNetworks: [
+      { name: "Food Network", score: 115, lift: 1.15 },
+      { name: "TLC", score: 111, lift: 1.11 },
+      { name: "Max", score: 102, lift: 1.02 }
+    ]
+  },
+  "scenario-c": {
+    title: "The Streaming-Only Mix",
+    promptTile: "Streaming-Only Mix",
     promptText: "The Mix: 100% Streaming (Max & Discovery+).",
-    strategy: "A streaming-only route that prioritizes verified parent signals and in-target precision over the broadest possible television scale.",
-    why: "This route keeps every dollar inside authenticated streaming environments, so the plan can focus on households actively watching toddler programming or adjacent food and lifestyle content.",
+    strategy: "A streaming-only route that keeps every dollar inside authenticated on-demand environments tied to the strongest toddler-parent behavior signal.",
+    why: "This route hits the behavioral bullseye, but the premium streaming CPM exhausts the $50K budget too quickly. Without a linear support layer and cross-platform suppression, the engine predicts repeat exposure will build faster than unique reach.",
     allocation: { streamingPct: 100, linearPct: 0, reservePct: 0 },
-    allocationStrategy: "The Mix: 100% Streaming (Max & Discovery+).",
-    deliveryTiming: "Keep the weight in Max Kids mornings and Discovery+ food or lifestyle windows where current parent intent is strongest.",
-    channelLogic: "It will not produce the largest total household footprint, but it maximizes in-target reach because every impression stays tied to a verified streaming parent signal.",
-    recommendationReason: "It maximizes verified in-target reach by keeping the full brief inside streaming environments.",
+    allocationStrategy: "Initial allocation: keep the full budget inside Max and Discovery+ without any linear support.",
+    deliveryTiming: "Focus on Max Kids mornings and Discovery+ home or food windows where current parent intent is strongest.",
+    channelLogic: "It maximizes in-target streaming concentration, but it gives up the converged reach benefit and makes it harder to keep unique reach growing once heavy streamers have already been hit.",
+    recommendationReason: "It follows the strongest streaming signal, but it gives up the incremental reach and overlap control that the converged route provides.",
+    scenarioCardLabel: "Scenario B",
+    scenarioCardTitle: "Streaming-Only Mix (100% Streaming)",
     rankedNetworks: [
       { name: "Max", score: 145, lift: 1.45 },
       { name: "Discovery+", score: 118, lift: 1.18 },
       { name: "Food Network", score: 103, lift: 1.03 }
-    ]
-  },
-  "scenario-c": {
-    title: "The Linear Scale",
-    promptTile: "The Linear Scale",
-    promptText: "The Mix: 80% Linear Daytime (TLC / Magnolia-style lifestyle blocks) | 20% Streaming.",
-    strategy: "A linear-led route that uses cheaper daytime television to build broad household scale, with a smaller streaming layer reserved for cord-cutters.",
-    why: "This route leans into lower-cost daytime linear inventory to maximize raw demographic reach, then uses a modest streaming layer to pick up parents who are harder to reach through cable alone.",
-    allocation: { streamingPct: 20, linearPct: 80, reservePct: 0 },
-    allocationStrategy: "The Mix: 80% Linear Daytime (TLC / Magnolia-style lifestyle blocks) | 20% Streaming.",
-    deliveryTiming: "Concentrate spend in daytime lifestyle programming where stay-at-home parents are easiest to find, then use streaming support for the lighter incremental layer.",
-    channelLogic: "The lower linear CPM does more of the scale work, while the 20% streaming layer is there to catch cord-cutters and reduce the blind spots of a pure linear buy.",
-    recommendationReason: "It maximizes raw household scale by letting cheaper daytime linear inventory do most of the work.",
-    rankedNetworks: [
-      { name: "TLC", score: 121, lift: 1.21 },
-      { name: "Food Network", score: 115, lift: 1.15 },
-      { name: "HGTV", score: 111, lift: 1.11 }
     ]
   }
 };
@@ -483,6 +491,8 @@ function buildToddlerHeroPlanContext(selectedPlan = null, campaignPrompt = "") {
     deliveryTiming: toddlerScenario?.deliveryTiming || selectedPlan?.deliveryTiming || TODDLER_HERO_ROUTE.deliveryTiming,
     channelLogic: toddlerScenario?.channelLogic || selectedPlan?.channelLogic || TODDLER_HERO_ROUTE.channelLogic,
     recommendationReason,
+    scenarioCardLabel: toddlerScenario?.scenarioCardLabel || selectedPlan?.scenarioCardLabel || TODDLER_HERO_ROUTE.scenarioCardLabel,
+    scenarioCardTitle: toddlerScenario?.scenarioCardTitle || selectedPlan?.scenarioCardTitle || toddlerScenario?.title || selectedPlan?.title || TODDLER_HERO_ROUTE.scenarioCardTitle || TODDLER_HERO_ROUTE.title,
     recommended: variantKey === TODDLER_HERO_ROUTE.variantKey,
     scenarioIntelligence: {
       ...(selectedPlan?.scenarioIntelligence || {}),
@@ -652,7 +662,7 @@ function buildToddlerHeroExecutiveSummary() {
       },
       {
         title: "WHAT THE PROJECTED RESULT MEANS",
-        text: "The $50K investment successfully reached 68,450 unique households. Because the engine managed the 28.4% cross-platform overlap, average frequency stayed capped at 3.1x, and clean-room validation confirmed that streaming delivered 22% incremental reach beyond a standalone linear buy."
+        text: "The $50K investment successfully reached 68,450 unique households. Because the engine managed the 28.4% cross-platform overlap, average frequency stayed capped at 3.1x. Post-campaign clean-room measurement achieved a 77.6% match rate and confirmed that streaming delivered 22% incremental reach beyond a standalone linear buy."
       }
     ],
     metrics: [
@@ -663,7 +673,7 @@ function buildToddlerHeroExecutiveSummary() {
       { label: "BOOKED PLACEMENTS", value: "6 slots (211,970 Guaranteed Imp)", help: "Final converged package protected with next-week guarantees." },
       { label: "DELIVERY FORECAST", value: "100% Streaming / 100% Linear", help: "The pacing rescue restored both channels to full-delivery projection." },
       { label: "VERIFIED REACH", value: "68,450 Unique HHs", help: "Privacy-safe household validation after campaign exposure matching." },
-      { label: "CLEAN-ROOM MATCH RATE", value: "77.6%", help: "Share of delivered households confidently matched back to the target list." },
+      { label: "CLEAN-ROOM MATCH RATE", value: "77.6% (Privacy-Safe)", help: "Share of delivered households confidently matched back to the target list inside the clean room." },
       { label: "AVERAGE FREQUENCY", value: "3.1x per Household", help: "Cross-platform exposure stayed controlled even with converged delivery." },
       { label: "CROSS-PLATFORM OVERLAP", value: "28.4%", help: "The overlap that justified converged identity and frequency controls." },
       { label: "AVERAGE CPM", value: "$54.20 Blended", help: "Planning CPM for the approved streaming plus linear mix." }
@@ -784,6 +794,7 @@ let state = {
   stage: "idle",
   architectPlans: [],
   selectedArchitectPlanId: null,
+  architectDetailModal: null,
   plan: [],
   suggestedInputs: [],
   selectedInputs: new Set(),
@@ -816,6 +827,7 @@ let state = {
   complianceExplanationOpen: false,
   visualizationExplanationOpen: false,
   visualizationLoading: false,
+  visualizationDeck: null,
   visualizationNarrative: "",
   runToken: 0,
   campaignStateObject: null,
@@ -836,6 +848,17 @@ const actions = {
     applyArchitectSelection(picked);
   },
   startAgents: () => startAgents(),
+  openArchitectDetailModal: (planId, detailType) => {
+    if (!planId) return;
+    if (!["parameters", "plan"].includes(detailType)) return;
+    setState({
+      architectDetailModal: {
+        planId,
+        detailType
+      }
+    });
+  },
+  closeArchitectDetailModal: () => setState({ architectDetailModal: null }),
   toggleSuggestedInput: (id) => {
     const next = new Set(state.selectedInputs);
     next.has(id) ? next.delete(id) : next.add(id);
@@ -995,6 +1018,7 @@ const actions = {
       customProblem: { title: agent.title, problem: agent.problem },
       architectPlans: [],
       selectedArchitectPlanId: null,
+      architectDetailModal: null,
       plan: savedPlan,
       suggestedInputs: savedInputs,
       selectedInputs: new Set(savedInputs.map(i => i.id)),
@@ -1009,6 +1033,7 @@ const actions = {
       complianceExplanationOpen: false,
       visualizationExplanationOpen: false,
       visualizationLoading: false,
+      visualizationDeck: null,
       visualizationNarrative: "",
       runToken: 0,
       campaignStateObject: null,
@@ -1028,6 +1053,7 @@ const actions = {
       stage: "idle",
       plan: [],
       agentOutputs: [],
+      architectDetailModal: null,
       selectedDemoIndex: -1 // Ensure we are in custom mode
     });
 
@@ -1132,6 +1158,7 @@ function render() {
   scheduleFlowchartSync();
   scheduleScrollToRunningSection();
   scheduleDashboardCharts();
+  scheduleRevealDeck();
 }
 
 function clampAgentCount(value, fallback = TARGET_ARCHITECT_AGENTS) {
@@ -1173,6 +1200,7 @@ function resetRunState(extras) {
     stage: "architect",
     architectPlans: [],
     selectedArchitectPlanId: null,
+    architectDetailModal: null,
     plan: [],
     agentOutputs: [],
     architectBuffer: "",
@@ -1191,6 +1219,7 @@ function resetRunState(extras) {
     complianceExplanationOpen: false,
     visualizationExplanationOpen: false,
     visualizationLoading: false,
+    visualizationDeck: null,
     visualizationNarrative: "",
     runToken: 0,
     campaignStateObject: null,
@@ -1221,6 +1250,7 @@ function applyArchitectSelection(picked) {
   });
   setState({
     selectedArchitectPlanId: effectivePicked.id,
+    architectDetailModal: null,
     plan: selectedPlan,
     suggestedInputs: normalizedInputs,
     selectedInputs: new Set(normalizedInputs.map((i) => i.id)),
@@ -1230,6 +1260,7 @@ function applyArchitectSelection(picked) {
     complianceExplanationOpen: false,
     visualizationExplanationOpen: false,
     visualizationLoading: false,
+    visualizationDeck: null,
     visualizationNarrative: "",
     runToken: 0,
     campaignStateObject: null,
@@ -2626,20 +2657,28 @@ function buildScenarioBlueprints(campaignPrompt = "") {
   });
 
   if (isToddlerHeroBrief(campaignPrompt, intelligence.campaign)) {
+    const toddlerOptions = options.map((option) => {
+      const toddlerOption = buildToddlerHeroPlanContext({
+        ...option,
+        recommended: option.variantKey === TODDLER_HERO_ROUTE.variantKey
+      }, campaignPrompt) || option;
+      return {
+        ...toddlerOption,
+        recommended: toddlerOption.variantKey === TODDLER_HERO_ROUTE.variantKey
+      };
+    });
+    const toddlerDisplayOrder = ["scenario-b", "scenario-c", TODDLER_HERO_ROUTE.variantKey];
+    const orderedToddlerOptions = [
+      ...toddlerDisplayOrder
+        .map((key) => toddlerOptions.find((option) => option.variantKey === key))
+        .filter(Boolean),
+      ...toddlerOptions.filter((option) => !toddlerDisplayOrder.includes(option.variantKey))
+    ];
     return {
       campaignPrompt,
       intelligence,
       recommendedVariantKey: TODDLER_HERO_ROUTE.variantKey,
-      options: options.map((option) => {
-        const toddlerOption = buildToddlerHeroPlanContext({
-          ...option,
-          recommended: option.variantKey === TODDLER_HERO_ROUTE.variantKey
-        }, campaignPrompt) || option;
-        return {
-          ...toddlerOption,
-          recommended: toddlerOption.variantKey === TODDLER_HERO_ROUTE.variantKey
-        };
-      })
+      options: orderedToddlerOptions
     };
   }
 
@@ -3362,6 +3401,7 @@ async function runArchitect() {
       complianceDetails: null,
       selectedPlanCompliance: null,
       visualizationLoading: false,
+      visualizationDeck: null,
       visualizationNarrative: "",
       runToken: 0,
       campaignStateObject: null,
@@ -3434,6 +3474,7 @@ async function runArchitect() {
       selectedPlanCompliance: complianceValidation,
       complianceDetails: buildComplianceDetails(complianceValidation),
       visualizationLoading: false,
+      visualizationDeck: null,
       visualizationNarrative: "",
       runToken: 0,
       campaignStateObject: null,
@@ -3477,6 +3518,7 @@ async function runArchitect() {
       complianceDetails: buildComplianceDetails(savedCompliance),
       selectedPlanCompliance: savedCompliance,
       visualizationLoading: false,
+      visualizationDeck: null,
       visualizationNarrative: "",
       campaignStateObject: null,
       subAgentCatalog: resolveSubAgentCatalogForVariant(normalizeVariantKey(recommendedPlan?.variantKey || PLAN_VARIANTS[2]?.key || PLAN_VARIANTS[0]?.key)),
@@ -3919,16 +3961,16 @@ function runToddlerHeroInventoryStage(agent, campaignState) {
     subAgentResults: buildPresetSubAgentResults(agent.nodeId, {
       "yield-optimizer": {
         details: [
-          "Queried six months of historical WBD ad-server logs for organic snack and adjacent CPG campaigns.",
-          "Found that bidding on Max Kids inventory after 5 PM carries a meaningful CPM premium while producing weaker parent attention than breakfast co-viewing hours.",
-          "Constrained streaming bids to morning windows and linear bids to naptime and early afternoon blocks to keep the blended CPM efficient."
+          "Queried six months of historical WBD ad-server logs for organic snack and adjacent family CPG campaigns.",
+          "Found that bidding on Max Kids inventory after 5 PM carries a 15% CPM premium while producing weaker parent attention than breakfast co-viewing hours.",
+          "Built a strict dayparting schedule that constrained streaming bids to morning breakfast windows and linear bids to naptime and afternoon blocks, keeping the blended CPM near $54.20."
         ]
       },
       "signal-forecaster": {
         details: [
-          "Scanned the upcoming 14-day pacing logs in the WBD yield system for the toddler-parent cohort.",
-          "Found that daytime linear supply is wide open while Max premium morning inventory is comparatively tight and running hot.",
-          "Recommended the 10% reserve so Discovery+ and flexible Max extensions can absorb demand if premium morning avails disappear early."
+          "Scanned the upcoming 14-day pacing logs in WBD's yield management system for the toddler-parent cohort.",
+          "Found that daytime linear is wide open at roughly 40% sell-through, while Max premium morning inventory is already about 88% sold out.",
+          "Recommended the 10% reserve so the engine can shift budget into Discovery+ lifestyle streaming if Max clears too fast next week."
         ]
       }
     }),
@@ -3969,15 +4011,15 @@ function runToddlerHeroBookingStage(agent, campaignState) {
       "deal-structurer": {
         details: [
           "Created 6 converged line items covering 3 streaming placements and 3 linear placements.",
-          "Translated the approved toddler-parent mix into WBD ad-server line structures while keeping $5,000 outside the active book as reserve.",
-          "Protected the narrowest next-week avails first so the guaranteed impression package could survive later sell-through pressure."
+          "Anchored the active package with $22,000 on Max Ad-Lite, $12,000 across Discovery+ and streaming extensions, and $11,000 across Food Network, TLC, and TNT linear support.",
+          "Translated the approved toddler-parent mix into WBD ad-server line structures while keeping $5,000 outside the active book as reserve for pacing shifts."
         ]
       },
       "proposal-assembler": {
         details: [
-          "Generated the buyer-facing proposal language, guarantee block, and final contract payload for human approval.",
-          "Invoked the internal legal rubric because the audience and inventory path included child-directed programming.",
-          "Released the proposal as Passed with Adjustments after behavioral tracking was stripped from Max Kids lines and the remaining package cleared compliance."
+          "Detected the toddler audience and invoked the WBD internal legal rubric before finalizing the proposal.",
+          "Executed the Passed with Adjustments protocol and generated the final JSON contract payload for human approval.",
+          "Disabled click-through and third-party behavioral tracking on the Max Kids lines so the proposal is legal and ready to approve."
         ]
       }
     }),
@@ -4013,10 +4055,10 @@ function runToddlerHeroTraffickingStage(agent, campaignState) {
       watchlist_surface: "TNT live sports"
     },
     summaryLines: [
-      "The stage closed with an 84% Launch Readiness score. Asset QA and tag compliance both passed, but one live placement still requires an operations watchlist.",
-      "All 3 video files passed WBD 1080p and audio loudness checks, and no non-compliant tracking pixels remained after the booking-stage compliance cleanup.",
-      "Delivery checks showed Max, Discovery+, Food Network, and TLC routing cleanly, but the TNT live sports feed returned a missing SCTE-35 cue.",
-      "In plain language, the automated trigger that tells the live sports feed when to break for ads is unstable. The campaign can launch, but TNT needs human eyes if that placement is activated."
+      "The AI closed the stage with an 84% Launch Readiness score. The campaign is approved for activation, but one specific line item remains on an operational watchlist.",
+      "Asset QA and tag compliance both scored cleanly. All 3 video files passed WBD 1080p and audio loudness specs, and no non-compliant tracking pixels remained after the booking-stage cleanup.",
+      "During the routing check, Max, Discovery+, Food Network, and TLC synced correctly, but the TNT live sports feed returned a missing SCTE-35 cue.",
+      "In plain English, the automated trigger that tells the live broadcast when to cut to commercial is offline, so TNT can launch only with human monitoring."
     ],
     subAgentResults: buildPresetSubAgentResults(agent.nodeId, {
       "asset-qa": {
@@ -4027,10 +4069,11 @@ function runToddlerHeroTraffickingStage(agent, campaignState) {
         ]
       },
       "streamx-router": {
+        name: "Delivery Signal Router",
         details: [
-          "Pinged the delivery endpoints for Max, Discovery+, Food Network, TLC, and TNT before launch.",
-          "Max, Discovery+, Food Network, and TLC returned healthy routing responses.",
-          "TNT live sports returned a missing SCTE-35 cue, so the line was flagged for manual cutover monitoring."
+          "Pinged the ad-server delivery endpoints for Max, Discovery+, Food Network, TLC, and TNT before launch.",
+          "Max and Food Network synced cleanly, while TNT live sports returned a missing SCTE-35 cue during the routing check.",
+          "Flagged the TNT placement for manual cutover monitoring so the overall campaign can launch without letting the routing issue go unnoticed."
         ]
       }
     }),
@@ -4076,14 +4119,14 @@ function runToddlerHeroInFlightStage(agent, campaignState) {
         details: [
           "Ingested daily WBD delivery logs and compared actual delivered impressions against the toddler-parent forecast curve.",
           "Flagged a negative pacing variance on linear TV on Day 4, before the miss could reach the end-of-flight billing window.",
-          "Escalated the TNT overrun as the root cause rather than treating the shortfall as a generic linear under-delivery."
+          "Isolated the TNT live sports overrun as the root cause and quantified roughly 15,000 guaranteed impressions at risk if no intervention happened."
         ]
       },
       "autonomous-make-good": {
         details: [
-          "Queried real-time streaming avails across Max and Discovery+ for overlapping toddler-parent supply.",
-          "Found enough high-fit Max Ad-Lite inventory to absorb a $4,250 shift without lowering audience quality.",
-          "Paused the failing live sports weight and rerouted the dollars into streaming so the guarantee could still clear."
+          "Queried real-time avails on WBD streaming properties and found overlapping toddler-parent inventory on Max.",
+          "Paused the failing live sports line and shifted $4,250 of the remaining budget into Max Ad-Lite before the guaranteed shortfall widened.",
+          "The API-level reallocation immediately corrected the campaign trajectory and restored the package to a full-delivery projection."
         ]
       }
     }),
@@ -4120,20 +4163,20 @@ function runToddlerHeroMeasurementStage(agent, campaignState) {
       "Final measurement validated 68,450 unique households reached against a projection of 71,300, which confirms the toddler-parent campaign landed close to plan.",
       "A privacy-safe clean room matched WBD exposure logs against the advertiser target list at a 77.6% demographic match rate, validating that the delivery stayed focused on toddler parents.",
       "Streaming added 22% net-new reach beyond the linear baseline, which means Max expanded the parent footprint instead of merely duplicating the daytime TV audience.",
-      "Cross-platform frequency control held average converged exposure to 3.1x. Only 4% of households received more than five exposures, which avoided about $3,800 in wasted impressions."
+      "Cross-platform frequency control held average converged exposure to 3.1x. Only 4% of households received more than five exposures, which saved about $3,800 in wasted impressions and redirected that value into net-new reach."
     ],
     subAgentResults: buildPresetSubAgentResults(agent.nodeId, {
       "household-match-validator": {
         details: [
-          "Executed a double-blind household match inside the clean room using WBD exposure logs and the advertiser demographic target list.",
-          "Validated 68,450 unique households at a 77.6% match rate without exposing raw personal identifiers outside the privacy-safe environment.",
-          "Confirmed the campaign hit the intended toddler-parent cohort instead of relying on modeled audience assumptions alone."
+          "Executed a double-blind ID match inside a secure clean room using WBD exposure logs and the advertiser demographic target list.",
+          "Validated that 77.6% of the delivered exposure matched the exact toddler-parent cohort without exposing raw personal identifiers.",
+          "Confirmed the campaign hit the intended households while staying inside privacy-safe CCPA and GDPR guardrails."
         ]
       },
       "outcome-pattern-reader": {
         details: [
-          "Compared exposure overlap between Food Network, TLC, TNT, Max, and Discovery+ delivery logs.",
-          "Verified that the streaming allocation produced 22% incremental reach beyond the linear baseline rather than cannibalizing the same daytime audience.",
+          "Analyzed the exposure overlap between the Food Network logs and the Max delivery logs inside the converged household graph.",
+          "Generated an incremental-reach readout showing that streaming added 22% net-new reach instead of cannibalizing the daytime linear audience.",
           "Confirmed that cross-platform frequency capping worked as intended and kept household repetition inside a controlled range."
         ]
       }
@@ -5168,7 +5211,8 @@ async function startAgents() {
       setState({
         error: "Live LLM credentials are required for multi-agent execution.",
         stage: "data",
-        visualizationLoading: false
+        visualizationLoading: false,
+        visualizationDeck: null
       });
       return;
     }
@@ -5254,6 +5298,7 @@ async function startAgents() {
       complianceExplanationOpen: false,
       visualizationExplanationOpen: false,
       visualizationLoading: false,
+      visualizationDeck: null,
       visualizationNarrative: "",
       runToken,
       campaignStateObject: campaignState,
@@ -5315,15 +5360,17 @@ async function startAgents() {
     });
     setState({
       visualizationLoading: true,
+      visualizationDeck: null,
       visualizationNarrative: ""
     });
-    const visualizationNarrative = await buildVisualizationNarrative({
+    const visualizationDeck = await buildVisualizationDeck({
       creds,
       model,
       campaignPrompt,
       dashboard: nextDashboard,
       agentOutputs: state.agentOutputs,
-      campaignStateObject: campaignState
+      campaignStateObject: campaignState,
+      complianceResult
     });
 
     setState({
@@ -5334,12 +5381,13 @@ async function startAgents() {
       selectedPlanCompliance: complianceResult || baselineCompliance,
       complianceDetails: buildComplianceDetails(complianceResult || baselineCompliance),
       visualizationLoading: false,
-      visualizationNarrative,
-      visualizationExplanationOpen: true,
+      visualizationDeck,
+      visualizationNarrative: "",
+      visualizationExplanationOpen: false,
       campaignStateObject: campaignState
     });
   } catch (e) {
-    setState({ error: e.message, stage: "idle", visualizationLoading: false, campaignStateObject: null });
+    setState({ error: e.message, stage: "idle", visualizationLoading: false, visualizationDeck: null, campaignStateObject: null });
   }
 }
 
@@ -5381,6 +5429,30 @@ function buildComplianceNarrative(evaluation, selectedPlan) {
   return lines.join("\n");
 }
 
+function buildToddlerHeroComplianceNarrative(evaluation, selectedPlan) {
+  const lines = [
+    "### Compliance Validation Result",
+    `Status: ${evaluation?.status || "Passed with Adjustments"}. The parallel compliance agent completed a real-time audit across all active stages and returned a status of Passed with Adjustments based on 8 logged policy findings.`,
+    "",
+    "Why this matters: the campaign kept moving without a manual legal hold because the engine applied the required fixes before activation."
+  ];
+
+  if (selectedPlan?.allocationStrategy) {
+    lines.push("");
+    lines.push("### Allocation Context");
+    lines.push(selectedPlan.allocationStrategy);
+  }
+
+  lines.push("");
+  lines.push("### Findings");
+  lines.push("- COPPA regulation enforced: active third-party behavioral tracking pixels were removed from the child-directed streaming tags before launch.");
+  lines.push("- Brand safety guardrails applied: 3 Discovery+ placements adjacent to TV-MA true-crime content were blocked behind a strict G/PG-only adjacency filter.");
+  lines.push("- Pricing floor audit completed: the $32.00 linear CPM and $68.50 streaming CPM both clear the internal WBD rate-card floors without requiring overrides.");
+  lines.push("- Final action: the engine intercepted the non-compliant tags, applied the legal and brand-safety adjustments, and released the campaign into trafficking without requiring manual legal review.");
+
+  return lines.join("\n");
+}
+
 async function runParallelComplianceAgent(out, opts) {
   const { creds, model, campaignPrompt, selectedPlan } = opts;
   const baseline = evaluatePlanCompliance({
@@ -5405,7 +5477,9 @@ async function runParallelComplianceAgent(out, opts) {
       console.warn("Parallel compliance LLM refinement failed, using deterministic narrative only:", err?.message || err);
     }
   }
-  const deterministicNarrative = buildComplianceNarrative(baseline, selectedPlan);
+  const deterministicNarrative = isToddlerHeroBrief(campaignPrompt, selectedPlan?.scenarioIntelligence?.campaign)
+    ? buildToddlerHeroComplianceNarrative(baseline, selectedPlan)
+    : buildComplianceNarrative(baseline, selectedPlan);
   const merged = [llmNarrative?.trim(), deterministicNarrative].filter(Boolean).join("\n\n");
   updateAgent(out.id, merged, "done");
   return baseline;
@@ -5470,39 +5544,25 @@ async function runSyntheticAgent(out, opts) {
   }
 }
 
-async function buildVisualizationNarrative({ creds, model, campaignPrompt, dashboard, agentOutputs, campaignStateObject = null }) {
+async function buildVisualizationDeck({ creds, model, campaignPrompt, dashboard, agentOutputs, campaignStateObject = null, complianceResult = null }) {
+  const summaryPayload = buildVisualizationSummaryPayload({
+    campaignPrompt,
+    dashboard,
+    agentOutputs,
+    campaignStateObject,
+    complianceResult
+  });
+  const rawFallbackDeck = buildFallbackVisualizationDeck({
+    campaignPrompt,
+    dashboard,
+    campaignStateObject,
+    summaryPayload
+  });
+  const fallbackDeck = normalizeVisualizationDeck({}, rawFallbackDeck);
+
   try {
     if (!creds) throw new Error("No live credentials available.");
     let buffer = "";
-    const dashboardMakeGood = dashboard?.makeGood
-      ? {
-        shiftBudget: dashboard.makeGood.shiftBudget
-      }
-      : {};
-    const measurementSummary = campaignStateObject?.stageOutputs?.["measurement-agent"]?.measurement_summary
-      ? {
-        projected_households: campaignStateObject.stageOutputs["measurement-agent"].measurement_summary.projected_households,
-        matched_households: campaignStateObject.stageOutputs["measurement-agent"].measurement_summary.matched_households,
-        clean_room_match_rate_pct: campaignStateObject.stageOutputs["measurement-agent"].measurement_summary.clean_room_match_rate_pct,
-        average_frequency: campaignStateObject.stageOutputs["measurement-agent"].measurement_summary.average_frequency
-      }
-      : null;
-    const summaryPayload = {
-      campaignPrompt,
-      selectedScenario: campaignStateObject?.selectedScenario || null,
-      pacing: dashboard?.pacing
-        ? {
-          linearPeakDeliveryRate: Math.max(...(dashboard.pacing.linearPct || [0])),
-          digitalPeakDeliveryRate: Math.max(...(dashboard.pacing.digitalPct || [0])),
-          makeGoodHour: dashboard.pacing.makeGoodHour || 12
-        }
-        : {},
-      reach: dashboard?.reach || {},
-      makeGood: dashboardMakeGood,
-      measurement: measurementSummary,
-      actions: buildActionRows(agentOutputs, state.issueNodeIds || new Set())
-    };
-
     await Utils.streamChatCompletion({
       llm: creds,
       body: {
@@ -5511,41 +5571,642 @@ async function buildVisualizationNarrative({ creds, model, campaignPrompt, dashb
         messages: [
           {
             role: "system",
-            content: "You are an analytics narrator. Explain visualization outputs in detailed plain language for both domain experts and non-experts. Every section must contain a sentence that starts with 'Why this matters:'. Define abbreviations when first used and give enough context that the explanation stands on its own. The writing must sound logical, meaningful, and grounded in the supplied numbers. Avoid generic praise, filler, and unsupported claims. Use a consistent pattern in each section: what happened, which numbers prove it, what decision or implication follows. Whenever you mention an average, rate, ratio, or percentage, explain what it was calculated from or what it compares, then restate the meaning in everyday language."
+            content: [
+              "You are creating content for a Reveal.js slide deck in a McKinsey-style presentation format.",
+              "Return JSON only. Do not use Markdown. Do not wrap the JSON in code fences.",
+              "Write for a mixed audience of business leaders and non-specialists.",
+              "Every slide heading must make the topic obvious on its own.",
+              "Use normal English. Avoid shortcuts, unexplained jargon, and vague consulting filler.",
+              "Each slide must explain what happened, what the numbers mean, and why the point matters in everyday language.",
+              "Keep the tone crisp, factual, and presentation-ready.",
+              "Before writing, silently reconcile the full run so the six slides tell one coherent story from scenario selection through next steps.",
+              "Treat selectedScenario, compliance, stageSummaries, workflow, consistencyAnchors, and actions as cross-check inputs that must agree with one another.",
+              "Never let the executive, pacing, reach, make-good, actions, and next-steps slides contradict the selected route, the recommendation reason, the compliance status, the opening allocation, the final allocation, the strongest channel, or the next best action.",
+              "Do not merge different concepts. Projected households means the total modeled homes expected to receive the campaign. Matched households means the measurable subset verified in the clean room. Average frequency means average exposures per reached household unless the evidence says otherwise.",
+              "If makeGoodTriggered is false or shiftBudgetUsd is 0, say no in-flight budget shift happened. If a shift happened, explain what changed and why.",
+              "If compliance status is Passed with Adjustments or Failed, reflect that clearly instead of describing the plan as fully clear.",
+              "If a value is pending, mixed, or uncertain, say that plainly in simple English instead of smoothing it over.",
+              "Do not invent numbers, metrics, or claims beyond the supplied data.",
+              "Top-level keys must be exactly: deckTitle, deckSubtitle, slides.",
+              "slides must be an array of exactly 6 objects in this exact order: executive, pacing, reach, make-good, actions, next-steps.",
+              "Each slide object must contain: kind, eyebrow, title, takeaway, body, bullets.",
+              "Each bullets array must contain 3 short plain-English bullet points.",
+              "The deck should read like a clear consulting presentation, but every sentence must still be understandable to someone seeing this topic for the first time."
+            ].join(" ")
           },
           {
             role: "user",
-            content: `Use this dashboard summary and write a detailed Markdown explanation with sections for Delivery Pacing, Reach Distribution, Make-Good Decision, and Action Traceability.\nExplain what happened, what the key numbers mean, and why each section matters in simple language.\nIf a metric suggests a tradeoff or uncertainty, explain that directly instead of smoothing it over.\nIn each section, connect the claim to the exact numbers and then explain the business implication.\n\nDashboard JSON:\n${JSON.stringify(summaryPayload, null, 2)}`
+            content: [
+              "Create slide copy for the output and visualization deck.",
+              "The deck will be rendered in Reveal.js, so keep the slide structure clean and concise.",
+              "Make the titles self-explanatory enough that a person can understand each slide topic just by reading the heading.",
+              "Treat the full run evidence below as the source of truth. The deck must make sense across the whole run, not just as isolated slide summaries.",
+              "Use the workflow evidence to keep the planning decision, launch readiness, pacing result, final allocation, measurement result, and next-step recommendation logically aligned.",
+              "Keep the slide kinds and slide order exactly as shown in the fallback outline.",
+              "If a claim cannot be supported by the source-of-truth object, leave it out.",
+              "If the run includes a policy adjustment, launch watchlist, or make-good intervention, carry that fact through the relevant slides in plain English.",
+              "Use this fallback outline as the structure to preserve:",
+              JSON.stringify(fallbackDeck, null, 2),
+              "",
+              "Use this run summary as the source of truth for the content:",
+              JSON.stringify(summaryPayload, null, 2)
+            ].join("\n")
           }
         ]
       },
       onChunk: (chunk) => { buffer += chunk; }
     });
 
-    const finalNarrative = buffer.trim();
-    if (!isLowQualityNarrative(finalNarrative, { minWords: 70, rejectGenericPraise: false })) {
-      return finalNarrative;
-    }
-    throw new Error("Visualization narrative was too weak to use directly.");
+    const parsed = parseVisualizationDeckResponse(buffer);
+    const normalized = normalizeVisualizationDeck(parsed, fallbackDeck);
+    if ((normalized.slides || []).length === (fallbackDeck.slides || []).length) return normalized;
+    throw new Error("Visualization deck response was incomplete.");
   } catch {
-    return [
-      "### Delivery Pacing",
-      "The pacing chart compares planned and delivered impressions by hour for linear and digital inventory.",
-      "Why this matters: pacing gaps indicate where delivery risk appears before budget is exhausted.",
-      "",
-      "### Reach Distribution",
-      "The reach view shows unique households, devices touched, and overlap across platforms.",
-      "Why this matters: overlap and device spread determine whether added spend grows incremental reach or repeats exposure.",
-      "",
-      "### Make-Good Decision",
-      "The make-good panel explains why budget moved from under-delivering linear inventory to digital inventory.",
-      "Why this matters: timely reallocation protects outcome targets when a channel under-delivers.",
-      "",
-      "### Action Traceability",
-      "The action table is derived from actual agent outputs and each row includes a reason statement.",
-      "Why this matters: traceability links visible outcomes to specific decisions in the selected architect plan."
-    ].join("\n");
+    return fallbackDeck;
   }
+}
+
+function formatVisualizationAllocationMix(allocation = {}) {
+  return [
+    Number.isFinite(Number(allocation.streamingPct)) ? `${Math.round(Number(allocation.streamingPct))}% streaming` : null,
+    Number.isFinite(Number(allocation.linearPct)) ? `${Math.round(Number(allocation.linearPct))}% linear` : null,
+    Number.isFinite(Number(allocation.reservePct)) && Number(allocation.reservePct) > 0 ? `${Math.round(Number(allocation.reservePct))}% reserve` : null
+  ].filter(Boolean).join(", ") || "Allocation pending";
+}
+
+function summarizeVisualizationValue(value, depth = 0) {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "string") {
+    const clean = normalizeWhitespace(value);
+    return clean ? trimToWords(clean, depth > 1 ? 12 : 18) : "";
+  }
+  if (typeof value === "number" || typeof value === "boolean") return value;
+  if (Array.isArray(value)) {
+    const limit = depth > 0 ? 2 : 3;
+    const summarized = value
+      .slice(0, limit)
+      .map((item) => summarizeVisualizationValue(item, depth + 1))
+      .filter((item) => {
+        if (item === null || item === undefined) return false;
+        if (typeof item === "string") return Boolean(item);
+        if (Array.isArray(item)) return item.length > 0;
+        if (typeof item === "object") return Object.keys(item).length > 0;
+        return true;
+      });
+    if (!summarized.length) return [];
+    if (value.length > limit) summarized.push(`+${value.length - limit} more`);
+    return summarized;
+  }
+  if (typeof value === "object") {
+    const result = {};
+    const limit = depth > 0 ? 5 : 7;
+    Object.entries(value)
+      .filter(([, item]) => {
+        if (item === null || item === undefined) return false;
+        if (typeof item === "string") return Boolean(normalizeWhitespace(item));
+        if (Array.isArray(item)) return item.length > 0;
+        if (typeof item === "object") return Object.keys(item).length > 0;
+        return true;
+      })
+      .slice(0, limit)
+      .forEach(([key, item]) => {
+        const summarized = summarizeVisualizationValue(item, depth + 1);
+        if (
+          summarized === null
+          || summarized === undefined
+          || (typeof summarized === "string" && !summarized)
+          || (Array.isArray(summarized) && !summarized.length)
+          || (typeof summarized === "object" && !Array.isArray(summarized) && !Object.keys(summarized).length)
+        ) {
+          return;
+        }
+        result[key] = summarized;
+      });
+    return result;
+  }
+  return normalizeWhitespace(String(value));
+}
+
+function buildVisualizationComplianceEvidence(complianceResult = null, bookingSummary = null) {
+  const rawFindings = Array.isArray(complianceResult?.findings) && complianceResult.findings.length
+    ? complianceResult.findings
+    : Array.isArray(bookingSummary?.compliance_findings)
+      ? bookingSummary.compliance_findings
+      : [];
+  const rawAlternatives = Array.isArray(complianceResult?.alternatives) ? complianceResult.alternatives : [];
+  const status = complianceResult?.status || bookingSummary?.compliance_status || "Pending";
+  const summary = complianceResult?.summary
+    || (status !== "Pending" ? `Compliance review finished with ${status}.` : "");
+  return {
+    status,
+    summary: normalizeWhitespace(summary),
+    findings: rawFindings
+      .map((item) => trimToWords(normalizeWhitespace(item), 20))
+      .filter(Boolean)
+      .slice(0, 3),
+    alternatives: rawAlternatives
+      .map((item) => trimToWords(normalizeWhitespace(item), 18))
+      .filter(Boolean)
+      .slice(0, 2),
+    requiresAdjustments: status === "Passed with Adjustments" || status === "Failed" || rawFindings.length > 0
+  };
+}
+
+function buildVisualizationWorkflowEvidence(campaignStateObject = null) {
+  const executionDetails = campaignStateObject?.executionDetails || {};
+  const orderedStages = [
+    { nodeId: ORCHESTRATOR_NODE_ID, stage: "Orchestrator", phase: 0 },
+    ...WORKFLOW_AGENTS.map((agent) => ({
+      nodeId: agent.nodeId,
+      stage: agent.agentName,
+      phase: agent.phase
+    }))
+  ];
+  return orderedStages
+    .map((entry) => {
+      const detail = executionDetails[entry.nodeId] || {};
+      const stateUpdate = detail.stateUpdate || campaignStateObject?.stageOutputs?.[entry.nodeId] || {};
+      const summaryLines = (Array.isArray(detail.summaryLines) ? detail.summaryLines : [])
+        .map((line) => trimToWords(normalizeWhitespace(line), 22))
+        .filter(Boolean)
+        .slice(0, 3);
+      const whyMatters = trimToWords(normalizeWhitespace(detail.whyMatters || ""), 22);
+      const handoff = trimToWords(normalizeWhitespace(detail.handoff || ""), 22);
+      const keyState = summarizeVisualizationValue(stateUpdate, 0);
+      const subAgentHighlights = (Array.isArray(detail.subAgentResults) ? detail.subAgentResults : [])
+        .slice(0, 2)
+        .map((item) => {
+          const details = Array.isArray(item?.details) ? item.details.map((line) => normalizeWhitespace(line)).filter(Boolean) : [];
+          const note = details[0] || normalizeWhitespace(item?.definition || item?.summary || "");
+          return {
+            name: item?.name || item?.id || "",
+            note: trimToWords(note, 18)
+          };
+        })
+        .filter((item) => item.name || item.note);
+      const hasKeyState = Array.isArray(keyState)
+        ? keyState.length > 0
+        : keyState && typeof keyState === "object"
+          ? Object.keys(keyState).length > 0
+          : Boolean(keyState);
+      if (!summaryLines.length && !whyMatters && !handoff && !subAgentHighlights.length && !hasKeyState) return null;
+      return {
+        phase: entry.phase,
+        stage: entry.stage,
+        nodeId: entry.nodeId,
+        summaryLines,
+        whyMatters,
+        handoff,
+        keyState,
+        subAgentHighlights
+      };
+    })
+    .filter(Boolean);
+}
+
+function buildVisualizationConsistencyAnchors({ dashboard = null, campaignStateObject = null, complianceResult = null, actions = [] } = {}) {
+  const selectedScenario = campaignStateObject?.selectedScenario || {};
+  const bookingSummary = campaignStateObject?.stageOutputs?.["booking-proposals-agent"]?.booking_summary || {};
+  const traffickingSummary = campaignStateObject?.stageOutputs?.["trafficking-signals-agent"]?.trafficking_summary || {};
+  const inflightSummary = campaignStateObject?.stageOutputs?.["inflight-operations-agent"]?.inflight_summary || {};
+  const measurementSummary = campaignStateObject?.stageOutputs?.["measurement-agent"]?.measurement_summary || {};
+  const reach = dashboard?.reach || {};
+  const compliance = buildVisualizationComplianceEvidence(complianceResult, bookingSummary);
+  const openingAllocation = selectedScenario.allocation || {};
+  const finalAllocation = inflightSummary.final_allocation || openingAllocation || {};
+  const shiftBudget = Number(inflightSummary.shift_budget_usd || dashboard?.makeGood?.shiftBudget || 0);
+  const signalRisks = Array.isArray(traffickingSummary.signal_risks) ? traffickingSummary.signal_risks : [];
+  const actionRows = Array.isArray(actions) ? actions : [];
+  return {
+    scenarioDecision: {
+      title: selectedScenario.title || "",
+      recommendationReason: normalizeWhitespace(selectedScenario.recommendationReason || ""),
+      openingAllocation,
+      openingAllocationMix: formatVisualizationAllocationMix(openingAllocation)
+    },
+    bookingPackage: {
+      lineItemCount: Array.isArray(bookingSummary.line_items) ? bookingSummary.line_items.length : 0,
+      guaranteeImpressions: Number(bookingSummary.guarantee_impressions || 0),
+      activeBudgetUsd: Number(bookingSummary.active_budget_usd || 0),
+      reserveBudgetUsd: Number(bookingSummary.reserve_budget_usd || 0)
+    },
+    compliance: {
+      status: compliance.status,
+      requiresAdjustments: compliance.requiresAdjustments,
+      summary: compliance.summary,
+      topFindings: compliance.findings
+    },
+    launchReadiness: {
+      readinessScore: Number(traffickingSummary.readiness_score || 0),
+      readinessStatus: normalizeWhitespace(traffickingSummary.readiness_status_label || ""),
+      signalRiskCount: signalRisks.length,
+      topSignalRisk: signalRisks[0]
+        ? trimToWords(normalizeWhitespace(`${signalRisks[0].network || "One placement"} ${signalRisks[0].daypart || ""} ${signalRisks[0].status || ""}`), 14)
+        : ""
+    },
+    pacingOutcome: {
+      streamingDeliveryRatePct: Number(inflightSummary.digital_delivery_rate_pct || 0),
+      linearDeliveryRatePct: Number(inflightSummary.linear_delivery_rate_pct || 0),
+      makeGoodTriggered: Boolean(inflightSummary.make_good_triggered || shiftBudget),
+      shiftBudgetUsd: shiftBudget,
+      finalAllocation,
+      finalAllocationMix: formatVisualizationAllocationMix(finalAllocation)
+    },
+    reachOutcome: {
+      projectedHouseholds: Number(reach.projectedHouseholds || reach.modeledHouseholds || reach.scaledReach || measurementSummary.projected_households || 0),
+      matchedHouseholds: Number(measurementSummary.matched_households || 0),
+      cleanRoomMatchRatePct: Number(measurementSummary.clean_room_match_rate_pct || 0),
+      averageFrequency: Number(measurementSummary.average_frequency || 0),
+      overlapPct: Number(reach.overlapPct || 0),
+      deviceCount: Number(reach.deviceCount || 0),
+      strongestChannel: normalizeWhitespace(measurementSummary.strongest_channel || ""),
+      salesLiftPct: Number(measurementSummary.sales_lift_pct || 0),
+      nextBestAction: normalizeWhitespace(measurementSummary.next_best_action || "")
+    },
+    actionTrace: {
+      trackedActions: actionRows.length,
+      completedActions: actionRows.filter((row) => row.status === "done").length,
+      flaggedIssues: actionRows.filter((row) => row.status === "issue" || row.status === "error").length
+    }
+  };
+}
+
+function buildVisualizationSummaryPayload({ campaignPrompt = "", dashboard = null, agentOutputs = [], campaignStateObject = null, complianceResult = null } = {}) {
+  const planningSummary = campaignStateObject?.stageOutputs?.["planning-identity-agent"]?.audience_summary
+    ? { ...campaignStateObject.stageOutputs["planning-identity-agent"].audience_summary }
+    : null;
+  const inventorySummary = campaignStateObject?.stageOutputs?.["inventory-yield-agent"]?.inventory_summary
+    ? { ...campaignStateObject.stageOutputs["inventory-yield-agent"].inventory_summary }
+    : null;
+  const bookingSummary = campaignStateObject?.stageOutputs?.["booking-proposals-agent"]?.booking_summary
+    ? { ...campaignStateObject.stageOutputs["booking-proposals-agent"].booking_summary }
+    : null;
+  const traffickingSummary = campaignStateObject?.stageOutputs?.["trafficking-signals-agent"]?.trafficking_summary
+    ? { ...campaignStateObject.stageOutputs["trafficking-signals-agent"].trafficking_summary }
+    : null;
+  const measurementSummary = campaignStateObject?.stageOutputs?.["measurement-agent"]?.measurement_summary
+    ? { ...campaignStateObject.stageOutputs["measurement-agent"].measurement_summary }
+    : null;
+  const inflightSummary = campaignStateObject?.stageOutputs?.["inflight-operations-agent"]?.inflight_summary
+    ? { ...campaignStateObject.stageOutputs["inflight-operations-agent"].inflight_summary }
+    : null;
+  const actionRows = Array.isArray(dashboard?.actions) && dashboard.actions.length
+    ? dashboard.actions
+    : buildActionRows(agentOutputs, state.issueNodeIds || new Set());
+  const compliance = buildVisualizationComplianceEvidence(complianceResult, bookingSummary);
+  const selectedScenario = campaignStateObject?.selectedScenario
+    ? {
+      title: campaignStateObject.selectedScenario.title || "",
+      variantKey: campaignStateObject.selectedScenario.variantKey || "",
+      allocationStrategy: trimToWords(normalizeWhitespace(campaignStateObject.selectedScenario.allocationStrategy || ""), 26),
+      channelLogic: trimToWords(normalizeWhitespace(campaignStateObject.selectedScenario.channelLogic || ""), 24),
+      allocation: { ...(campaignStateObject.selectedScenario.allocation || {}) },
+      recommendationReason: normalizeWhitespace(campaignStateObject.selectedScenario.recommendationReason || ""),
+      rankedNetworks: (campaignStateObject.selectedScenario.rankedNetworks || []).slice(0, 4).map((item) => ({
+        name: item?.name || "",
+        reason: trimToWords(normalizeWhitespace(item?.reason || item?.rationale || ""), 14)
+      }))
+    }
+    : null;
+  return {
+    campaignPrompt,
+    campaignContext: {
+      budgetUsd: Number(campaignStateObject?.budgetUsd || 0),
+      productFamily: campaignStateObject?.productFamily?.displayLabel || "",
+      countries: Array.isArray(campaignStateObject?.countries) ? campaignStateObject.countries : []
+    },
+    selectedScenario,
+    executive: dashboard?.executive
+      ? {
+        headline: dashboard.executive.headline || "",
+        summaryIntro: dashboard.executive.summaryIntro || "",
+        summaryLines: (dashboard.executive.summaryLines || [])
+          .map((line) => trimToWords(normalizeWhitespace(line), 26))
+          .filter(Boolean)
+          .slice(0, 4),
+        sections: (dashboard.executive.sections || [])
+          .slice(0, 3)
+          .map((section) => ({
+            title: normalizeWhitespace(section?.title || ""),
+            text: trimToWords(normalizeWhitespace(section?.text || ""), 30)
+          }))
+          .filter((section) => section.title || section.text),
+        metrics: (dashboard.executive.metrics || [])
+          .slice(0, 6)
+          .map((metric) => ({
+            label: normalizeWhitespace(metric?.label || ""),
+            value: normalizeWhitespace(metric?.value || ""),
+            help: trimToWords(normalizeWhitespace(metric?.help || ""), 18)
+          }))
+          .filter((metric) => metric.label && metric.value),
+        makeGoodSummary: trimToWords(normalizeWhitespace(dashboard.executive.makeGoodSummary || ""), 24)
+      }
+      : null,
+    pacing: dashboard?.pacing
+      ? {
+        linearPeakDeliveryRate: Math.max(...(dashboard.pacing.linearPct || [0])),
+        digitalPeakDeliveryRate: Math.max(...(dashboard.pacing.digitalPct || [0])),
+        linearPlannedImpressions: (dashboard.pacing.linearPlanned || []).reduce((sum, value) => sum + value, 0),
+        linearDeliveredImpressions: (dashboard.pacing.linearImp || []).reduce((sum, value) => sum + value, 0),
+        digitalPlannedImpressions: (dashboard.pacing.digitalPlanned || []).reduce((sum, value) => sum + value, 0),
+        digitalDeliveredImpressions: (dashboard.pacing.digitalImp || []).reduce((sum, value) => sum + value, 0),
+        makeGoodHour: dashboard.pacing.makeGoodHour || 12
+      }
+      : {},
+    reach: dashboard?.reach || {},
+    makeGood: dashboard?.makeGood
+      ? {
+        shiftBudget: dashboard.makeGood.shiftBudget,
+        makeGoodTriggered: Boolean(dashboard.makeGood.shiftBudget)
+      }
+      : {},
+    stageSummaries: {
+      planning: summarizeVisualizationValue(planningSummary, 0),
+      inventory: summarizeVisualizationValue(inventorySummary, 0),
+      booking: summarizeVisualizationValue(bookingSummary, 0),
+      trafficking: summarizeVisualizationValue(traffickingSummary, 0),
+      inflight: summarizeVisualizationValue(inflightSummary, 0),
+      measurement: summarizeVisualizationValue(measurementSummary, 0)
+    },
+    inflight: inflightSummary,
+    measurement: measurementSummary,
+    compliance,
+    consistencyAnchors: buildVisualizationConsistencyAnchors({
+      dashboard,
+      campaignStateObject,
+      complianceResult,
+      actions: actionRows
+    }),
+    workflow: buildVisualizationWorkflowEvidence(campaignStateObject),
+    plainEnglishDefinitions: {
+      projectedHouseholds: "Estimated total households expected to receive at least one impression.",
+      matchedHouseholds: "Measured subset of reached households that can be verified in the clean room.",
+      averageFrequency: "Average number of exposures per reached household.",
+      crossPlatformOverlap: "Share of reached households expected to see both streaming and linear.",
+      makeGood: "An in-flight budget change made to recover delivery risk."
+    },
+    actions: actionRows
+      .slice(0, 8)
+      .map((row) => ({
+        agent: row.agent,
+        status: row.status,
+        summary: trimToWords(normalizeWhitespace(row.summary || ""), 24)
+      }))
+  };
+}
+
+function buildFallbackVisualizationDeck({ campaignPrompt = "", dashboard = null, campaignStateObject = null, summaryPayload = null } = {}) {
+  const executive = dashboard?.executive || {};
+  const payload = summaryPayload || buildVisualizationSummaryPayload({
+    campaignPrompt,
+    dashboard,
+    campaignStateObject
+  });
+  const secondaryChannelLabel = "streaming";
+  const reach = payload.reach || {};
+  const measurement = payload.measurement || {};
+  const inflight = payload.inflight || {};
+  const actions = payload.actions || [];
+  const compliance = payload.compliance || {};
+  const selectedScenarioTitle = payload.selectedScenario?.title || executive.headline || "Selected campaign plan";
+  const projectedHouseholds = Number(reach.projectedHouseholds || reach.modeledHouseholds || reach.scaledReach || reach.uniqueHouseholds || 0);
+  const matchedHouseholds = Number(measurement.matched_households || 0);
+  const overlapPct = Number(reach.overlapPct || 0);
+  const deviceCount = Number(reach.deviceCount || 0);
+  const cleanRoomMatchRate = Number(measurement.clean_room_match_rate_pct || 0);
+  const averageFrequency = Number(measurement.average_frequency || 0);
+  const salesLiftPct = Number(measurement.sales_lift_pct || 0);
+  const shiftBudget = Number(payload.makeGood?.shiftBudget || 0);
+  const linearPeak = Number(payload.pacing?.linearPeakDeliveryRate || 0);
+  const digitalPeak = Number(payload.pacing?.digitalPeakDeliveryRate || 0);
+  const makeGoodHour = Number(payload.pacing?.makeGoodHour || 12);
+  const finalAllocation = inflight.final_allocation || payload.selectedScenario?.allocation || {};
+  const finalMix = formatVisualizationAllocationMix(finalAllocation) === "Allocation pending"
+    ? "Final mix pending"
+    : formatVisualizationAllocationMix(finalAllocation);
+  const strongestChannel = measurement.strongest_channel || (digitalPeak >= linearPeak ? secondaryChannelLabel : "linear");
+  const nextBestAction = normalizeWhitespace(measurement.next_best_action || "Use the measured delivery pattern to shape the next campaign flight.");
+  const keyMetrics = (executive.metrics || []).slice(0, 4);
+  const topActionBullets = actions.slice(0, 3).map((row) => `${row.agent}: ${row.summary}`);
+  const completedCount = actions.filter((row) => row.status === "done").length;
+  const issueCount = actions.filter((row) => row.status === "issue" || row.status === "error").length;
+  const complianceStatus = normalizeWhitespace(compliance.status || "");
+  const complianceSummary = trimToWords(normalizeWhitespace(compliance.summary || ""), 20);
+  const complianceMeaning = /^compliance review finished with\b/i.test(complianceSummary) ? "" : complianceSummary;
+
+  return {
+    deckTitle: "Campaign Output and Visualization Deck",
+    deckSubtitle: `${selectedScenarioTitle} presented in plain English for easy review.`,
+    slides: [
+      {
+        kind: "executive",
+        eyebrow: "Executive Summary",
+        title: "What This Campaign Should Achieve",
+        takeaway: executive.summaryIntro || `The selected plan is designed to turn the brief into measurable household reach with a clear cross-platform route and a readable business outcome.`,
+        body: `${(executive.sections || []).slice(0, 2).map((section) => section.text).join(" ") || (executive.summaryLines || []).slice(0, 2).join(" ")}${complianceStatus ? ` Compliance review ended with ${complianceStatus}${complianceMeaning ? `, meaning ${complianceMeaning.charAt(0).toLowerCase() + complianceMeaning.slice(1)}` : ""}.` : ""}`.trim(),
+        bullets: normalizeMeaningfulTextList(executive.summaryLines || [], [
+          `The selected route is ${selectedScenarioTitle}.`,
+          `The plan is expected to reach about ${projectedHouseholds.toLocaleString()} households if delivery performs as modeled.`,
+          `The slide deck explains the result in plain English so a first-time reviewer can follow the full story.`
+        ], {
+          minMeaningful: 3,
+          minWords: 8,
+          rejectGenericPraise: false
+        }).slice(0, 3),
+        metrics: keyMetrics.length ? keyMetrics : [
+          { label: "Projected Households Reached", value: projectedHouseholds.toLocaleString(), help: "Homes expected to see the campaign at least once." },
+          { label: "Audience-to-Delivery Match Rate", value: cleanRoomMatchRate ? `${cleanRoomMatchRate}%` : "Pending", help: "The measurable share of reached households that can be matched back in the clean room." },
+          { label: "Average Frequency", value: averageFrequency ? `${averageFrequency} times` : "Pending", help: "Average number of exposures for each reached household." },
+          { label: "Cross-Platform Overlap", value: `${overlapPct}%`, help: "Share of reached households expected to see both channels." }
+        ]
+      },
+      {
+        kind: "pacing",
+        eyebrow: "Delivery Pacing",
+        title: "How Delivery Moved Through The Day",
+        takeaway: shiftBudget
+          ? `${secondaryChannelLabel.charAt(0).toUpperCase() + secondaryChannelLabel.slice(1)} delivery stayed stronger than linear during pacing simulation, so the system moved budget before the shortfall became material.`
+          : `The pacing simulation kept linear and ${secondaryChannelLabel} close enough to target that no corrective budget shift was required.`,
+        body: `This slide compares planned and delivered impressions by hour so the team can see where the weaker channel appeared. Linear peaked at ${linearPeak}% delivery while ${secondaryChannelLabel} peaked at ${digitalPeak}%, and the model marked hour ${makeGoodHour} as the point where an intervention was needed${shiftBudget ? ` to protect delivery` : ""}.`,
+        bullets: [
+          `Planned versus delivered pacing is shown hour by hour so the risk is visible before the budget is fully spent.`,
+          shiftBudget
+            ? `The make-good trigger appeared at hour ${makeGoodHour}, which is when the system chose to protect the plan instead of waiting for a larger shortfall.`
+            : `No hour created a large enough delivery gap to justify moving money out of the original mix.`,
+          `The chart is meant to answer a simple question in plain English: which channel was keeping up, and which one needed help.`
+        ],
+        metrics: [
+          { label: "Linear Peak Delivery Rate", value: linearPeak ? `${linearPeak}%` : "Pending", help: "Highest modeled linear delivery rate during pacing simulation." },
+          { label: `${secondaryChannelLabel.charAt(0).toUpperCase() + secondaryChannelLabel.slice(1)} Peak Delivery Rate`, value: digitalPeak ? `${digitalPeak}%` : "Pending", help: `Highest modeled ${secondaryChannelLabel} delivery rate during pacing simulation.` },
+          { label: "Make-Good Trigger Hour", value: `Hour ${makeGoodHour}`, help: "The modeled point where an operational intervention became worth making." }
+        ],
+        chartType: "pacing"
+      },
+      {
+        kind: "reach",
+        eyebrow: "Audience Reach",
+        title: "How Many Households This Plan Should Reach",
+        takeaway: `The plan is expected to reach about ${projectedHouseholds.toLocaleString()} households across ${deviceCount.toLocaleString()} modeled devices, with ${overlapPct}% of those households likely to see both channels.`,
+        body: `This slide translates media delivery into household terms. Instead of only showing impressions, it explains how many homes the campaign is expected to touch, how many of those homes can be matched in the clean room, and how much overlap exists between the two channels.`,
+        bullets: [
+          `Projected household reach is the broadest view of delivery, while matched households show the smaller measurable subset that can be verified later.`,
+          cleanRoomMatchRate
+            ? `The clean-room match rate is ${cleanRoomMatchRate}%, which means not every reached household can be measured at household level even though it still counts in delivery.`
+            : "The clean-room match rate will be added when measurement data is available.",
+          `Cross-platform overlap matters because it shows whether the plan is adding new homes or repeating the same homes on both channels.`
+        ],
+        metrics: [
+          { label: "Projected Households Reached", value: projectedHouseholds.toLocaleString(), help: "Homes expected to see the campaign at least once." },
+          { label: "Matched Households", value: matchedHouseholds ? matchedHouseholds.toLocaleString() : "Pending", help: "Reached households that can be measured in the privacy-safe clean room." },
+          { label: "Cross-Platform Overlap", value: `${overlapPct}%`, help: "Share of households expected to see both streaming and linear." },
+          { label: "Devices Touched", value: deviceCount.toLocaleString(), help: "Modeled devices contributing to the cross-platform reach estimate." }
+        ],
+        chartType: "reach"
+      },
+      {
+        kind: "make-good",
+        eyebrow: "In-Flight Action",
+        title: shiftBudget ? "What Changed When Delivery Risk Appeared" : "Why No Emergency Budget Shift Was Needed",
+        takeaway: shiftBudget
+          ? `The system moved $${shiftBudget.toLocaleString()} into stronger inventory so the campaign could protect delivery before the weaker lane dragged the full plan down.`
+          : "The plan stayed close enough to its delivery targets that the system could keep the original route without forcing a late rescue.",
+        body: shiftBudget
+          ? `The make-good logic treated the pacing gap as an operational problem, not just a reporting note. It shifted budget into the stronger lane, updated the final allocation, and handed the corrected path into measurement so the final readout reflects what operations actually did.`
+          : `Because the modeled delivery stayed within tolerance, the system did not need to move money between channels. That matters because it means the final measurement readout reflects the original plan rather than a rescue intervention.`,
+        bullets: [
+          shiftBudget
+            ? `The budget shift was $${shiftBudget.toLocaleString()}, and the post-adjustment mix became ${finalMix}.`
+            : `The final working mix remained ${finalMix}.`,
+          `The strongest response lane after pacing was ${strongestChannel}, which helps explain where future optimization should lean.`,
+          `This slide answers the operational question clearly: did the system change the plan in flight, and if so, why?`
+        ],
+        metrics: [
+          { label: "Budget Shifted", value: shiftBudget ? `$${shiftBudget.toLocaleString()}` : "$0", help: "Budget moved into stronger inventory during pacing control." },
+          { label: "Final Working Mix", value: finalMix, help: "The post-optimization allocation used by the final measurement stage." },
+          { label: "Strongest Channel", value: strongestChannel, help: "Channel with the stronger modeled response after in-flight optimization." }
+        ],
+        note: executive.makeGoodSummary || ""
+      },
+      {
+        kind: "actions",
+        eyebrow: "Traceability",
+        title: "Which Agents Made The Visible Decisions",
+        takeaway: `This slide shows the actions behind the final result so reviewers can connect the outcome to the exact agent decisions instead of treating the dashboard as a black box.`,
+        body: `Every visible result in the campaign output came from a chain of agent actions. The table below puts those actions in order so the team can see when each stage contributed, where issues were flagged, and how the final plan moved from recommendation to measurable outcome.`,
+        bullets: topActionBullets.length ? topActionBullets : [
+          "The planning agent defined the initial audience and route.",
+          "Operations translated pacing risk into a visible decision path.",
+          "Measurement turned the corrected delivery path into next-step guidance."
+        ],
+        metrics: [
+          { label: "Tracked Actions", value: actions.length.toString(), help: "Decision records shown in the traceability table." },
+          { label: "Completed Outputs", value: completedCount.toString(), help: "Stages that finished with a usable campaign readout." },
+          { label: "Flagged Issues", value: issueCount.toString(), help: "Items that required extra attention or policy review." }
+        ],
+        tableRows: actions.slice(0, 8)
+      },
+      {
+        kind: "next-steps",
+        eyebrow: "Next Steps",
+        title: "What The Team Should Do Next",
+        takeaway: nextBestAction,
+        body: `The measurement stage closes the loop by converting the campaign outcome into a next-flight recommendation. Instead of resetting to generic planning language, it uses the matched household readout, the strongest-performing channel, and the final allocation to tell the team what to do next.`,
+        bullets: [
+          salesLiftPct
+            ? `Modeled sales lift landed at ${salesLiftPct}%, which gives the team a directional signal on whether the route is worth repeating.`
+            : "Sales-lift guidance will appear once the outcome model is available.",
+          averageFrequency
+            ? `Average frequency was ${averageFrequency} times per reached household, which helps the team judge whether the plan built enough repetition without creating heavy waste.`
+            : "Average frequency will appear after both booking and projected reach are finalized.",
+          `The recommended next move is written in normal English so the next planning discussion can start from evidence instead of guesswork.`
+        ],
+        metrics: [
+          { label: "Matched Households", value: matchedHouseholds ? matchedHouseholds.toLocaleString() : "Pending", help: "Measured households that can inform the next campaign flight." },
+          { label: "Average Frequency", value: averageFrequency ? `${averageFrequency} times` : "Pending", help: "Average exposures per reached household." },
+          { label: "Modeled Sales Lift", value: salesLiftPct ? `${salesLiftPct}%` : "Pending", help: "Directional response signal from the synthetic measurement stage." }
+        ],
+        note: payload.selectedScenario?.recommendationReason || ""
+      }
+    ]
+  };
+}
+
+function parseVisualizationDeckResponse(rawText = "") {
+  const text = String(rawText || "").trim();
+  if (!text) return {};
+  const direct = Utils.safeParseJson(text);
+  if (Object.keys(direct).length) return direct;
+
+  const fencedMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fencedMatch?.[1]) {
+    const fencedParsed = Utils.safeParseJson(fencedMatch[1]);
+    if (Object.keys(fencedParsed).length) return fencedParsed;
+  }
+
+  const firstBrace = text.indexOf("{");
+  const lastBrace = text.lastIndexOf("}");
+  if (firstBrace >= 0 && lastBrace > firstBrace) {
+    const sliced = text.slice(firstBrace, lastBrace + 1);
+    const parsed = Utils.safeParseJson(sliced);
+    if (Object.keys(parsed).length) return parsed;
+  }
+
+  return {};
+}
+
+function normalizeVisualizationDeck(candidate = {}, fallbackDeck = {}) {
+  const fallbackSlides = Array.isArray(fallbackDeck.slides) ? fallbackDeck.slides : [];
+  const candidateSlides = Array.isArray(candidate.slides) ? candidate.slides : [];
+  const clampDeckText = (text = "", maxWords = 24) => trimToWords(normalizeWhitespace(text || ""), maxWords);
+  return {
+    deckTitle: clampDeckText(preferMeaningfulText(candidate.deckTitle || "", fallbackDeck.deckTitle || "Campaign Output and Visualization Deck", {
+      minWords: 3,
+      rejectGenericPraise: false
+    }), 10),
+    deckSubtitle: clampDeckText(preferMeaningfulText(candidate.deckSubtitle || "", fallbackDeck.deckSubtitle || "", {
+      minWords: 6,
+      rejectGenericPraise: false
+    }), 18),
+    slides: fallbackSlides.map((fallbackSlide, index) => {
+      const rawSlide = candidateSlides.find((item) => normalizeWhitespace(item?.kind || "") === fallbackSlide.kind)
+        || candidateSlides[index]
+        || {};
+      return {
+        ...fallbackSlide,
+        eyebrow: clampDeckText(preferMeaningfulText(rawSlide.eyebrow || "", fallbackSlide.eyebrow || "", {
+          minWords: 1,
+          rejectGenericPraise: false
+        }), 4),
+        title: clampDeckText(preferMeaningfulText(rawSlide.title || "", fallbackSlide.title || "", {
+          minWords: 3,
+          rejectGenericPraise: false
+        }), 10),
+        takeaway: clampDeckText(preferMeaningfulText(rawSlide.takeaway || "", fallbackSlide.takeaway || "", {
+          minWords: 8,
+          rejectGenericPraise: false
+        }), 26),
+        body: clampDeckText(preferMeaningfulText(rawSlide.body || "", fallbackSlide.body || "", {
+          minWords: 16,
+          rejectGenericPraise: false
+        }), 48),
+        bullets: normalizeMeaningfulTextList(rawSlide.bullets, fallbackSlide.bullets || [], {
+          minMeaningful: 3,
+          minWords: 6,
+          rejectGenericPraise: false
+        }).slice(0, 3).map((item) => clampDeckText(item, 18)),
+        note: clampDeckText(preferMeaningfulText(rawSlide.note || "", fallbackSlide.note || "", {
+          minWords: 6,
+          rejectGenericPraise: false
+        }) || fallbackSlide.note || "", 26),
+        metrics: fallbackSlide.metrics || [],
+        chartType: fallbackSlide.chartType || null,
+        tableRows: (fallbackSlide.tableRows || []).slice(0, 6).map((row) => ({
+          ...row,
+          summary: clampDeckText(row.summary || "", 18)
+        }))
+      };
+    })
+  };
 }
 
 function buildSyntheticAgentNarrative(out, campaignPrompt) {
@@ -6118,6 +6779,87 @@ function scheduleDashboardCharts() {
   });
 }
 
+let revealDeckScheduled = false;
+let revealDeckInstance = null;
+let revealDeckRoot = null;
+let revealDeckSignature = "";
+
+function scheduleRevealDeck() {
+  if (revealDeckScheduled) return;
+  revealDeckScheduled = true;
+  requestAnimationFrame(() => {
+    revealDeckScheduled = false;
+    syncRevealDeck();
+  });
+}
+
+async function syncRevealDeck() {
+  const root = document.querySelector(".wbd-output-deck");
+  if (!root) {
+    destroyRevealDeck();
+    return;
+  }
+  if (typeof window === "undefined" || typeof window.Reveal !== "function") return;
+  const deckWidth = Math.max(Math.round(root.clientWidth || 0), 640);
+  const deckHeight = Math.max(Math.round(root.clientHeight || 0), 420);
+
+  const signature = root.dataset.revealSignature || "";
+  if (revealDeckInstance && revealDeckRoot === root && revealDeckSignature === signature) {
+    try {
+      if (typeof revealDeckInstance.configure === "function") {
+        revealDeckInstance.configure({
+          width: deckWidth,
+          height: deckHeight,
+          margin: 0.01
+        });
+      }
+      revealDeckInstance.layout();
+    } catch (error) {
+      console.warn("Reveal.js layout refresh failed:", error?.message || error);
+    }
+    return;
+  }
+
+  destroyRevealDeck();
+
+  try {
+    const deck = new window.Reveal(root, {
+      embedded: true,
+      keyboardCondition: "focused",
+      controls: true,
+      controlsBackArrows: "faded",
+      progress: true,
+      slideNumber: "c/t",
+      transition: "none",
+      center: false,
+      margin: 0.01,
+      width: deckWidth,
+      height: deckHeight
+    });
+    await deck.initialize();
+    renderDashboardCharts();
+    deck.on("slidechanged", () => renderDashboardCharts());
+    revealDeckInstance = deck;
+    revealDeckRoot = root;
+    revealDeckSignature = signature;
+  } catch (error) {
+    console.warn("Reveal.js deck initialization failed:", error?.message || error);
+  }
+}
+
+function destroyRevealDeck() {
+  if (revealDeckInstance) {
+    try {
+      revealDeckInstance.destroy();
+    } catch (error) {
+      console.warn("Reveal.js deck destroy failed:", error?.message || error);
+    }
+  }
+  revealDeckInstance = null;
+  revealDeckRoot = null;
+  revealDeckSignature = "";
+}
+
 function renderDashboardCharts() {
   if (!state.dashboard || state.stage !== "idle") return;
   renderPacingChartD3();
@@ -6130,9 +6872,11 @@ function renderPacingChartD3() {
   const mode = state.pacingMode || "imp";
   const pacing = state.dashboard?.pacing;
   if (!pacing) return;
+  const width = container.clientWidth || 560;
 
   const sig = JSON.stringify({
     mode,
+    width,
     hours: pacing.hours.length,
     hash: pacing.linearImp?.[0],
     linearTotal: (pacing.linearImp || []).reduce((sum, value) => sum + value, 0),
@@ -6143,7 +6887,6 @@ function renderPacingChartD3() {
   container.dataset.signature = sig;
 
   container.innerHTML = "";
-  const width = container.clientWidth || 560;
   const height = 220;
   const padding = { top: 16, right: 28, bottom: 28, left: 44 };
 
@@ -6185,14 +6928,14 @@ function renderPacingChartD3() {
   svg.append("g")
     .attr("transform", `translate(0,${height - padding.bottom})`)
     .call(d3.axisBottom(x).ticks(6).tickFormat(d => `Hour ${d}`))
-    .call(g => g.selectAll("text").attr("fill", "#a9b0c7"))
-    .call(g => g.selectAll("path,line").attr("stroke", "rgba(255,255,255,0.15)"));
+    .call(g => g.selectAll("text").attr("fill", "#3d5c7a"))
+    .call(g => g.selectAll("path,line").attr("stroke", "rgba(37, 59, 87, 0.24)"));
 
   svg.append("g")
     .attr("transform", `translate(${padding.left},0)`)
     .call(d3.axisLeft(y).ticks(4))
-    .call(g => g.selectAll("text").attr("fill", "#a9b0c7"))
-    .call(g => g.selectAll("path,line").attr("stroke", "rgba(255,255,255,0.15)"));
+    .call(g => g.selectAll("text").attr("fill", "#3d5c7a"))
+    .call(g => g.selectAll("path,line").attr("stroke", "rgba(37, 59, 87, 0.24)"));
 
   const line = d3.line()
     .x((d, i) => x(i + 1))
@@ -6221,7 +6964,7 @@ function renderPacingChartD3() {
   svg.append("text")
     .attr("x", x(makeGoodHour) + 6)
     .attr("y", padding.top + 12)
-    .attr("fill", "#ffb703")
+    .attr("fill", "#9a4e00")
     .attr("font-size", "11px")
     .text("Make-Good Trigger");
 
@@ -6265,8 +7008,10 @@ function renderReachChartD3() {
   const reach = state.dashboard?.reach;
   if (!reach) return;
   const projectedHouseholds = Number(reach.projectedHouseholds || reach.modeledHouseholds || reach.scaledReach || reach.uniqueHouseholds || 0);
+  const width = container.clientWidth || 180;
 
   const sig = JSON.stringify({
+    width,
     reach: projectedHouseholds,
     overlap: reach.overlapPct,
     deviceCount: reach.deviceCount,
@@ -6276,7 +7021,6 @@ function renderReachChartD3() {
   container.dataset.signature = sig;
 
   container.innerHTML = "";
-  const width = 180;
   const height = 180;
   const radius = 70;
   const svg = d3.select(container)
@@ -6304,7 +7048,7 @@ function renderReachChartD3() {
   g.append("text")
     .attr("text-anchor", "middle")
     .attr("dy", "-0.2em")
-    .attr("fill", "#e9edf6")
+    .attr("fill", "#10233e")
     .attr("font-size", "18px")
     .attr("font-weight", "600")
     .text(`${reach.overlapPct}%`);
@@ -6312,7 +7056,7 @@ function renderReachChartD3() {
   g.append("text")
     .attr("text-anchor", "middle")
     .attr("dy", "1.2em")
-    .attr("fill", "#a9b0c7")
+    .attr("fill", "#3d5c7a")
     .attr("font-size", "11px")
     .text("Cross-Platform Overlap");
 }
@@ -6707,4 +7451,8 @@ function syncFlowchart() {
   fcCtrl.resize();
 }
 
-window.addEventListener("resize", () => scheduleFlowchartSync());
+window.addEventListener("resize", () => {
+  scheduleFlowchartSync();
+  scheduleRevealDeck();
+  renderDashboardCharts();
+});

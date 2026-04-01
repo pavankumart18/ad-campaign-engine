@@ -1,7 +1,11 @@
-Revised Output
+Desired Output
+
+Note: Scenario Selection logic is in the end
 
 
-Stage 1 (Planning & Identity) must show the AI filtering a massive Total Addressable Market (TAM) down to a highly concentrated, affordable, and high-converting segment.
+
+A. Stage 1 (Planning & Identity) 
+must show the AI filtering a massive Total Addressable Market (TAM) down to a highly concentrated, affordable, and high-converting segment.
 
 1. The "Stage Snapshot" (The Hard Numbers)
 These are the metrics that should appear in the four dark boxes on the left side of your UI.
@@ -9,7 +13,7 @@ Total WBD Universe: 3.8 Million HHs (This shows the AI scanned the whole network
 Target Reachable (for $50K): ~312,500 Unique HHs (This proves the AI did the math: $50K at a ~$40 blended CPM with a frequency cap of 4 = ~312K households.)
 Lead Cohort: Millennial Health-Conscious Parents
 Cross-Platform Overlap: 28.4% (Crucial metric: This shows that 28% of these parents watch BOTH Max and Linear TV, proving the need for a "Converged" engine to avoid spamming them).
-2. The "Stage Summary" (The AI's Narrative)
+2. The "Stage Summary" 
 This is the text that appears in the 'What It Found' section. It should read like an analyst's executive summary.
 WHAT IT FOUND:
 The engine scanned 145 million WBD viewer profiles and isolated a Total Addressable Market of 3.8 million Unique Households (HHs) matching "U.S. Parents of Toddlers" with high affinity for premium CPG/Grocery data.
@@ -27,7 +31,7 @@ Task: Define the "Where."
 Action Output: Analyzed trailing 30-day viewership habits for the locked audience.
 Result: Generated a Network Affinity Matrix. Found that target parents spike on streaming (Sesame Street on Max at 7:00 AM) and linear lifestyle (Pioneer Woman on Food Network at 1:00 PM). Passed these specific dayparts to the Yield Optimizer for pricing.
 
-Stage 2 (Inventory & Yield)
+B. Stage 2 (Inventory & Yield)
 
 
 
@@ -38,7 +42,8 @@ CAPACITY VALUE: $215,800 (This proves WBD has more than enough inventory to clea
 STREAMING CPM: $68.50 (Targeted Max/Discovery+ premium CPM).
 LINEAR CPM: $32.00 (Food Network / TLC Daytime CPM—much cheaper).
 
-2. The "Stage Summary" (The AI's Narrative)
+
+2. The "Stage Summary"
 This goes into the 'WHAT IT FOUND' section. It proves the AI is optimizing the $50K budget for maximum efficiency.
 WHAT IT FOUND:
 It identified 4,150,000 fulfillable impressions against the "Toddler Parent" cohort, representing a total capacity value of $215,800. The campaign’s $50K budget can clear easily without overselling future avails.
@@ -46,7 +51,6 @@ The Yield Optimizer ran a historical 6-month analysis on CPG Snack campaigns. It
 The pricing path is locked: Premium targeted Streaming is priced at a $68.50 CPM, and Daytime Linear is priced at a highly efficient $32.00 CPM.
 Final Strategy: Allocating $34,000 (68%) to morning Streaming, $11,000 (22%) to afternoon Linear, and holding $5,000 (10%) in algorithmic reserve. This blend will generate approximately 840,000 guaranteed converged impressions.
 3. The "Sub-Agent Breakdown" (The Technical Output)
-This shows the "brain" of the operation. WBD executives will love the Forecaster agent.
 Sub-Agent 1: Yield Optimizer (Historical Analytics)
 Task: Find the cheapest, most effective times to run the ads.
 Action Output: Queried historical ad-server logs for organic snack brands. Identified that bidding on Max Kids inventory after 5:00 PM results in a 15% CPM premium with lower conversion (parents are distracted).
@@ -58,16 +62,14 @@ Result: Found that Daytime Linear is wide open (40% sell-through), but Max premi
 Action Taken: Recommended the 10% budget reserve. If Max inventory clears too fast, the engine will use this reserve to dynamically shift budget to Discovery+ lifestyle streaming to ensure the $50K is spent in full.
 
 
-Stage 3 (Booking & Proposal
+C. Stage 3 (Booking & Proposal)
 1. The "Stage Snapshot" (The Hard Numbers)
-These metrics perfectly match your UI and represent a finalized, bookable media plan.
 SLOTS CHOSEN: 6 Items (Proves the AI didn't just dump all $50K into one bucket; it diversified the buy).
 GUARANTEED: 211,970 imp (This is the legally binding number of impressions WBD promises to deliver to the client).
 CHANNEL MIX: 3 streaming / 3 linear (A perfectly balanced converged portfolio).
 COMPLIANCE: Passed with Adjustments (The most important box. It shows the AI caught a legal issue and fixed it).
 
 2. The "Stage Summary" (The AI's Narrative)
-This text belongs in the 'WHAT IT FOUND' section. It should read like an official agency proposal.
 WHAT IT FOUND:
 It assembled 6 distinct bookable line items, guaranteeing 211,970 high-intent impressions against the U.S. Parents of Toddlers cohort. The proposal's compliance status is marked as "Passed with Adjustments."
 The strategy executes the approved 68% Streaming / 22% Linear / 10% Reserve split. Streaming allocations focus on Max Ad-Lite (Kids & Family block) and Discovery+ (Home & Food). Linear allocations focus on Food Network and TLC (Daytime).
@@ -75,7 +77,7 @@ The inventory capacity for next week is tight (250,725 available impressions vs.
 Compliance Flag Triggered: The system identified a COPPA (Children's Online Privacy Protection Act) risk. Because ads will run on Max Kids' programming, the Proposal Assembler automatically stripped all 3rd-party behavioral tracking pixels from the streaming line items to ensure federal legal adherence.
 
 3. The "Sub-Agent Breakdown" (The Technical Output)
-This reveals the "heavy lifting" that normally takes an Ad Ops team three days of email chains to complete.
+
 Sub-Agent 1: Booking Structurer
 Task: Translate the budget percentages into specific contract lines.
 Action Output: Created 6 converged line items.
@@ -87,7 +89,8 @@ Sub-Agent 2: Proposal Assembler (working with Parallel Compliance)
 Task: Generate the legally binding contract and apply guardrails.
 Action Output: Detected the "Toddler" target audience and invoked the WBD internal legal rubric.
 Result: Executed the "Passed with Adjustments" protocol. Generated a final JSON contract payload, but actively disabled click-through tracking on the Max Kids' inventory to comply with COPPA regulations. The proposal is now 100% legal and ready for a human click-to-approve.
-Stage 4 (Trafficking & Signals)
+
+D. Stage 4 (Trafficking & Signals)
 
 1. The Revised "Stage Snapshot" (The Hard Numbers)
 We are changing the labels to standard AdOps terminology so there is zero confusion.
@@ -100,15 +103,16 @@ CREATIVES QA'D: 3/3 Passed Specs
 AFFECTED PLACEMENT: Live Sports (TNT)
 (Replaces "Delivery Setup". This immediately tells the AdOps team exactly WHERE the 1 technical alert is happening, instantly giving them context).
 
+
 2. The Revised "Stage Summary" (The AI's Narrative)
-This text now explicitly explains the math behind the Readiness score and what the error actually means in plain English.
+
 WHAT IT FOUND:
 The AI closed the stage with an 84% Launch Readiness score. This score indicates the campaign is approved for activation, but one specific line item requires an operational watchlist.
 How it scored 84%: The system gave perfect marks for Asset QA (all 3 video files match WBD’s 1080p resolution and audio loudness specs) and Tag Compliance (no illegal tracking pixels were found). However, it deducted points during the Routing Check.
 The Technical Alert: The Delivery Sub-Agent pinged the ad-servers for all placements. Max and Food Network synced perfectly. However, the live broadcast feed for the TNT Sports placement returned a missing "SCTE-35" cue.
 The Translation: The automated trigger that tells the live sports broadcast to cut to a commercial is currently offline. The AI has authorized the overall campaign to launch, but flagged the TNT placement so a human operator can manually trigger the ad during the game.
 1. The Revised "Stage Snapshot" (The Hard Numbers)
-We need to change these labels to reflect active "Pacing" (how fast the budget is burning) and ensure the math is flawless.
+
 STREAMING PACING: 102% (Healthy) (Max is delivering perfectly, slightly ahead of schedule).
 LINEAR PACING: 81% (Under-delivering) (This is the red flag. Linear TV is missing its targets).
 AUTONOMOUS SHIFT: $4,250 Reallocated (The exact dollar amount the AI moved to fix the problem).
@@ -134,14 +138,12 @@ Action Output: Queried real-time avails on WBD Streaming properties. Found highl
 Result: Executed an API call to pause the failing Linear line item and shift $4,250 of the remaining budget into the Max line item. The campaign trajectory was immediately corrected.
 
 1. The Revised "Stage Snapshot" (The Hard Numbers)
-These metrics focus entirely on media efficiency and audience verification—the exact things an AdOps and Yield team are measured on.
 PROJECTED REACH: 71,300 HHs
 VERIFIED UNIQUE HHs: 68,450 HHs (Proves the campaign delivered extremely close to the goal).
 INCREMENTAL REACH (STREAMING): +22% Net-New (The hero metric. It proves that buying Max added 22% new parents that the Linear TV buy completely missed).
 AVG CONVERGED FREQUENCY: 3.1x (Capped) (Proves the cross-platform frequency cap worked).
 
 2. The Revised "Stage Summary" (The AI's Narrative)
-This text replaces sales attribution with "Audience Verification and Efficiency."
 WHAT IT FOUND:
 The Measurement stage ingested the final delivery logs, validating that the campaign successfully reached 68,450 unique households.
 The system utilized a privacy-safe Data Clean Room to match WBD exposure logs against the advertiser’s first-party demographic target list, achieving a highly confident 77.6% demographic match rate (confirming these were actually Toddler Parents).
@@ -149,7 +151,6 @@ The Converged Efficiency: The Outcome Pattern Reader analyzed the cross-platform
 Frequency Protection: The engine successfully enforced the cross-platform frequency cap. Only 4% of households were exposed to the ad more than 5 times, saving the client an estimated $3,800 in wasted impressions, which the system automatically reinvested into net-new reach.
 
 3. The "Sub-Agent Breakdown" (The Technical Output)
-This proves WBD can safely measure cross-platform audiences without leaking data.
 Sub-Agent 1: Household Match Validator (The Clean Room)
 Task: Prove we hit the right people without violating privacy laws.
 Action Output: Executed a double-blind ID match inside a secure Data Clean Room. Matched WBD's viewership graph against the advertiser's target demographic list (e.g., Experian/LiveRamp segments).
@@ -159,10 +160,7 @@ Task: Prove that buying Linear + Streaming together is better than buying them s
 Action Output: Analyzed the exposure overlap between the Food Network logs and the Max logs.
 Result: Generated an "Incremental Reach" report. Verified that the streaming allocation did not just cannibalize the linear audience, but successfully expanded the total unique footprint by 22%.
 
-
 Compliance Agent (Parallel)
-
-
 
 1. The Revised "Stage Snapshot" (The Hard Numbers)
 The current numbers are fine, but let's give the "8 Findings" some actual weight in the summary.
@@ -170,7 +168,7 @@ STATUS: Passed with Adjustments (Perfect. It shows the AI didn't just reject the
 FINDINGS: 8 Flags Logged (Shows the thoroughness of the audit).
 
 2. The Revised "Stage Summary" (The AI's Narrative)
-This replaces the "textbook" fluff with a brutal, precise audit readout. It proves the AI is protecting WBD from lawsuits and lost revenue.
+
 WHAT IT FOUND:
 The Parallel Compliance Agent completed a real-time audit across all active stages, returning a status of Passed with Adjustments based on 8 logged policy findings.
 COPPA Regulation Enforced: Detected active third-party behavioral tracking pixels in the provided digital ad tags. Because the target audience includes children (Max Kids & Family tier), the agent automatically stripped all behavioral trackers to maintain strict federal COPPA compliance.
@@ -194,7 +192,6 @@ Box 4: WHAT THE PROJECTED RESULT MEANS
 The $50K investment successfully reached 68,450 unique households. Because the AI managed the cross-platform overlap (28.4%), the Average Frequency was safely capped at 3.1x. Post-campaign Clean Room measurement achieved a 77.6% match rate, proving that the streaming allocation delivered a 22% incremental reach over a standalone linear buy.
 
 3. The Data Grid (The Hard Metrics)
-Update the bottom cards to reflect our 6-stage journey.
 TARGET UNIVERSE: 3.8M Households (Replaces Matched Sample)
 REACHABLE AUDIENCE: 312,500 Unique HHs (Replaces Unique Households)
 LEAD BEHAVIORAL COHORT: Millennial Health-Conscious Parents
@@ -208,5 +205,27 @@ CROSS-PLATFORM OVERLAP: 28.4% (The WBD Converged Superpower)
 AVERAGE CPM: $54.20 Blended
 
 4. The Bottom Alert Banner (The "Save")
-Update this banner to reflect the exact dollar amount we shifted in Stage 5.
 Banner Text: > ⚠️ IN-FLIGHT ACTION: During live pacing, the Autonomous Make-Good agent reallocated $4,250 from underperforming live sports linear inventory directly into Max Ad-Lite to protect the 211,970 booked guarantee.
+
+
+
+
+Scenario Generator
+When the prompt ($50K, Organic Toddler Snacks, U.S. Parents of Toddlers) is entered, the Orchestrator AI executes analysis in three steps:
+1. The Demographic Check (The Baseline)
+The Query: The AI looks at WBD’s subscriber and set-top-box data to find households with children under 4.
+The Data Return: There are roughly 3.8 million households that fit this demographic.
+The Insight: $50K cannot afford 3.8 million households. The AI knows it must prioritize highly engaged targets over broad audiences.
+2. The Behavioral Check (The Viewership Habits)
+The Query: The AI cross-references those specific toddler households against their actual WBD viewing history over the last 30 days.
+The Data Return: It finds that this specific cohort—health-conscious millennial parents—heavily over-indexes on streaming (Max Kids & Family) at a rate of 3-to-1 compared to traditional Daytime Linear TV (Food Network/TLC).
+The Insight: The audience is "Streaming-Heavy."
+3. The Pricing & Reach Calculus (Generating the Scenarios)
+Using the demographic limits and behavioral habits, the AI generates three models to spend the $50K:
+Scenario A: The Linear-Heavy Mix (80% Linear / 20% Streaming)
+While Linear CPMs are cheaper, the behavioral data shows toddler parents aren't watching enough Daytime TV to justify an 80% spend. The $50K would buy a lot of commercials, but they would hit the wrong demographics (waste).
+Scenario B: The Streaming-Only Mix (100% Streaming)
+T This hits the behavioral bullseye perfectly. However, because Streaming CPMs are higher ($68), the $50K budget exhausts too quickly. Worse, without a cross-platform cap, the AI predicts it will just hit the same heavy-streaming families over and over again. Total unique reach stalls out.
+Scenario C: The Streaming-Heavy Converged Mix (68% Streaming / 22% Linear / 10% Reserve)  RECOMMENDED
+T The behavioral data shows a 28% overlap between Max streamers and Food Network viewers in this demographic. By putting the bulk of the money (68%) where the audience actually lives (Streaming), and using a surgical Linear buy (22%) to catch the specific parents who don't stream, the AI maximizes net-new households. It uses the Identity Graph to suppress the 28% overlap, ensuring every dollar buys a unique reach point.
+

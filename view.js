@@ -249,18 +249,34 @@ function buildStageTakeaways(agent, previewText = "") {
 }
 
 const ARCHITECT_CARD_META = [
-  { label: "Scenario A", shortLabel: "A", title: "Scenario in Progress" },
-  { label: "Scenario B", shortLabel: "B", title: "Scenario in Progress" },
-  { label: "Scenario C", shortLabel: "C", title: "Scenario in Progress" }
+  {
+    key: "scenario-a",
+    label: "Streaming-First Plan",
+    title: "Best for Audiences Who Watch More Streaming"
+  },
+  {
+    key: "scenario-b",
+    label: "Linear-First Plan",
+    title: "Best for Audiences Who Watch More Linear TV"
+  },
+  {
+    key: "scenario-c",
+    label: "Balanced Cross-Platform Plan",
+    title: "Best When Streaming and Linear Both Matter"
+  }
 ];
 
 function getArchitectScenarioMeta(option = {}, index = 0) {
-  const fallback = ARCHITECT_CARD_META[index] || { label: `Scenario ${index + 1}`, shortLabel: String(index + 1), title: option?.title || "Scenario" };
-  const title = String(option?.title || fallback.title || "").replace(/^Scenario\s+[A-Z]\s*-\s*/i, "").trim();
-  return {
-    ...fallback,
-    title: title || fallback.title
-  };
+  if (option?.scenarioCardLabel || option?.scenarioCardTitle) {
+    return {
+      label: option.scenarioCardLabel || `Scenario ${String.fromCharCode(65 + index)}`,
+      title: option.scenarioCardTitle || option?.title || "Campaign Plan"
+    };
+  }
+  const variantKey = String(option?.variantKey || "").trim().toLowerCase();
+  return ARCHITECT_CARD_META.find((item) => item.key === variantKey)
+    || ARCHITECT_CARD_META[index]
+    || { label: `Plan Option ${index + 1}`, title: option?.title || "Campaign Plan" };
 }
 
 function hasFallbackNarrative(text = "") {
@@ -518,6 +534,9 @@ function buildStageFindingLines(agent = {}, state = {}, simple = false) {
   const summaryLines = (agent?.summaryLines || [])
     .map((line) => normalizeSummarySentence(line))
     .filter((line) => line.length >= 20);
+  if (isToddlerHeroPresentation(state) && summaryLines.length) {
+    return summaryLines.slice(0, 5);
+  }
   const candidates = [
     buildStageMetricNarrative(agent, state),
     ...summaryLines,
@@ -876,6 +895,7 @@ export function renderApp(container, state, config, actions) {
     ${renderComplianceDetails(state, actions)}
     ${renderAgentOutputs(state, demo, actions)}
     ${renderDashboard(state, actions)}
+    ${renderArchitectDetailModal(state, actions)}
   `, container);
 }
 
@@ -927,32 +947,10 @@ function renderArchitectLoadingCards() {
                 <span class="architect-skeleton w-100"></span>
                 <span class="architect-skeleton w-70"></span>
               </section>
-              <section class="architect-scenario-params">
-                <div class="architect-section-label">Plan Parameters</div>
-                <div class="architect-param-grid">
-                  ${Array.from({ length: 4 }, (_, idx) => html`
-                    <div class="architect-param-card" data-slot=${idx}>
-                      <span class="architect-skeleton w-40"></span>
-                      <span class="architect-skeleton w-90"></span>
-                      <span class="architect-skeleton w-70"></span>
-                    </div>
-                  `)}
-                </div>
-              </section>
-              <section class="architect-agent-plan-card">
-                <div class="architect-section-label">Agent Plan</div>
-                <div class="architect-loading-steps">
-                  ${Array.from({ length: 4 }, (_, idx) => html`
-                    <div class="architect-loading-step" data-step=${idx}>
-                      <span class="architect-step-dot"></span>
-                      <div class="architect-loading-copy">
-                        <span class="architect-skeleton w-55"></span>
-                        <span class="architect-skeleton w-85"></span>
-                      </div>
-                    </div>
-                  `)}
-                </div>
-              </section>
+              <div class="architect-detail-actions">
+                <span class="architect-skeleton architect-loading-button"></span>
+                <span class="architect-skeleton architect-loading-button"></span>
+              </div>
             </div>
           </article>
         </div>
@@ -990,10 +988,107 @@ function renderArchitectPlanSteps(option = {}) {
   `;
 }
 
+function renderArchitectPlanParameters(option = {}) {
+  return html`
+    <div class="architect-param-grid">
+      <div class="architect-param-card">
+        <div class="architect-param-label">Strategy</div>
+        <p class="architect-param-copy mb-0">${option.strategy || "Not provided."}</p>
+      </div>
+      <div class="architect-param-card">
+        <div class="architect-param-label">Channel Allocation</div>
+        <p class="architect-param-copy mb-0">${option.allocationStrategy || "Not provided."}</p>
+      </div>
+      <div class="architect-param-card">
+        <div class="architect-param-label">Delivery Timing</div>
+        <p class="architect-param-copy mb-0">${option.deliveryTiming || "Not provided."}</p>
+      </div>
+      <div class="architect-param-card">
+        <div class="architect-param-label">Channel Logic</div>
+        <p class="architect-param-copy mb-0">${option.channelLogic || "Not provided."}</p>
+      </div>
+    </div>
+  `;
+}
+
+function renderArchitectComplianceSummary(option = {}) {
+  const statusTone = (option.complianceValidation?.status || "").toLowerCase().includes("adjust") ? "warning" : "success";
+  return html`
+    <section class="architect-modal-section">
+      <div class="architect-section-label">Compliance Check</div>
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge text-bg-${statusTone}">${option.complianceValidation?.status || "Passed"}</span>
+      </div>
+      <p class="architect-compliance-copy mb-0">${option.complianceValidation?.summary || "Compliance check summary not provided."}</p>
+    </section>
+  `;
+}
+
+function renderArchitectDetailModal(state, actions) {
+  const modalState = state.architectDetailModal || null;
+  if (!modalState?.planId) return null;
+
+  const plans = state.architectPlans || [];
+  const optionIndex = plans.findIndex((plan) => plan.id === modalState.planId);
+  if (optionIndex < 0) return null;
+
+  const option = plans[optionIndex];
+  const meta = getArchitectScenarioMeta(option, optionIndex);
+  const detailType = modalState.detailType === "plan" ? "plan" : "parameters";
+  const modalTitle = detailType === "plan" ? "Agent Plan" : "Plan Parameters";
+
+  return html`
+    <div
+      class="modal fade show d-block architect-detail-modal-shell"
+      tabindex="-1"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="architect-detail-modal-title"
+      @click=${(event) => {
+        if (event.target === event.currentTarget) actions.closeArchitectDetailModal();
+      }}
+    >
+      <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
+        <div class="modal-content architect-detail-modal">
+          <div class="modal-header border-0 pb-0">
+            <div class="architect-modal-heading">
+              <span class="architect-scenario-label">${meta.label}</span>
+              <h5 id="architect-detail-modal-title" class="modal-title">${modalTitle}</h5>
+              <p class="architect-modal-subtitle mb-0">${meta.title}</p>
+            </div>
+            <button type="button" class="btn-close" aria-label="Close" @click=${actions.closeArchitectDetailModal}></button>
+          </div>
+          <div class="modal-body pt-3">
+            ${detailType === "plan"
+              ? html`
+                <section class="architect-modal-section">
+                  <div class="architect-section-label">Agent Plan</div>
+                  ${renderArchitectPlanSteps(option)}
+                </section>
+              `
+              : html`
+                <section class="architect-modal-section">
+                  <div class="architect-section-label">Scenario Summary</div>
+                  <p class="architect-summary-copy">${option.why || option.promptText || "Summary not provided."}</p>
+                  <p class="architect-summary-support mb-0">${option.promptText || "Scenario objective not provided."}</p>
+                </section>
+                <section class="architect-modal-section">
+                  <div class="architect-section-label">Plan Parameters</div>
+                  ${renderArchitectPlanParameters(option)}
+                </section>
+                ${renderArchitectComplianceSummary(option)}
+              `}
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-backdrop fade show architect-detail-backdrop" @click=${actions.closeArchitectDetailModal}></div>
+  `;
+}
+
 function renderArchitectScenarioCard(option, index, state, actions) {
   const selected = state.selectedArchitectPlanId === option.id;
   const meta = getArchitectScenarioMeta(option, index);
-  const statusTone = (option.complianceValidation?.status || "").toLowerCase().includes("adjust") ? "warning" : "success";
   return html`
     <div class="col-12 col-lg-4">
       <article class="architect-scenario-card ${selected ? "is-selected" : ""}">
@@ -1014,40 +1109,14 @@ function renderArchitectScenarioCard(option, index, state, actions) {
             <p class="architect-summary-support mb-0">${option.promptText || "Scenario objective not provided."}</p>
           </section>
 
-          <section class="architect-scenario-params">
-            <div class="architect-section-label">Plan Parameters</div>
-            <div class="architect-param-grid">
-              <div class="architect-param-card">
-                <div class="architect-param-label">Strategy</div>
-                <p class="architect-param-copy mb-0">${option.strategy || "Not provided."}</p>
-              </div>
-              <div class="architect-param-card">
-                <div class="architect-param-label">Channel Allocation</div>
-                <p class="architect-param-copy mb-0">${option.allocationStrategy || "Not provided."}</p>
-              </div>
-              <div class="architect-param-card">
-                <div class="architect-param-label">Delivery Timing</div>
-                <p class="architect-param-copy mb-0">${option.deliveryTiming || "Not provided."}</p>
-              </div>
-              <div class="architect-param-card">
-                <div class="architect-param-label">Channel Logic</div>
-                <p class="architect-param-copy mb-0">${option.channelLogic || "Not provided."}</p>
-              </div>
-            </div>
-
-            <details class="architect-compliance-disclosure">
-              <summary>
-                <span>Compliance Check</span>
-                <span class="badge text-bg-${statusTone}">${option.complianceValidation?.status || "Passed"}</span>
-              </summary>
-              <p class="architect-compliance-copy mb-0">${option.complianceValidation?.summary || "Compliance check summary not provided."}</p>
-            </details>
-          </section>
-
-          <section class="architect-agent-plan-card">
-            <div class="architect-section-label">Agent Plan</div>
-            ${renderArchitectPlanSteps(option)}
-          </section>
+          <div class="architect-detail-actions">
+            <button class="btn btn-sm btn-outline-primary architect-detail-button" type="button" @click=${() => actions.openArchitectDetailModal(option.id, "parameters")}>
+              <i class="bi bi-sliders me-1"></i>View Plan Parameters
+            </button>
+            <button class="btn btn-sm btn-outline-secondary architect-detail-button" type="button" @click=${() => actions.openArchitectDetailModal(option.id, "plan")}>
+              <i class="bi bi-diagram-3 me-1"></i>View Agent Plan
+            </button>
+          </div>
 
           <button class="btn btn-sm btn-primary w-100 mt-auto" @click=${() => actions.chooseArchitectPlan(option.id)} ?disabled=${["architect", "run"].includes(state.stage)}>
             ${selected ? "Current Selection" : "Choose This Scenario"}
@@ -1888,38 +1957,257 @@ function renderHandoffBadge(agent, handoffs) {
   return html`<span class="handoff-badge"><i class="bi bi-arrow-right-circle"></i>${handoff.label}</span>`;
 }
 
+function buildVisualizationDeckSignature(state = {}) {
+  const deck = state.visualizationDeck || {};
+  return JSON.stringify({
+    runToken: state.runToken || 0,
+    slideCount: (deck.slides || []).length,
+    titles: (deck.slides || []).map((slide) => slide.title || "").join("|"),
+    dashboardReady: !!state.dashboard
+  });
+}
+
+function renderDeckMetricCards(metrics = []) {
+  const safeMetrics = (metrics || []).filter(Boolean).slice(0, 3);
+  if (!safeMetrics.length) return null;
+  return html`
+    <div class="deck-metric-grid">
+      ${safeMetrics.map((metric) => html`
+        <div class="deck-metric-card">
+          <div class="deck-metric-label">${metric.label}</div>
+          <div class="deck-metric-value">${metric.value}</div>
+          ${metric.help ? html`<p class="deck-metric-help mb-0">${truncateCardText(metric.help, 120)}</p>` : null}
+        </div>
+      `)}
+    </div>
+  `;
+}
+
+function renderDeckNarrative(slide = {}) {
+  return html`
+    <div class="deck-narrative">
+      ${slide.body ? html`<p class="deck-body-copy">${slide.body}</p>` : null}
+      ${(slide.bullets || []).length
+        ? html`
+          <ul class="deck-bullet-list">
+            ${(slide.bullets || []).map((bullet) => html`<li>${bullet}</li>`)}
+          </ul>
+        `
+        : null}
+      ${slide.note ? html`<div class="deck-note">${slide.note}</div>` : null}
+    </div>
+  `;
+}
+
+function renderDeckMakeGoodVisual(state) {
+  const summary = state.dashboard?.makeGood;
+  const scenario = state.campaignStateObject?.selectedScenario || {};
+  const shiftBudget = Number(summary?.shiftBudget || 0);
+  if (!summary || !shiftBudget) return html`<div class="deck-plain-panel">No in-flight budget reallocation was needed for this run. The plan stayed close enough to target that operations could keep the original route.</div>`;
+  return html`
+    <div class="deck-makegood-visual">
+      <div class="deck-makegood-amount">$${shiftBudget.toLocaleString()}</div>
+      <p class="deck-makegood-copy mb-0">Budget moved into stronger inventory to protect the plan before delivery risk became a larger business problem.</p>
+      <div class="deck-makegood-track">
+        <span class="deck-budget-chip chip-linear">Linear</span>
+        <span class="deck-budget-chip chip-arrow">Shifted</span>
+        <span class="deck-budget-chip chip-digital">Streaming</span>
+      </div>
+      ${scenario?.allocationStrategy ? html`<div class="deck-makegood-note">${scenario.allocationStrategy}</div>` : null}
+    </div>
+  `;
+}
+
+function renderDeckSlide(slide = {}, index = 0, state = {}, actions = {}) {
+  const reach = state.dashboard?.reach || {};
+  const secondaryChannelLabel = "Streaming";
+  const actionRows = slide.tableRows || state.dashboard?.actions || [];
+  const slideHeader = html`
+    <div class="deck-slide-head">
+      <div>
+        <div class="deck-slide-eyebrow">${slide.eyebrow || `Slide ${index + 1}`}</div>
+        <h2 class="deck-slide-title">${slide.title || "Campaign Slide"}</h2>
+      </div>
+      <div class="deck-slide-number">${index + 1}</div>
+    </div>
+  `;
+  const takeaway = slide.takeaway
+    ? html`<div class="deck-slide-takeaway">${slide.takeaway}</div>`
+    : null;
+
+  if (slide.kind === "pacing") {
+    return html`
+      <section class="deck-slide-page">
+        <div class="deck-slide-frame">
+          ${slideHeader}
+          ${takeaway}
+          <div class="deck-slide-grid deck-slide-grid-wide">
+            <div class="deck-chart-panel">
+              <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                <h3 class="deck-panel-title mb-0">Delivery Pacing By Hour</h3>
+                <div class="btn-group btn-group-sm" role="group">
+                  <button class="btn btn-outline-primary ${state.pacingMode === "pct" ? "active" : ""}" @click=${() => actions.setPacingMode("pct")}>Delivery Rate (%)</button>
+                  <button class="btn btn-outline-primary ${state.pacingMode === "imp" ? "active" : ""}" @click=${() => actions.setPacingMode("imp")}>Delivered Impressions</button>
+                </div>
+              </div>
+              ${renderPacingChart()}
+              <div class="deck-chart-legend">
+                <span class="d-flex align-items-center gap-2"><span class="legend-swatch linear"></span>Linear</span>
+                <span class="d-flex align-items-center gap-2"><span class="legend-swatch digital"></span>${secondaryChannelLabel}</span>
+              </div>
+            </div>
+            <div class="deck-side-panel">
+              ${renderDeckNarrative(slide)}
+              ${renderDeckMetricCards(slide.metrics)}
+            </div>
+          </div>
+        </div>
+      </section>
+    `;
+  }
+
+  if (slide.kind === "reach") {
+    return html`
+      <section class="deck-slide-page">
+        <div class="deck-slide-frame">
+          ${slideHeader}
+          ${takeaway}
+          <div class="deck-slide-grid deck-slide-grid-wide">
+            <div class="deck-chart-panel">
+              <h3 class="deck-panel-title">Cross-Platform Reach</h3>
+              ${renderReachDonut(reach, secondaryChannelLabel)}
+              <div class="reach-metrics mt-3">
+                <div>
+                  <div class="metric-label">Projected Households Reached</div>
+                  <div class="metric-value">${formatNumber(resolveReachHouseholds(reach))}</div>
+                </div>
+                <div>
+                  <div class="metric-label">Devices Touched</div>
+                  <div class="metric-value">${formatNumber(reach.deviceCount)}</div>
+                </div>
+                <div>
+                  <div class="metric-label">Cross-Platform Overlap</div>
+                  <div class="metric-value">${reach.overlapPct}%</div>
+                </div>
+              </div>
+            </div>
+            <div class="deck-side-panel">
+              ${renderDeckNarrative(slide)}
+              ${renderDeckMetricCards(slide.metrics)}
+            </div>
+          </div>
+        </div>
+      </section>
+    `;
+  }
+
+  if (slide.kind === "make-good") {
+    return html`
+      <section class="deck-slide-page">
+        <div class="deck-slide-frame">
+          ${slideHeader}
+          ${takeaway}
+          <div class="deck-slide-grid">
+            <div class="deck-side-panel">
+              ${renderDeckMakeGoodVisual(state)}
+            </div>
+            <div class="deck-side-panel">
+              ${renderDeckNarrative(slide)}
+              ${renderDeckMetricCards(slide.metrics)}
+            </div>
+          </div>
+        </div>
+      </section>
+    `;
+  }
+
+  if (slide.kind === "actions") {
+    return html`
+      <section class="deck-slide-page">
+        <div class="deck-slide-frame">
+          ${slideHeader}
+          ${takeaway}
+          <div class="deck-stack-layout">
+            <div class="deck-slide-grid">
+              <div class="deck-side-panel">
+                ${renderDeckNarrative(slide)}
+              </div>
+              <div class="deck-side-panel">
+                ${renderDeckMetricCards(slide.metrics)}
+              </div>
+            </div>
+            <div class="deck-table-panel">
+              <h3 class="deck-panel-title">Agent Action Traceability</h3>
+              ${renderActionTable(actionRows, { tone: "light" })}
+            </div>
+          </div>
+        </div>
+      </section>
+    `;
+  }
+
+  return html`
+    <section class="deck-slide-page">
+      <div class="deck-slide-frame">
+        ${slideHeader}
+        ${takeaway}
+        <div class="deck-slide-grid">
+          <div class="deck-side-panel">
+            ${renderDeckNarrative(slide)}
+          </div>
+          <div class="deck-side-panel">
+            ${renderDeckMetricCards(slide.metrics)}
+          </div>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function renderVisualizationDeck(state, actions) {
+  const deck = state.visualizationDeck || null;
+  if (!deck) return null;
+  return html`
+    <div class="visualization-deck-shell">
+      <div class="reveal wbd-output-deck" tabindex="0" data-reveal-signature=${buildVisualizationDeckSignature(state)}>
+        <div class="slides">
+          ${(deck.slides || []).map((slide, index) => renderDeckSlide(slide, index, state, actions))}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 function renderDashboard(state, actions) {
   const hasDashboard = !!state.dashboard;
   const showVisualizationLoader = !!state.visualizationLoading;
   if (!hasDashboard && !showVisualizationLoader) return null;
   if (!hasDashboard && showVisualizationLoader) return renderVisualizationLoadingCard();
 
-  const { reach, actions: actionRows } = state.dashboard;
-  const toddlerHero = isToddlerHeroPresentation(state);
-  const pacingTitle = toddlerHero ? "Delivery Pacing (Linear versus Streaming)" : "Delivery Pacing (Linear versus Digital)";
-  const secondaryChannelLabel = toddlerHero ? "Streaming" : "Digital";
   return html`
     <section class="card mb-5">
-      <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2"><span><i class="bi bi-bar-chart-line me-2"></i>Output and Visualization</span><div class="d-flex align-items-center gap-2 flex-wrap"><small class="text-body-secondary">Charts use synthetic metrics and explanations are generated by the language model.</small><button class="btn btn-sm btn-outline-warning" @click=${actions.toggleVisualizationExplanation}>${state.visualizationExplanationOpen ? "Hide Visualization Explanation" : "Show Visualization Explanation"}</button><button class="btn btn-sm btn-outline-warning" @click=${actions.exportApprovedPlan}><i class="bi bi-download me-1"></i>Export Plan CSV</button></div></div>
+      <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <span><i class="bi bi-easel2 me-2"></i>Output and Visualization Slide Deck</span>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          <button class="btn btn-sm btn-outline-warning" @click=${actions.exportApprovedPlan}><i class="bi bi-download me-1"></i>Export Plan CSV</button>
+        </div>
+      </div>
       <div class="card-body">
         ${showVisualizationLoader ? html`
           <div class="visualization-loading mb-4">
             <div class="spinner-border text-warning" role="status">
-              <span class="visually-hidden">Generating visualization</span>
+              <span class="visually-hidden">Generating slide deck</span>
             </div>
             <div>
-              <h6 class="mb-1">Generating visualization explanation</h6>
-              <p class="small text-body-secondary mb-0">Please wait while the language model finishes the detailed explanation for the charts and action traceability.</p>
+              <h6 class="mb-1">Building the output slide deck</h6>
+              <p class="small text-body-secondary mb-0">Please wait while the system arranges the final output and visualization into a clear Reveal.js presentation.</p>
             </div>
           </div>
         ` : null}
-        ${renderDashboardExecutiveSummary(state.dashboard?.executive)}
-        <div class="dashboard-grid"><div class="chart-card"><div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2"><h6 class="mb-0">${pacingTitle}</h6><div class="btn-group btn-group-sm" role="group"><button class="btn btn-outline-warning ${state.pacingMode === "pct" ? "active" : ""}" @click=${() => actions.setPacingMode("pct")}>Delivery Rate (%)</button><button class="btn btn-outline-warning ${state.pacingMode === "imp" ? "active" : ""}" @click=${() => actions.setPacingMode("imp")}>Delivered Impressions</button></div></div>${renderPacingChart()}<div class="d-flex gap-3 small mt-2 text-body-secondary"><span class="d-flex align-items-center gap-2"><span class="legend-swatch linear"></span>Linear</span><span class="d-flex align-items-center gap-2"><span class="legend-swatch digital"></span>${secondaryChannelLabel}</span></div></div><div class="donut-card"><h6 class="mb-3">Cross-Platform Reach</h6>${renderReachDonut(reach, secondaryChannelLabel)}<div class="reach-metrics mt-3"><div><div class="metric-label">Projected Households Reached</div><div class="metric-value">${formatNumber(resolveReachHouseholds(reach))}</div></div><div><div class="metric-label">Devices Touched</div><div class="metric-value">${formatNumber(reach.deviceCount)}</div></div><div><div class="metric-label">Cross-Platform Overlap</div><div class="metric-value">${reach.overlapPct}%</div></div></div></div></div>
-        ${renderMakeGood(state)}
-        ${state.visualizationExplanationOpen ? renderVisualizationExplanation(state) : null}
-        <div class="mt-4"><h6 class="mb-3">Agent Actions</h6>${renderActionTable(actionRows)}</div>
+        ${renderVisualizationDeck(state, actions)}
       </div>
-    </section>`;
+    </section>
+  `;
 }
 
 function renderDashboardExecutiveSummary(executive = null) {
@@ -1970,15 +2258,15 @@ function renderDashboardExecutiveSummary(executive = null) {
 function renderVisualizationLoadingCard() {
   return html`
     <section class="card mb-5">
-      <div class="card-header"><span><i class="bi bi-bar-chart-line me-2"></i>Output and Visualization</span></div>
+      <div class="card-header"><span><i class="bi bi-easel2 me-2"></i>Output and Visualization Slide Deck</span></div>
       <div class="card-body">
         <div class="visualization-loading">
           <div class="spinner-border text-warning" role="status">
-            <span class="visually-hidden">Generating visualization</span>
+            <span class="visually-hidden">Generating slide deck</span>
           </div>
           <div>
-            <h6 class="mb-1">Generating visualization and explanation</h6>
-            <p class="small text-body-secondary mb-0">Campaign execution has finished and the dashboard explanation is still being produced. Please wait before reviewing the final charts.</p>
+            <h6 class="mb-1">Building the Reveal.js slide deck</h6>
+            <p class="small text-body-secondary mb-0">Campaign execution has finished and the system is arranging the final output into a clear presentation with plain-English headings and explanations.</p>
           </div>
         </div>
       </div>
@@ -2003,7 +2291,7 @@ function renderPacingChart() {
 }
 
 function renderReachDonut(reach, secondaryChannelLabel = "Digital") {
-  return html`<div class="reach-chart-d3"></div><div class="mt-3 text-center text-body-secondary small">Linear ${reach.linearPct}% | ${secondaryChannelLabel} ${reach.digitalPct}%</div>`;
+  return html`<div class="reach-chart-d3"></div><div class="deck-chart-caption">Linear ${reach.linearPct}% | ${secondaryChannelLabel} ${reach.digitalPct}%</div>`;
 }
 
 function renderMakeGood(state) {
@@ -2031,9 +2319,36 @@ function renderMakeGood(state) {
   return html`<div class="makegood-card mt-4"><div class="d-flex justify-content-between align-items-center flex-wrap gap-2"><div><h6 class="mb-1">Delivery Make-Good Triggered</h6><div class="small text-body-secondary">Reallocated ${summary.shiftBudget.toLocaleString()} United States dollars to stronger inventory to protect delivery.</div></div></div><div class="makegood-track mt-3"><span class="budget-chip chip-linear">Linear</span><span class="budget-chip chip-digital">Streaming</span><span class="budget-chip chip-move">${summary.shiftBudget.toLocaleString()} United States dollars</span></div></div>`;
 }
 
-function renderActionTable(actions) {
+function renderActionTable(actions, options = {}) {
   if (!actions.length) return html`<p class="text-body-secondary small">No actions recorded.</p>`;
-  return html`<div class="table-responsive"><table class="table table-dark table-striped align-middle"><thead><tr><th scope="col">Time</th><th scope="col">Agent</th><th scope="col">Action</th><th scope="col">Status</th></tr></thead><tbody>${actions.map((row) => html`<tr><td>${formatTime(row.time)}</td><td>${row.agent}</td><td>${row.summary}</td><td>${renderStatusBadge(row)}</td></tr>`)}</tbody></table></div>`;
+  const tone = options.tone === "light" ? "light" : "dark";
+  const tableClass = tone === "light"
+    ? "table align-middle deck-action-table"
+    : "table table-dark table-striped align-middle";
+  return html`
+    <div class="table-responsive">
+      <table class="${tableClass}">
+        <thead>
+          <tr>
+            <th scope="col">Time</th>
+            <th scope="col">Agent</th>
+            <th scope="col">Action</th>
+            <th scope="col">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${actions.map((row) => html`
+            <tr>
+              <td>${formatTime(row.time)}</td>
+              <td>${row.agent}</td>
+              <td>${row.summary}</td>
+              <td>${renderStatusBadge(row)}</td>
+            </tr>
+          `)}
+        </tbody>
+      </table>
+    </div>
+  `;
 }
 
 function renderStatusBadge(row) {
